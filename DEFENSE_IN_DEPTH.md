@@ -10,10 +10,10 @@ Profile: website/app · public
 
 ## 2. CODEOWNERS and cloud bootstrap
 - [x] `.github/CODEOWNERS` covers `/.github/`, `/.vscode/`, `/.cursor/`, `/.devcontainer/`, `/scripts/` with owners the maintainer names — PR #9
-- [ ] Codespaces and Cursor Cloud Agents bootstrap Aikido Safe Chain via scripts/setup-cloud-environment.sh (--ci shims, frozen lockfile) (PR #10 pending)
+- [x] Codespaces and Cursor Cloud Agents bootstrap Aikido Safe Chain via scripts/setup-cloud-environment.sh (--ci shims, frozen lockfile) — PR #10
 
 ## 3. Dependencies (pnpm)
-- [ ] `packageManager: pnpm@11.3+` pinned in `package.json`
+- [ ] `packageManager: pnpm@11.3+` pinned in `package.json` (PR #11 pending)
 - [ ] 7-day cooldown: `minimumReleaseAge: 10080`, `minimumReleaseAgeStrict: true`, `minimumReleaseAgeIgnoreMissingTime: false`; no first-party `minimumReleaseAgeExclude`
 - [ ] `trustPolicy: no-downgrade`; no first-party `trustPolicyExclude`
 - [ ] Lifecycle scripts blocked: `strictDepBuilds: true`, `dangerouslyAllowAllBuilds: false`, `allowBuilds: {}` baseline
