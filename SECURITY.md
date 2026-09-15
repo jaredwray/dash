@@ -26,3 +26,4 @@ hardening checklist; progress is tracked in [DEFENSE_IN_DEPTH.md](./DEFENSE_IN_D
 - The lockfile is committed and CI installs with `--frozen-lockfile`. There is no Dependabot config; dependency updates go through reviewed PRs.
 - CI does not commit generated output back to the repo.
 - Workflows do not use `pull_request_target`.
+- Socket reviews every pull request that changes dependencies.

@@ -36,7 +36,7 @@ Profile: website/app · public
 ## 6. Security tooling
 - [ ] Aikido runs on every build
 - [ ] Aikido release gate: the release workflow's stage-publish job `needs:` a passing `scan-release`
-- [ ] Socket reviews every PR that changes dependencies
+- [x] Socket reviews every PR that changes dependencies — verified 2026-09-15 (PR #8: Socket Security Pull Request Alerts and Project Report)
 
 ## 7. Repository lockdown
 - [ ] Phishing-resistant 2FA (passkeys / hardware keys) on the GitHub and npm accounts (manual)
