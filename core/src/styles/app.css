@@ -1,0 +1,58 @@
+@import "tailwindcss" source("../");
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=Outfit:wght@400;500;600;700&display=swap");
+
+@theme {
+  --font-sans: "Outfit", "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Outfit", ui-sans-serif, system-ui, sans-serif;
+  --color-ink: #070b14;
+  --color-ink-2: #0e1524;
+  --color-panel: #121a2b;
+  --color-panel-2: #182236;
+  --color-line: rgb(255 255 255 / 0.08);
+  --color-mist: #93a0b8;
+  --color-paper: #eef3fb;
+  --color-accent: #5eead4;
+  --color-accent-2: #818cf8;
+  --color-warn: #fbbf24;
+}
+
+html,
+body,
+#app {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  background:
+    radial-gradient(1200px 500px at 10% -10%, rgb(94 234 212 / 0.12), transparent 50%),
+    radial-gradient(900px 400px at 100% 0%, rgb(129 140 248 / 0.16), transparent 45%),
+    var(--color-ink);
+  color: var(--color-paper);
+}
+
+input,
+select,
+textarea,
+button {
+  font: inherit;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.dash-grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  grid-auto-rows: 4.5rem;
+  gap: 1rem;
+}
+
+@media (max-width: 900px) {
+  .dash-grid > * {
+    grid-column: 1 / -1 !important;
+  }
+}

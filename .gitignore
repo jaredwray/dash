@@ -141,3 +141,15 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+
+# Dash app data
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+core/data/*
+!core/data/.gitkeep
+
+# TanStack Start / Nitro
+.nitro
+.tanstack
+core/.output/

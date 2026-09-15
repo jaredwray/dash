@@ -9,9 +9,11 @@ We release new versions of this project (maintenance/features) on a monthly cade
 You can contribute changes to this repo by opening a pull request:
 
 1) After forking this repository to your Git account, make the proposed changes on your forked branch.
-2) Run tests and linting locally when they exist.
-	- This project uses `pnpm`. Once `package.json` is present, run `pnpm install` and `pnpm test`.
-	- There is no package manifest or test suite yet, so skip this step until those land.
+2) Use **Node.js 24** (Active LTS) and **pnpm**. From the repo root:
+	- `pnpm install`
+	- `pnpm test`
+	- `pnpm typecheck`
+	- If you changed the feature set, update the checklist in [README.md](README.md).
 3) Commit your changes and push them to your forked repository.
 4) Navigate to the main `dash` repository and select the *Pull Requests* tab.
 5) Click the *New pull request* button, then select the option "Compare across forks"
