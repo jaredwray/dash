@@ -23,6 +23,9 @@ We will acknowledge receipt, work with you on a coordinated disclosure timeline,
 This repository follows the [defense-in-depth](https://github.com/jaredwray/agentic/blob/main/skills/security/defense-in-depth-nodejs/SKILL.md)
 hardening checklist; progress is tracked in [DEFENSE_IN_DEPTH.md](./DEFENSE_IN_DEPTH.md). Measures currently in place:
 
+- All changes land through pull requests — direct pushes to `main` are blocked, and merging requires passing status checks (`node-24`, `zizmor`).
+- Tags can only be created by repository admins; published GitHub Releases are immutable (assets and tags cannot be changed after publish).
+- Workflow runs from outside collaborators always require maintainer approval, and only allowlisted GitHub Actions can run.
 - The lockfile is committed and CI installs with `--frozen-lockfile`. There is no Dependabot config; dependency updates go through reviewed PRs.
 - CI does not commit generated output back to the repo.
 - CI runs with read-only permissions (`contents: read`).
