@@ -32,7 +32,7 @@ Profile: website/app · public
 - [x] `persist-credentials: false` on checkouts that don't push — PR #21
 - [x] No `pull_request_target` on workflows that run untrusted PR code — verified 2026-09-15
 - [x] Artifact-publishing workflows disable `actions/setup-node` default caching (`package-manager-cache: false`) to prevent cache poisoning — verified 2026-09-15 (no artifact-publishing workflows)
-- [ ] No npm tokens (or other registry credentials) in Actions secrets
+- [x] No npm tokens (or other registry credentials) in Actions secrets — verified 2026-09-15 (PR #23)
 
 ## 6. Security tooling
 - [ ] Aikido runs on every build
@@ -43,6 +43,6 @@ Profile: website/app · public
 
 The lockdown script is not vendored in this repo. A repo admin applies it from the skill copy in `jaredwray/agentic` last (do not add `scripts/lockdown-repo.sh` here).
 
-- [ ] Phishing-resistant 2FA (passkeys / hardware keys) on the GitHub and npm accounts (manual)
-- [ ] Recovery codes stored offline in a password manager (manual)
-- [ ] `lockdown-repo.sh` applied by a repo admin (never committed to this repo); `--check` with `--required-checks` and `--allowed-actions` passes (PRs required on the default branch, merges blocked unless required status checks pass, tag ruleset, immutable releases, fork-PR approval (public repos), read-only workflow tokens, Actions allowlist, secret scanning, Dependabot disabled, private vulnerability reporting (public repos)) (PR #22 pending)
+- [x] Phishing-resistant 2FA (passkeys / hardware keys) on the GitHub and npm accounts (manual) — verified 2026-09-15 (PR #23)
+- [x] Recovery codes stored offline in a password manager (manual) — verified 2026-09-15 (PR #23)
+- [x] `lockdown-repo.sh` applied by a repo admin (never committed to this repo); `--check` with `--required-checks` and `--allowed-actions` passes (PRs required on the default branch, merges blocked unless required status checks pass, tag ruleset, immutable releases, fork-PR approval (public repos), read-only workflow tokens, Actions allowlist, secret scanning, Dependabot disabled, private vulnerability reporting (public repos)) — PR #22
