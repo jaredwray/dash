@@ -62,7 +62,7 @@ Keep this list in sync as PRs land. Checked items are in the tree today.
 - [x] Dynamic dashboard pages
 - [x] Chart widgets (Apache ECharts)
 - [x] Sortable and filterable tables (TanStack Table)
-- [x] Data sources page (admin): demo warehouse + Postgres
+- [x] Data sources page (admin): add and remove sources (demo warehouse + Postgres)
 - [ ] Real-time multi-user dashboard collaboration
 - [ ] Light theme
 

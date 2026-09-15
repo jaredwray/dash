@@ -40,6 +40,32 @@ export function Select(props: React.SelectHTMLAttributes<HTMLSelectElement>) {
   );
 }
 
+export function TextArea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
+  return (
+    <textarea
+      {...props}
+      className={cn(
+        "w-full min-h-20 rounded-xl border border-line bg-ink px-3 py-2.5 text-sm outline-none focus:border-accent/70",
+        props.className,
+      )}
+    />
+  );
+}
+
+export function DangerButton(
+  props: React.ButtonHTMLAttributes<HTMLButtonElement>,
+) {
+  return (
+    <button
+      {...props}
+      className={cn(
+        "rounded-xl border border-rose-400/30 bg-rose-500/10 px-4 py-2.5 text-sm text-rose-200 hover:bg-rose-500/20 disabled:opacity-50",
+        props.className,
+      )}
+    />
+  );
+}
+
 export function PrimaryButton(
   props: React.ButtonHTMLAttributes<HTMLButtonElement>,
 ) {
