@@ -33,8 +33,8 @@ export function AppShell({ user }: { user: PublicUser }) {
   }
 
   return (
-    <div className="min-h-screen lg:grid lg:grid-cols-[16.5rem_1fr]">
-      <aside className="border-b border-line bg-ink-2/80 px-4 py-4 backdrop-blur lg:border-b-0 lg:border-r lg:px-5 lg:py-6">
+    <div className="min-h-screen lg:grid lg:h-screen lg:grid-cols-[16.5rem_1fr] lg:overflow-hidden">
+      <aside className="border-b border-line bg-ink-2/80 px-4 py-4 backdrop-blur lg:flex lg:flex-col lg:overflow-y-auto lg:border-b-0 lg:border-r lg:px-5 lg:py-6">
         <Link to="/dashboards" className="flex items-center gap-3 px-2">
           <span className="grid h-9 w-9 place-items-center rounded-xl bg-accent/15 text-accent">
             <LayoutDashboard size={18} />
@@ -67,7 +67,7 @@ export function AppShell({ user }: { user: PublicUser }) {
             },
           )}
         </nav>
-        <div className="mt-6 hidden items-center justify-between rounded-2xl border border-line bg-panel px-3 py-3 lg:flex">
+        <div className="mt-6 hidden items-center justify-between rounded-2xl border border-line bg-panel px-3 py-3 lg:mt-auto lg:flex">
           <div>
             <div className="text-sm font-medium">{user.name}</div>
             <div className="text-xs text-mist">{user.email}</div>
@@ -82,7 +82,7 @@ export function AppShell({ user }: { user: PublicUser }) {
           </button>
         </div>
       </aside>
-      <main className="min-w-0 px-4 py-6 lg:px-10 lg:py-8">
+      <main className="min-w-0 px-4 py-6 lg:overflow-y-auto lg:px-10 lg:py-8">
         <Outlet />
       </main>
     </div>

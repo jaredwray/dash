@@ -12,12 +12,18 @@ const PALETTE = [
   "#c4b5fd",
 ];
 
-function numbers(rows: Record<string, unknown>[], key: string): number[] {
-  return rows.map((row) => Number(row[key] ?? 0));
-}
-
 function labels(rows: Record<string, unknown>[], key: string): string[] {
   return rows.map((row) => String(row[key] ?? ""));
+}
+
+function compactNumber(value: number | string): string {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) {
+    return String(value);
+  }
+  return new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 1 }).format(
+    numeric,
+  );
 }
 
 export function toEchartsOption(
@@ -39,7 +45,13 @@ export function toEchartsOption(
       top: 0,
       textStyle: { color: muted },
     },
-    grid: { left: 48, right: 16, top: 36, bottom: 32 },
+    grid: {
+      left: spec.type === "bar" ? 8 : 12,
+      right: 16,
+      top: 36,
+      bottom: 24,
+      containLabel: true,
+    },
   } satisfies EChartsOption;
 
   if (spec.type === "pie" || spec.type === "donut") {
@@ -109,13 +121,19 @@ export function toEchartsOption(
     xAxis: {
       type: spec.type === "bar" ? "value" : "category",
       data: spec.type === "bar" ? undefined : categories,
-      axisLabel: { color: muted },
+      axisLabel: {
+        color: muted,
+        formatter: spec.type === "bar" ? compactNumber : undefined,
+      },
       axisLine: { lineStyle: { color: "rgba(255,255,255,0.08)" } },
     },
     yAxis: {
       type: spec.type === "bar" ? "category" : "value",
       data: spec.type === "bar" ? categories : undefined,
-      axisLabel: { color: muted },
+      axisLabel: {
+        color: muted,
+        formatter: spec.type === "bar" ? undefined : compactNumber,
+      },
       splitLine: { lineStyle: { color: "rgba(255,255,255,0.06)" } },
     },
     series:
@@ -138,5 +156,3 @@ export function emptyChartOption(): EChartsOption {
     },
   };
 }
-
-export { numbers };
