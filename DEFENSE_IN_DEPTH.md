@@ -35,7 +35,7 @@ Profile: website/app · public
 - [x] No npm tokens (or other registry credentials) in Actions secrets — verified 2026-09-15 (PR #23)
 
 ## 6. Security tooling
-- [x] Aikido runs on every build — verified 2026-09-15 (PR #23: Aikido Security: check code)
+- [x] Aikido runs on every build — verified 2026-09-15 (PR #24)
 - [ ] Aikido release gate: the release workflow's stage-publish job `needs:` a passing `scan-release`
 - [x] Socket reviews every PR that changes dependencies — verified 2026-09-15 (PR #8: Socket Security Pull Request Alerts and Project Report)
 
