@@ -22,9 +22,9 @@ Profile: website/app · public
 - [x] No `.github/dependabot.yml`; other dependency-update tools (if any) open PRs only — never auto-merge — verified 2026-09-15
 
 ## 4. GitHub Actions
-- [ ] `permissions: contents: read` (or `{}` + per-job grants) on every workflow (PR #16 pending)
+- [x] `permissions: contents: read` (or `{}` + per-job grants) on every workflow — PR #16
 - [x] No `contents: write` except jobs whose purpose is mutating the repo (GitHub Release, Changesets version PR); generated output is a workflow artifact, never committed back from CI — verified 2026-09-15
-- [ ] Every action pinned to a full commit SHA (`npx actions-up`)
+- [ ] Every action pinned to a full commit SHA (`npx actions-up`) (PR pending)
 - [ ] Every job installs Socket Firewall (`SocketDev/action` SHA-pinned, `firewall-version` pinned); `pnpm install` / `npm install` run as `sfw pnpm install` / `sfw npm install`
 - [ ] `.github/workflows/check-workflows.yaml` lints workflows with zizmor on every PR
 - [ ] Workflow `name:` and job `name:` contain no spaces (kebab-case) so they can be set as required status checks
