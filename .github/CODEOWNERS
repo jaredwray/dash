@@ -1,0 +1,7 @@
+# High-risk paths. Last matching pattern wins.
+# Root-anchored so nested copies (e.g. skills/**/scripts/) are not owned here.
+/.github/ @jaredwray @cooperwray
+/.vscode/ @jaredwray @cooperwray
+/.cursor/ @jaredwray @cooperwray
+/.devcontainer/ @jaredwray @cooperwray
+/scripts/ @jaredwray @cooperwray
