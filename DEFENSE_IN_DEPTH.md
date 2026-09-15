@@ -29,7 +29,7 @@ Profile: website/app · public
 - [x] Every job installs Socket Firewall (`SocketDev/action` SHA-pinned, `firewall-version` pinned); `pnpm install` / `npm install` run as `sfw pnpm install` / `sfw npm install` — PR #18
 - [x] `.github/workflows/check-workflows.yaml` lints workflows with zizmor on every PR — PR #19
 - [x] Workflow `name:` and job `name:` contain no spaces (kebab-case) so they can be set as required status checks — PR #20
-- [ ] `persist-credentials: false` on checkouts that don't push (PR #21 pending)
+- [x] `persist-credentials: false` on checkouts that don't push — PR #21
 - [x] No `pull_request_target` on workflows that run untrusted PR code — verified 2026-09-15
 - [x] Artifact-publishing workflows disable `actions/setup-node` default caching (`package-manager-cache: false`) to prevent cache poisoning — verified 2026-09-15 (no artifact-publishing workflows)
 - [ ] No npm tokens (or other registry credentials) in Actions secrets
@@ -40,6 +40,9 @@ Profile: website/app · public
 - [x] Socket reviews every PR that changes dependencies — verified 2026-09-15 (PR #8: Socket Security Pull Request Alerts and Project Report)
 
 ## 7. Repository lockdown
+
+The lockdown script is not vendored in this repo. A repo admin applies it from the skill copy in `jaredwray/agentic` last (do not add `scripts/lockdown-repo.sh` here).
+
 - [ ] Phishing-resistant 2FA (passkeys / hardware keys) on the GitHub and npm accounts (manual)
 - [ ] Recovery codes stored offline in a password manager (manual)
-- [ ] `lockdown-repo.sh` applied by a repo admin (never committed to this repo); `--check` with `--required-checks` and `--allowed-actions` passes (PRs required on the default branch, merges blocked unless required status checks pass, tag ruleset, immutable releases, fork-PR approval (public repos), read-only workflow tokens, Actions allowlist, secret scanning, Dependabot disabled, private vulnerability reporting (public repos))
+- [ ] `lockdown-repo.sh` applied by a repo admin (never committed to this repo); `--check` with `--required-checks` and `--allowed-actions` passes (PRs required on the default branch, merges blocked unless required status checks pass, tag ruleset, immutable releases, fork-PR approval (public repos), read-only workflow tokens, Actions allowlist, secret scanning, Dependabot disabled, private vulnerability reporting (public repos)) (PR pending)
