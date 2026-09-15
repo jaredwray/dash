@@ -29,3 +29,4 @@ hardening checklist; progress is tracked in [DEFENSE_IN_DEPTH.md](./DEFENSE_IN_D
 - Socket reviews every pull request that changes dependencies.
 - Codespaces and Cursor Cloud Agents install through Aikido Safe Chain; package-manager shims must not be bypassed.
 - pnpm is pinned via `packageManager` (`pnpm@11.25.0`).
+- Dependencies install through pnpm with a 7-day cooldown on new versions.
