@@ -9,3 +9,10 @@ allowBuilds:
 minimumReleaseAge: 10080 # 7 days, in minutes
 minimumReleaseAgeStrict: true # fail instead of falling back to a too-new version
 minimumReleaseAgeIgnoreMissingTime: false # missing publish-time metadata fails closed
+trustPolicy: no-downgrade # fail if a later version has weaker trust evidence
+
+# semver@6.3.1 fails trustPolicy: no-downgrade (no provenance;
+# later versions of the same package have attestations). Pin to a version that
+# already meets the gate — do not exclude first-party packages.
+overrides:
+  semver@6.3.1: 7.8.5
