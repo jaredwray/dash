@@ -8,6 +8,7 @@ allowBuilds:
 
 strictDepBuilds: true
 dangerouslyAllowAllBuilds: false
+blockExoticSubdeps: true
 
 minimumReleaseAge: 10080 # 7 days, in minutes
 minimumReleaseAgeStrict: true # fail instead of falling back to a too-new version
