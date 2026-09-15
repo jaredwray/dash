@@ -27,6 +27,8 @@ hardening checklist; progress is tracked in [DEFENSE_IN_DEPTH.md](./DEFENSE_IN_D
 - CI does not commit generated output back to the repo.
 - CI runs with read-only permissions (`contents: read`).
 - Every GitHub Action is pinned to a full commit SHA.
+- CI installs run through Socket Firewall (`sfw pnpm install`).
+- The Codespaces Dev Container image is pinned by digest (`name:<tag>@sha256:<digest>`), not a floating tag.
 - Workflows do not use `pull_request_target`.
 - Socket reviews every pull request that changes dependencies.
 - Codespaces and Cursor Cloud Agents install through Aikido Safe Chain; package-manager shims must not be bypassed.
