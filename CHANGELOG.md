@@ -15,5 +15,5 @@ All notable changes to Dash are documented here.
 ### Changed
 
 - `/` no longer shows a marketing landing page. Signed-in visitors go to dashboards; everyone else goes to sign-in.
-- README requirement is pnpm 11, matching the `package.json` pin (`11.25.0`).
+- README requirement is pnpm 12, matching the `package.json` pin (`12.5.1`).
 - Data sources admin page can add any supported source and remove any source, including the sample warehouse.
