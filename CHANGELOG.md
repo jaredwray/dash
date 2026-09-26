@@ -14,4 +14,5 @@ All notable changes to Dash are documented here.
 
 ### Changed
 
+- README requirement is pnpm 11, matching the `package.json` pin (`11.25.0`).
 - Data sources admin page can add any supported source and remove any source, including the sample warehouse.
