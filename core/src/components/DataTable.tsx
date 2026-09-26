@@ -1,44 +1,58 @@
 import { useMemo, useState } from "react";
 import {
-  flexRender,
-  getCoreRowModel,
-  getFilteredRowModel,
-  getSortedRowModel,
-  useReactTable,
+  columnFilteringFeature,
+  createFilteredRowModel,
+  createSortedRowModel,
+  filterFn_includesString,
+  globalFilteringFeature,
+  rowSortingFeature,
+  sortFn_alphanumeric,
+  tableFeatures,
+  useTable,
   type ColumnDef,
   type SortingState,
 } from "@tanstack/react-table";
 import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 import { cn } from "~/lib/cn";
 
+const features = tableFeatures({
+  rowSortingFeature,
+  globalFilteringFeature,
+  columnFilteringFeature,
+  sortedRowModel: createSortedRowModel(),
+  filteredRowModel: createFilteredRowModel(),
+  filterFns: { includesString: filterFn_includesString },
+  sortFns: { alphanumeric: sortFn_alphanumeric },
+});
+
+type Row = Record<string, unknown>;
+
 export function DataTable({
   rows,
 }: {
-  rows: Record<string, unknown>[];
+  rows: Row[];
 }) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = useState("");
-  const columns = useMemo<ColumnDef<Record<string, unknown>>[]>(() => {
+  const columns = useMemo<ColumnDef<typeof features, Row>[]>(() => {
     const keys = rows[0] ? Object.keys(rows[0]) : [];
     return keys.map((key) => ({
       accessorKey: key,
       header: key,
-      cell: ({ getValue }) => {
-        const value = getValue();
+      cell: (context) => {
+        const value = context.getValue();
         return value == null ? "—" : String(value);
       },
     }));
   }, [rows]);
 
-  const table = useReactTable({
+  const table = useTable({
+    features,
     data: rows,
     columns,
     state: { sorting, globalFilter },
     onSortingChange: setSorting,
     onGlobalFilterChange: setGlobalFilter,
-    getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
   });
 
   return (
@@ -64,7 +78,7 @@ export function DataTable({
                         className="inline-flex items-center gap-1"
                         onClick={header.column.getToggleSortingHandler()}
                       >
-                        {flexRender(header.column.columnDef.header, header.getContext())}
+                        <table.FlexRender header={header} />
                         {header.column.getIsSorted() === "asc" ? (
                           <ArrowUp size={12} />
                         ) : header.column.getIsSorted() === "desc" ? (
@@ -82,9 +96,9 @@ export function DataTable({
           <tbody>
             {table.getRowModel().rows.map((row) => (
               <tr key={row.id} className="border-t border-line">
-                {row.getVisibleCells().map((cell) => (
+                {row.getAllCells().map((cell) => (
                   <td key={cell.id} className={cn("px-3 py-2 text-paper/90")}>
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    <table.FlexRender cell={cell} />
                   </td>
                 ))}
               </tr>
