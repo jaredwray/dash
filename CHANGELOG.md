@@ -6,6 +6,7 @@ All notable changes to Dash are documented here.
 
 ### Added
 
+- README screenshots of the landing page, sign-in, dashboards, sample warehouse, API tokens, settings, and profile.
 - PNPM workspace monorepo on Node.js 24 (Active LTS).
 - `@dash/core` package with data-adapter types, structured queries, chart specs, dashboards, and API token helpers.
 - `@dash/adapter-postgres` implementing `DataAdapter` with parameterized SQL.

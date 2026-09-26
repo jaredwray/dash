@@ -4,6 +4,44 @@ AI-first analytics: dashboards, charts, and data sources you can drive from the 
 
 Dash is a modern Tableau / Looker-style workspace. Agents can list warehouses, run structured queries, and add chart widgets to dashboard pages through the built-in MCP server.
 
+## Screenshots
+
+Taken from the demo seed (`admin@dash.dev`). The sample warehouse ships with a **Growth overview** page.
+
+### Landing
+
+<img alt="Dash landing page with links to log in or create a workspace" src="docs/screenshots/landing.png" width="880">
+
+### Sign in
+
+<img alt="Login form prefilled with the local demo account" src="docs/screenshots/login.png" width="880">
+
+### Dashboards
+
+<img alt="Dashboards list showing the Growth overview page" src="docs/screenshots/dashboards.png" width="880">
+
+### Growth overview
+
+KPI tiles, a stacked revenue area chart, product mix, signups versus churn, units by product, and a filterable product table.
+
+<img alt="Growth overview dashboard with KPI cards, charts, and a product table" src="docs/screenshots/growth-overview.png" width="880">
+
+### Data sources
+
+<img alt="Data sources page with the built-in sample warehouse" src="docs/screenshots/data-sources.png" width="880">
+
+### API tokens
+
+<img alt="API tokens page for issuing a scoped MCP client token" src="docs/screenshots/api-tokens.png" width="880">
+
+### Settings
+
+<img alt="Workspace settings and the Dash MCP endpoint note" src="docs/screenshots/settings.png" width="880">
+
+### Profile
+
+<img alt="Profile page for the demo admin user" src="docs/screenshots/profile.png" width="880">
+
 ## Requirements
 
 - [Node.js 24](https://nodejs.org/) (Active LTS)
