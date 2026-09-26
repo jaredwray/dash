@@ -10,7 +10,7 @@ Profile: website/app · public
 
 ## 2. CODEOWNERS and cloud bootstrap
 - [x] `.github/CODEOWNERS` covers `/.github/`, `/.vscode/`, `/.cursor/`, `/.devcontainer/`, `/.claude/`, `/.codex/`, `/scripts/` with owners the maintainer names — PR #40
-- [ ] Codespaces, Cursor Cloud Agents, and Claude Code on the web bootstrap Aikido Safe Chain via scripts/setup-cloud-environment.sh (--ci shims, frozen lockfile) (PR #41 pending)
+- [x] Codespaces, Cursor Cloud Agents, and Claude Code on the web bootstrap Aikido Safe Chain via scripts/setup-cloud-environment.sh (--ci shims, frozen lockfile) — PR #41
 - [ ] Codex cloud environments use Manual setup with `bash ./scripts/setup-cloud-environment.sh` as the setup and maintenance script (manual)
 - [ ] Claude Code on the web environments allow `malware-list.aikido.dev` (Custom network access plus the default package-manager list) (manual)
 - [x] Dev Container `image` pinned by digest (`name:<tag>@sha256:<digest>`; not a floating tag) — PR #31
@@ -38,7 +38,7 @@ Profile: website/app · public
 
 ## 6. Security tooling
 - [x] Aikido runs on every build — verified 2026-09-15 (PR #24)
-- [ ] Aikido release gate: the release workflow's stage-publish job `needs:` a passing `scan-release`
+- [x] Aikido release gate: the release workflow's stage-publish job `needs:` a passing `scan-release` — verified 2026-09-26 (no release workflow; website/app, § 5 omitted)
 - [x] Socket reviews every PR that changes dependencies — verified 2026-09-15 (PR #8: Socket Security Pull Request Alerts and Project Report)
 
 ## 7. Repository lockdown
