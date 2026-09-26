@@ -4,10 +4,58 @@ AI-first analytics: dashboards, charts, and data sources you can drive from the 
 
 Dash is a modern Tableau / Looker-style workspace. Agents can list warehouses, run structured queries, and add chart widgets to dashboard pages through the built-in MCP server.
 
+## Screenshots
+
+Taken from the demo workspace (`admin@dash.dev`). The sample warehouse ships with a **Growth overview** page. **Regional revenue review** is a custom page on the same data.
+
+### Sign in
+
+`/` opens this page until you are signed in. A signed-in visit goes straight to dashboards.
+
+<img alt="Login form prefilled with the local demo account" src="docs/screenshots/login.png" width="880">
+
+### Dashboards
+
+<img alt="Dashboards list showing Growth overview and Regional revenue review" src="docs/screenshots/dashboards.png" width="880">
+
+### Growth overview
+
+KPI tiles, a stacked revenue area chart, product mix, signups versus churn, units by product, and a filterable product table.
+
+<img alt="Growth overview dashboard with KPI cards, charts, and a product table" src="docs/screenshots/growth-overview.png" width="880">
+
+### Regional revenue review
+
+A custom page: product revenue, share of sales, the regional stack for the last 12 months, and net new accounts.
+
+<img alt="Custom Regional revenue review dashboard" src="docs/screenshots/regional-revenue.png" width="880">
+
+### In Claude Code
+
+The same product-revenue chart, drawn in the session after a Dash MCP query against the sample warehouse.
+
+<img alt="Revenue by product bar chart inside Claude Code" src="docs/screenshots/claude-code.png" width="880">
+
+### Data sources
+
+<img alt="Data sources page with the built-in sample warehouse" src="docs/screenshots/data-sources.png" width="880">
+
+### API tokens
+
+<img alt="API tokens page for issuing a scoped MCP client token" src="docs/screenshots/api-tokens.png" width="880">
+
+### Settings
+
+<img alt="Workspace settings and the Dash MCP endpoint note" src="docs/screenshots/settings.png" width="880">
+
+### Profile
+
+<img alt="Profile page for the demo admin user" src="docs/screenshots/profile.png" width="880">
+
 ## Requirements
 
 - [Node.js 24](https://nodejs.org/) (Active LTS)
-- [pnpm](https://pnpm.io/) 10
+- [pnpm](https://pnpm.io/) 11 (pinned to 11.25.0 in `package.json`)
 
 ## Monorepo
 
