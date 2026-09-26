@@ -6,7 +6,7 @@ Dash is a modern Tableau / Looker-style workspace. Agents can list warehouses, r
 
 ## Screenshots
 
-Taken from the demo seed (`admin@dash.dev`). The sample warehouse ships with a **Growth overview** page.
+Taken from the demo workspace (`admin@dash.dev`). The sample warehouse ships with a **Growth overview** page. **Regional revenue review** is a custom page on the same data.
 
 ### Landing
 
@@ -18,13 +18,25 @@ Taken from the demo seed (`admin@dash.dev`). The sample warehouse ships with a *
 
 ### Dashboards
 
-<img alt="Dashboards list showing the Growth overview page" src="docs/screenshots/dashboards.png" width="880">
+<img alt="Dashboards list showing Growth overview and Regional revenue review" src="docs/screenshots/dashboards.png" width="880">
 
 ### Growth overview
 
 KPI tiles, a stacked revenue area chart, product mix, signups versus churn, units by product, and a filterable product table.
 
 <img alt="Growth overview dashboard with KPI cards, charts, and a product table" src="docs/screenshots/growth-overview.png" width="880">
+
+### Regional revenue review
+
+A custom page: product revenue, share of sales, the regional stack for the last 12 months, and net new accounts.
+
+<img alt="Custom Regional revenue review dashboard" src="docs/screenshots/regional-revenue.png" width="880">
+
+### In Claude Code
+
+The same product-revenue chart, drawn in the session after a Dash MCP query against the sample warehouse.
+
+<img alt="Revenue by product bar chart inside Claude Code" src="docs/screenshots/claude-code.png" width="880">
 
 ### Data sources
 
