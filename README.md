@@ -55,7 +55,7 @@ The same product-revenue chart, drawn in the session after a Dash MCP query agai
 ## Requirements
 
 - [Node.js 24](https://nodejs.org/) (Active LTS)
-- [pnpm](https://pnpm.io/) 11 (pinned to 11.25.0 in `package.json`)
+- [pnpm](https://pnpm.io/) 12 (pinned to 12.5.1 in `package.json`)
 
 ## Monorepo
 
