@@ -8,11 +8,9 @@ Dash is a modern Tableau / Looker-style workspace. Agents can list warehouses, r
 
 Taken from the demo workspace (`admin@dash.dev`). The sample warehouse ships with a **Growth overview** page. **Regional revenue review** is a custom page on the same data.
 
-### Landing
-
-<img alt="Dash landing page with links to log in or create a workspace" src="docs/screenshots/landing.png" width="880">
-
 ### Sign in
+
+`/` opens this page until you are signed in. A signed-in visit goes straight to dashboards.
 
 <img alt="Login form prefilled with the local demo account" src="docs/screenshots/login.png" width="880">
 
