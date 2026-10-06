@@ -23,7 +23,7 @@ describe("data source kinds", () => {
 });
 
 describe("chart types", () => {
-  it("accepts the supported ECharts-backed types", () => {
+  it("accepts the supported chart types", () => {
     for (const type of CHART_TYPES) {
       expect(isChartType(type)).toBe(true);
     }
