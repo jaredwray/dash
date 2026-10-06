@@ -17,7 +17,7 @@ Profile: website/app · public
 
 ## 3. Dependencies (pnpm)
 - [x] `packageManager: pnpm@11.3+` pinned in `package.json` — PR #11
-- [x] 7-day cooldown: `minimumReleaseAge: 10080`, `minimumReleaseAgeStrict: true`, `minimumReleaseAgeIgnoreMissingTime: false`; no first-party `minimumReleaseAgeExclude` — PR #12
+- [x] 7-day cooldown: `minimumReleaseAge: 10080`, `minimumReleaseAgeStrict: true`, `minimumReleaseAgeIgnoreMissingTime: false`. One version exception, approved 2026-10-06: `@tanstack/charts@1.0.0` — PR #12
 - [x] `trustPolicy: no-downgrade`; no first-party `trustPolicyExclude` — PR #13
 - [x] Lifecycle scripts blocked: `strictDepBuilds: true`, `dangerouslyAllowAllBuilds: false`, `allowBuilds: {}` baseline — PR #14
 - [x] `blockExoticSubdeps: true` — PR #15

@@ -24,7 +24,7 @@ export interface ChartEncode {
 
 /**
  * JSON chart spec that MCP clients and the dashboard builder share.
- * Rendering is left to the web app (Apache ECharts in the MVP).
+ * Rendering is left to the web app (TanStack Charts).
  */
 export interface ChartSpec {
   type: ChartType;

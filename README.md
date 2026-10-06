@@ -108,7 +108,7 @@ Keep this list in sync as PRs land. Checked items are in the tree today.
 - [x] User profile
 - [x] Settings
 - [x] Dynamic dashboard pages
-- [x] Chart widgets (Apache ECharts)
+- [x] Chart widgets (TanStack Charts)
 - [x] Sortable and filterable tables (TanStack Table)
 - [x] Data sources page (admin): add and remove sources (demo warehouse + Postgres)
 - [ ] Real-time multi-user dashboard collaboration
@@ -161,7 +161,8 @@ Issue a token with the `mcp` scope, then point a client at `/mcp`. Tools include
 ## Architecture notes
 
 - [ADR 0001](docs/adr/0001-monorepo-architecture.md) — workspace layout
-- [ADR 0002](docs/adr/0002-charting-library.md) — ECharts + `ChartSpec`
+- [ADR 0002](docs/adr/0002-charting-library.md) — original ECharts renderer (superseded)
+- [ADR 0004](docs/adr/0004-tanstack-charts.md) — TanStack Charts + `ChartSpec`
 - [ADR 0003](docs/adr/0003-api-tokens.md) — sessions, tokens, encryption
 
 ## License

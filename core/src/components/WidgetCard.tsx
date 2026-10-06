@@ -43,7 +43,12 @@ export function WidgetCard({ widget }: { widget: DashboardWidget }) {
         ) : widget.type === "table" ? (
           <DataTable rows={rows} />
         ) : widget.chart ? (
-          <Chart spec={widget.chart} rows={rows} height={widget.layout.h * 52} />
+          <Chart
+            spec={widget.chart}
+            rows={rows}
+            height={widget.layout.h * 52}
+            label={widget.title}
+          />
         ) : (
           <div className="text-sm text-mist">This widget is missing a chart spec.</div>
         )}

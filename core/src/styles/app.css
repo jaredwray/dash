@@ -44,6 +44,15 @@ a {
   text-decoration: none;
 }
 
+.dash-chart {
+  color: var(--color-paper);
+  --ts-chart-tooltip-background: #121a2b;
+  --ts-chart-tooltip-color: #eef3fb;
+  --ts-chart-tooltip-border: 1px solid rgb(255 255 255 / 0.08);
+  --ts-chart-tooltip-shadow: 0 12px 40px rgb(0 0 0 / 0.35);
+  --ts-chart-tooltip-font: 500 0.75rem/1.35 Outfit, "IBM Plex Sans", sans-serif;
+}
+
 .dash-grid {
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
