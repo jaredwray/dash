@@ -13,6 +13,10 @@ blockExoticSubdeps: true
 minimumReleaseAge: 10080 # 7 days, in minutes
 minimumReleaseAgeStrict: true # fail instead of falling back to a too-new version
 minimumReleaseAgeIgnoreMissingTime: false # missing publish-time metadata fails closed
+# Explicit cooldown exception for the Charts 1.0 adoption (2026-10-06).
+# Version-scoped so later Charts releases still wait out the window.
+minimumReleaseAgeExclude:
+  - "@tanstack/charts@1.0.0"
 trustPolicy: no-downgrade # fail if a later version has weaker trust evidence
 
 # semver@6.3.1 fails trustPolicy: no-downgrade (no provenance;

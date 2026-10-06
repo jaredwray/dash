@@ -14,7 +14,7 @@ All notable changes to Dash are documented here.
 
 ### Changed
 
-- Chart widgets render with TanStack Charts (`@tanstack/charts@0.18.0`) instead of Apache ECharts. Stored `ChartSpec` documents are unchanged. Charts 1.0.0 is inside the 7-day dependency cooldown, so this pin is the newest release that policy allows.
+- Chart widgets render with TanStack Charts (`@tanstack/charts@1.0.0`) instead of Apache ECharts. Stored `ChartSpec` documents are unchanged. That release is exempt from the 7-day dependency cooldown; the exception is version-scoped in `pnpm-workspace.yaml`.
 - `/` no longer shows a marketing landing page. Signed-in visitors go to dashboards; everyone else goes to sign-in.
 - README requirement is pnpm 12, matching the `package.json` pin (`12.5.1`).
 - Data sources admin page can add any supported source and remove any source, including the sample warehouse.

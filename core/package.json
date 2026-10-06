@@ -15,7 +15,7 @@
     "@dash/adapter-postgres": "workspace:*",
     "@dash/core": "workspace:*",
     "@modelcontextprotocol/server": "^2.0.0",
-    "@tanstack/charts": "0.18.0",
+    "@tanstack/charts": "1.0.0",
     "@tanstack/react-query": "^5.103.1",
     "@tanstack/react-router": "^1.170.38",
     "@tanstack/react-start": "^1.168.56",
