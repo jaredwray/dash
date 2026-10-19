@@ -9,7 +9,7 @@ import { nitro } from "nitro/vite";
 const root = dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
-  envDir: resolve(root, ".."),
+  envDir: resolve(root, "../.."),
   server: {
     port: 3000,
     host: "0.0.0.0",
