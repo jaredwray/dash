@@ -14,6 +14,7 @@ All notable changes to Dash are documented here.
 
 ### Changed
 
+- Security: `@tanstack/react-start` 1.168.56 → 1.168.61 (with aligned `@tanstack/react-router` 1.170.42 and `@tanstack/start-server-core` 1.169.40), `zod` 4.6.5 → 4.6.6, and `source-map-js` 1.2.1 → 1.2.2.
 - Chart widgets render with TanStack Charts (`@tanstack/charts@1.0.0`) instead of Apache ECharts. Stored `ChartSpec` documents are unchanged. That release is exempt from the 7-day dependency cooldown; the exception is version-scoped in `pnpm-workspace.yaml`.
 - `/` no longer shows a marketing landing page. Signed-in visitors go to dashboards; everyone else goes to sign-in.
 - README requirement is pnpm 12, matching the `package.json` pin (`12.5.1`).
