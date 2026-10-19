@@ -1,7 +1,5 @@
 packages:
-  - "core"
   - "packages/*"
-  - "data-adapters/*"
 
 allowBuilds:
   esbuild: true

@@ -169,14 +169,14 @@ importers:
 
   .: {}
 
-  core:
+  packages/web:
     dependencies:
       '@dash/adapter-postgres':
         specifier: workspace:*
-        version: link:../data-adapters/postgres
+        version: link:../postgres-adapter
       '@dash/core':
         specifier: workspace:*
-        version: link:../packages/core
+        version: link:../core
       '@modelcontextprotocol/server':
         specifier: ^2.0.0
         version: 2.0.0
@@ -257,11 +257,11 @@ importers:
         specifier: ^5.0.1
         version: 5.0.1(@types/node@24.13.6)(vite@8.3.0(@types/node@24.13.6)(esbuild@0.28.2)(jiti@2.7.0))
 
-  data-adapters/postgres:
+  packages/postgres-adapter:
     dependencies:
       '@dash/core':
         specifier: workspace:*
-        version: link:../../packages/core
+        version: link:../core
       pg:
         specifier: ^8.16.3
         version: 8.23.0
