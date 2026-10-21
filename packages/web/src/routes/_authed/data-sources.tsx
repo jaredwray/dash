@@ -18,7 +18,7 @@ export const Route = createFileRoute("/_authed/data-sources")({
   component: DataSourcesPage,
 });
 
-type SourceKind = "demo" | "postgres";
+type SourceKind = "demo" | "postgres" | "snowflake";
 
 const emptyForm = {
   name: "",
@@ -32,6 +32,10 @@ const emptyForm = {
   ssl: false,
   connectionString: "",
   useConnectionString: false,
+  account: "",
+  warehouse: "",
+  schema: "PUBLIC",
+  role: "",
 };
 
 function DataSourcesPage() {
@@ -64,21 +68,37 @@ function DataSourcesPage() {
       const config =
         form.kind === "demo"
           ? { kind: "demo" as const }
-          : form.useConnectionString
-            ? {
-                kind: "postgres" as const,
-                connectionString: form.connectionString,
-                ssl: form.ssl,
-              }
-            : {
-                kind: "postgres" as const,
-                host: form.host,
-                port: Number(form.port),
-                database: form.database,
-                user: form.user,
-                password: form.password,
-                ssl: form.ssl,
-              };
+          : form.kind === "snowflake"
+            ? form.useConnectionString
+              ? {
+                  kind: "snowflake" as const,
+                  connectionString: form.connectionString,
+                }
+              : {
+                  kind: "snowflake" as const,
+                  account: form.account,
+                  user: form.user,
+                  password: form.password,
+                  warehouse: form.warehouse,
+                  database: form.database,
+                  schema: form.schema,
+                  role: form.role || undefined,
+                }
+            : form.useConnectionString
+              ? {
+                  kind: "postgres" as const,
+                  connectionString: form.connectionString,
+                  ssl: form.ssl,
+                }
+              : {
+                  kind: "postgres" as const,
+                  host: form.host,
+                  port: Number(form.port),
+                  database: form.database,
+                  user: form.user,
+                  password: form.password,
+                  ssl: form.ssl,
+                };
       return api<{ dataSource: DataSourceRecord }>("/api/data-sources", {
         method: "POST",
         body: JSON.stringify({
@@ -131,7 +151,8 @@ function DataSourcesPage() {
           <h1 className="mt-1 text-3xl font-semibold">Data sources</h1>
           <p className="mt-2 max-w-2xl text-sm text-mist">
             Add a warehouse for dashboards and MCP, or remove one that is no longer needed.
-            Postgres is tested on save. Use Sample warehouse when you do not have a database yet.
+            Postgres and Snowflake are tested on save. Use Sample warehouse when you do not have a
+            database yet.
           </p>
         </div>
         {isAdmin ? (
@@ -149,7 +170,7 @@ function DataSourcesPage() {
         <div className="mt-10 rounded-2xl border border-dashed border-line p-10 text-center">
           <p className="text-paper">No data sources yet.</p>
           <p className="mt-2 text-sm text-mist">
-            Add a sample warehouse or a PostgreSQL connection to start querying.
+            Add a sample warehouse, PostgreSQL, or Snowflake connection to start querying.
           </p>
           {isAdmin ? (
             <PrimaryButton className="mt-4" type="button" onClick={openAdd}>
@@ -226,11 +247,19 @@ function DataSourcesPage() {
             <Field label="Kind">
               <Select
                 value={form.kind}
-                onChange={(event) =>
-                  setForm({ ...form, kind: event.target.value as SourceKind })
-                }
+                onChange={(event) => {
+                  const kind = event.target.value as SourceKind;
+                  setForm({
+                    ...form,
+                    kind,
+                    user: kind === "postgres" ? "postgres" : form.user === "postgres" ? "" : form.user,
+                    schema: kind === "snowflake" ? form.schema || "PUBLIC" : form.schema,
+                    useConnectionString: false,
+                  });
+                }}
               >
                 <option value="postgres">PostgreSQL</option>
+                <option value="snowflake">Snowflake</option>
                 <option value="demo">Sample warehouse</option>
               </Select>
             </Field>
@@ -311,6 +340,96 @@ function DataSourcesPage() {
                   Use SSL
                 </label>
               </>
+            ) : form.kind === "snowflake" ? (
+              <>
+                <label className="flex items-center gap-2 text-sm text-mist">
+                  <input
+                    type="checkbox"
+                    checked={form.useConnectionString}
+                    onChange={(event) =>
+                      setForm({ ...form, useConnectionString: event.target.checked })
+                    }
+                  />
+                  Use a connection string
+                </label>
+                {form.useConnectionString ? (
+                  <Field label="Connection string">
+                    <TextInput
+                      value={form.connectionString}
+                      onChange={(event) =>
+                        setForm({ ...form, connectionString: event.target.value })
+                      }
+                      placeholder="snowflake://user:pass@account/db/schema?warehouse=COMPUTE_WH"
+                      required
+                    />
+                  </Field>
+                ) : (
+                  <>
+                    <Field label="Account">
+                      <TextInput
+                        value={form.account}
+                        onChange={(event) => setForm({ ...form, account: event.target.value })}
+                        placeholder="xy12345.us-east-1"
+                        required
+                      />
+                    </Field>
+                    <div className="grid grid-cols-2 gap-3">
+                      <Field label="Warehouse">
+                        <TextInput
+                          value={form.warehouse}
+                          onChange={(event) =>
+                            setForm({ ...form, warehouse: event.target.value })
+                          }
+                          placeholder="COMPUTE_WH"
+                          required
+                        />
+                      </Field>
+                      <Field label="Database">
+                        <TextInput
+                          value={form.database}
+                          onChange={(event) =>
+                            setForm({ ...form, database: event.target.value })
+                          }
+                          required
+                        />
+                      </Field>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <Field label="Schema">
+                        <TextInput
+                          value={form.schema}
+                          onChange={(event) =>
+                            setForm({ ...form, schema: event.target.value })
+                          }
+                        />
+                      </Field>
+                      <Field label="Role">
+                        <TextInput
+                          value={form.role}
+                          onChange={(event) => setForm({ ...form, role: event.target.value })}
+                          placeholder="Optional"
+                        />
+                      </Field>
+                    </div>
+                    <Field label="User">
+                      <TextInput
+                        value={form.user}
+                        onChange={(event) => setForm({ ...form, user: event.target.value })}
+                        required
+                      />
+                    </Field>
+                    <Field label="Password">
+                      <TextInput
+                        type="password"
+                        value={form.password}
+                        onChange={(event) =>
+                          setForm({ ...form, password: event.target.value })
+                        }
+                      />
+                    </Field>
+                  </>
+                )}
+              </>
             ) : (
               <p className="text-sm text-mist">
                 Sample warehouse uses built-in product analytics. No database required.
@@ -323,9 +442,9 @@ function DataSourcesPage() {
               </GhostButton>
               <PrimaryButton type="submit" disabled={create.isPending || !form.name.trim()}>
                 {create.isPending
-                  ? form.kind === "postgres"
-                    ? "Testing connection…"
-                    : "Saving…"
+                  ? form.kind === "demo"
+                    ? "Saving…"
+                    : "Testing connection…"
                   : "Add data source"}
               </PrimaryButton>
             </div>

@@ -2,17 +2,18 @@
 
 Each warehouse adapter is its own package under `packages/` and implements
 `DataAdapter` from `@dash/core`. Postgres ships as `packages/postgres-adapter`
-(`@dash/adapter-postgres`).
+(`@dash/adapter-postgres`). Snowflake ships as `packages/snowflake-adapter`
+(`@dash/adapter-snowflake`).
 
 ## Shipping
 
 | Package | Directory | Kind | Status |
 | --- | --- | --- | --- |
 | `@dash/adapter-postgres` | `packages/postgres-adapter` | `postgres` | MVP |
+| `@dash/adapter-snowflake` | `packages/snowflake-adapter` | `snowflake` | MVP |
 | — | — | `mysql` | Planned |
 | — | — | `mongodb` | Planned |
 | — | — | `bigquery` | Planned |
-| — | — | `snowflake` | Planned |
 | — | — | `redshift` | Planned |
 | — | — | `clickhouse` | Planned |
 

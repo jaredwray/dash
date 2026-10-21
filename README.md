@@ -63,6 +63,7 @@ The same product-revenue chart, drawn in the session after a Dash MCP query agai
 packages/web/                @dash/web              UX + REST API + MCP (TanStack Start)
 packages/core/               @dash/core             Shared types and adapter interfaces
 packages/postgres-adapter/   @dash/adapter-postgres
+packages/snowflake-adapter/  @dash/adapter-snowflake
 ```
 
 Workspaces are declared in the root `pnpm-workspace.yaml`.
@@ -98,7 +99,7 @@ Keep this list in sync as PRs land. Checked items are in the tree today.
 - [ ] MySQL adapter
 - [ ] MongoDB adapter
 - [ ] Google BigQuery adapter
-- [ ] Snowflake adapter
+- [x] Snowflake adapter (`@dash/adapter-snowflake`)
 - [ ] Redshift adapter
 - [ ] ClickHouse adapter
 
@@ -110,7 +111,7 @@ Keep this list in sync as PRs land. Checked items are in the tree today.
 - [x] Dynamic dashboard pages
 - [x] Chart widgets (TanStack Charts)
 - [x] Sortable and filterable tables (TanStack Table)
-- [x] Data sources page (admin): add and remove sources (demo warehouse + Postgres)
+- [x] Data sources page (admin): add and remove sources (demo warehouse, Postgres, Snowflake)
 - [ ] Real-time multi-user dashboard collaboration
 - [ ] Light theme
 
