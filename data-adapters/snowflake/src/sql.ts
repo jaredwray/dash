@@ -11,44 +11,35 @@ export interface CompiledSql {
   values: unknown[];
 }
 
+const FILTER_SQL: Record<Exclude<AdapterFilter["op"], "in">, string> = {
+  eq: " = ?",
+  neq: " <> ?",
+  gt: " > ?",
+  gte: " >= ?",
+  lt: " < ?",
+  lte: " <= ?",
+  like: " LIKE ?",
+  ilike: " ILIKE ?",
+};
+
 function compileFilter(filter: AdapterFilter, values: unknown[]): string {
   values.push(filter.column);
-  const column = "IDENTIFIER(?)";
-  const bind = () => {
-    values.push(filter.value);
-    return "?";
-  };
-
-  switch (filter.op) {
-    case "eq":
-      return column + " = " + bind(); // nosec
-    case "neq":
-      return column + " <> " + bind(); // nosec
-    case "gt":
-      return column + " > " + bind(); // nosec
-    case "gte":
-      return column + " >= " + bind(); // nosec
-    case "lt":
-      return column + " < " + bind(); // nosec
-    case "lte":
-      return column + " <= " + bind(); // nosec
-    case "like":
-      return column + " LIKE " + bind(); // nosec
-    case "ilike":
-      return column + " ILIKE " + bind(); // nosec
-    case "in": {
-      if (!Array.isArray(filter.value) || filter.value.length === 0) {
-        throw new QueryValidationError("Filter operator `in` requires a non-empty array");
-      }
-      const placeholders = filter.value.map((entry) => {
-        values.push(entry);
-        return "?";
-      });
-      return column + " IN (" + placeholders.join(", ") + ")"; // nosec
+  if (filter.op === "in") {
+    if (!Array.isArray(filter.value) || filter.value.length === 0) {
+      throw new QueryValidationError("Filter operator `in` requires a non-empty array");
     }
-    default:
-      throw new QueryValidationError(`Unsupported filter operator: ${String(filter.op)}`);
+    const placeholders = filter.value.map((entry) => {
+      values.push(entry);
+      return "?";
+    });
+    return "IDENTIFIER(?) IN (" + placeholders.join(", ") + ")";
   }
+  const clause = FILTER_SQL[filter.op];
+  if (!clause) {
+    throw new QueryValidationError(`Unsupported filter operator: ${String(filter.op)}`);
+  }
+  values.push(filter.value);
+  return "IDENTIFIER(?)" + clause;
 }
 
 function qualifyResource(resource: string, values: unknown[]): string {
@@ -64,36 +55,37 @@ function qualifyResource(resource: string, values: unknown[]): string {
 export function compileSelect(input: AdapterQuery): CompiledSql {
   const query = normalizeAdapterQuery(input);
   const values: unknown[] = [];
-  const projection =
-    query.columns && query.columns.length > 0
-      ? query.columns
-          .map((column) => {
-            values.push(column);
-            return "IDENTIFIER(?)";
-          })
-          .join(", ")
-      : "*";
-  const from = qualifyResource(query.resource, values);
-  // nosec
-  const where =
-    query.filters && query.filters.length > 0
-      ? ` WHERE ${query.filters.map((filter) => compileFilter(filter, values)).join(" AND ")}`
-      : "";
-  // nosec
-  const order =
-    query.orderBy && query.orderBy.length > 0
-      ? ` ORDER BY ${query.orderBy
-          .map((entry) => {
-            values.push(entry.column);
-            return `IDENTIFIER(?) ${entry.direction.toUpperCase()}`;
-          })
-          .join(", ")}`
-      : "";
-  values.push(query.limit);
-  values.push(query.offset);
-  // nosec
-  const text = `SELECT ${projection} FROM ${from}${where}${order} LIMIT ? OFFSET ?`;
-  return { text, values };
+  const tokens: string[] = ["SELECT"];
+
+  if (query.columns && query.columns.length > 0) {
+    const projection: string[] = [];
+    for (const column of query.columns) {
+      values.push(column);
+      projection.push("IDENTIFIER(?)");
+    }
+    tokens.push(projection.join(", "));
+  } else {
+    tokens.push("*");
+  }
+
+  tokens.push("FROM", qualifyResource(query.resource, values));
+
+  if (query.filters && query.filters.length > 0) {
+    const clauses = query.filters.map((filter) => compileFilter(filter, values));
+    tokens.push("WHERE", clauses.join(" AND "));
+  }
+
+  if (query.orderBy && query.orderBy.length > 0) {
+    const clauses = query.orderBy.map((entry) => {
+      values.push(entry.column);
+      return "IDENTIFIER(?) " + entry.direction.toUpperCase();
+    });
+    tokens.push("ORDER BY", clauses.join(", "));
+  }
+
+  tokens.push("LIMIT ? OFFSET ?");
+  values.push(query.limit, query.offset);
+  return { text: tokens.join(" "), values };
 }
 
 export const INTROSPECT_SQL = `
