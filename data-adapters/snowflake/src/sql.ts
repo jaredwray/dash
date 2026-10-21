@@ -2,6 +2,7 @@ import {
   type AdapterFilter,
   type AdapterQuery,
   QueryValidationError,
+  assertIdentifier,
   normalizeAdapterQuery,
   splitResourceName,
 } from "@dash/core";
@@ -11,19 +12,19 @@ export interface CompiledSql {
   values: unknown[];
 }
 
-function quoteIdent(name: string): string {
-  return `"${name.replaceAll('"', "")}"`;
+function escapeIdentifier(name: string, label = "identifier"): string {
+  return `"${assertIdentifier(name, label)}"`;
 }
 
 function qualifyResource(resource: string): string {
   const parts = splitResourceName(resource);
   return parts.namespace
-    ? `${quoteIdent(parts.namespace)}.${quoteIdent(parts.name)}`
-    : quoteIdent(parts.name);
+    ? `${escapeIdentifier(parts.namespace, "namespace")}.${escapeIdentifier(parts.name, "resource")}`
+    : escapeIdentifier(parts.name, "resource");
 }
 
 function compileFilter(filter: AdapterFilter, values: unknown[]): string {
-  const column = quoteIdent(filter.column);
+  const column = escapeIdentifier(filter.column, "filter column");
   const next = () => {
     values.push(filter.value);
     return "?";
@@ -66,7 +67,7 @@ export function compileSelect(input: AdapterQuery): CompiledSql {
   const values: unknown[] = [];
   const projection =
     query.columns && query.columns.length > 0
-      ? query.columns.map(quoteIdent).join(", ")
+      ? query.columns.map((column) => escapeIdentifier(column, "column")).join(", ")
       : "*";
   const from = qualifyResource(query.resource);
   const where =
@@ -76,7 +77,10 @@ export function compileSelect(input: AdapterQuery): CompiledSql {
   const order =
     query.orderBy && query.orderBy.length > 0
       ? ` ORDER BY ${query.orderBy
-          .map((entry) => `${quoteIdent(entry.column)} ${entry.direction.toUpperCase()}`)
+          .map(
+            (entry) =>
+              `${escapeIdentifier(entry.column, "order column")} ${entry.direction.toUpperCase()}`,
+          )
           .join(", ")}`
       : "";
   values.push(query.limit);

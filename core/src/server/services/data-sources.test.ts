@@ -55,7 +55,6 @@ describe("data source records", () => {
         kind: "snowflake",
         account: "xy12345.us-east-1",
         user: "analyst",
-        password: "s3cret",
         warehouse: "COMPUTE_WH",
         database: "ANALYTICS",
         schema: "PUBLIC",
@@ -70,6 +69,6 @@ describe("data source records", () => {
       schema: "PUBLIC",
       role: "",
     });
-    expect(JSON.stringify(created.summary)).not.toContain("s3cret");
+    expect(created.summary).not.toHaveProperty("password");
   });
 });

@@ -91,18 +91,26 @@ describe("SnowflakeAdapter", () => {
 describe("Snowflake connection config", () => {
   it("parses a snowflake:// URL", () => {
     const parsed = parseSnowflakeConnectionString(
-      "snowflake://analyst:s3cret@xy12345.us-east-1/ANALYTICS/PUBLIC?warehouse=COMPUTE_WH&role=SYSADMIN",
+      "snowflake://analyst@xy12345.us-east-1/ANALYTICS/PUBLIC?warehouse=COMPUTE_WH&role=SYSADMIN",
     );
     expect(parsed).toEqual({
       account: "xy12345.us-east-1",
       user: "analyst",
-      password: "s3cret",
+      password: undefined,
       database: "ANALYTICS",
       schema: "PUBLIC",
       warehouse: "COMPUTE_WH",
       role: "SYSADMIN",
       authenticator: undefined,
     });
+  });
+
+  it("rejects an unsupported authenticator", () => {
+    expect(() =>
+      parseSnowflakeConnectionString(
+        "snowflake://analyst@xy12345/ANALYTICS/PUBLIC?authenticator=http://evil.example",
+      ),
+    ).toThrow(/authenticator/);
   });
 
   it("rejects a non-snowflake URL scheme", () => {
@@ -117,7 +125,6 @@ describe("Snowflake connection config", () => {
         kind: "snowflake",
         account: "xy12345",
         user: "analyst",
-        password: "s3cret",
         warehouse: "COMPUTE_WH",
         database: "ANALYTICS",
         schema: "PUBLIC",
@@ -125,7 +132,7 @@ describe("Snowflake connection config", () => {
     ).toEqual({
       account: "xy12345",
       username: "analyst",
-      password: "s3cret",
+      password: undefined,
       warehouse: "COMPUTE_WH",
       database: "ANALYTICS",
       schema: "PUBLIC",

@@ -6,7 +6,7 @@ import {
   type DataAdapter,
   type SnowflakeConnectionConfig,
 } from "@dash/core";
-import { createConnection } from "snowflake-sdk";
+import { configure, createConnection } from "snowflake-sdk";
 import type { Binds, Connection, ConnectionOptions } from "snowflake-sdk";
 import { INTROSPECT_SQL, compileSelect } from "./sql.ts";
 
@@ -19,6 +19,16 @@ export interface SqlClient {
   query(text: string, values?: unknown[]): Promise<SqlQueryResult>;
   end(): Promise<void>;
 }
+
+const AUTHENTICATORS = new Set([
+  "SNOWFLAKE",
+  "SNOWFLAKE_JWT",
+  "USERNAME_PASSWORD_MFA",
+  "EXTERNALBROWSER",
+  "OAUTH",
+]);
+
+configure({ logLevel: "OFF" });
 
 function firstPathSegments(pathname: string): string[] {
   return pathname.replace(/^\/+/, "").split("/").filter(Boolean);
@@ -45,8 +55,19 @@ export function parseSnowflakeConnectionString(
     schema: path[1] ?? url.searchParams.get("schema") ?? undefined,
     warehouse: url.searchParams.get("warehouse") ?? undefined,
     role: url.searchParams.get("role") ?? undefined,
-    authenticator: url.searchParams.get("authenticator") ?? undefined,
+    authenticator: parseAuthenticator(url.searchParams.get("authenticator")),
   };
+}
+
+function parseAuthenticator(value: string | null | undefined): string | undefined {
+  if (!value) {
+    return undefined;
+  }
+  const authenticator = value.toUpperCase();
+  if (!AUTHENTICATORS.has(authenticator)) {
+    throw new Error("Unsupported Snowflake authenticator");
+  }
+  return authenticator;
 }
 
 export function toConnectionOptions(
@@ -68,7 +89,7 @@ export function toConnectionOptions(
     database: parsed.database ?? config.database,
     schema: parsed.schema ?? config.schema,
     role: parsed.role ?? config.role,
-    authenticator: parsed.authenticator ?? config.authenticator,
+    authenticator: parseAuthenticator(parsed.authenticator ?? config.authenticator),
     application: "Dash",
   };
 }
