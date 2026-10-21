@@ -119,7 +119,17 @@ describe("Snowflake connection config", () => {
     );
   });
 
-  it("maps adapter config onto SDK options", () => {
+  it("rejects an account that is not a Snowflake locator", () => {
+    expect(() =>
+      toConnectionOptions({
+        kind: "snowflake",
+        account: "https://evil.example",
+        user: "analyst",
+      }),
+    ).toThrow(/Invalid Snowflake account/);
+  });
+
+  it("maps adapter config onto session options", () => {
     expect(
       toConnectionOptions({
         kind: "snowflake",
@@ -138,7 +148,6 @@ describe("Snowflake connection config", () => {
       schema: "PUBLIC",
       role: undefined,
       authenticator: undefined,
-      application: "Dash",
     });
   });
 });

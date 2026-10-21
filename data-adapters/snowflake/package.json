@@ -17,8 +17,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@dash/core": "workspace:*",
-    "snowflake-sdk": "3.4.0"
+    "@dash/core": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^24.13.6",

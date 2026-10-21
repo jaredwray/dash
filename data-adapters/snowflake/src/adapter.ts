@@ -6,29 +6,28 @@ import {
   type DataAdapter,
   type SnowflakeConnectionConfig,
 } from "@dash/core";
-import { configure, createConnection } from "snowflake-sdk";
-import type { Binds, Connection, ConnectionOptions } from "snowflake-sdk";
+import {
+  createSnowflakeHttpClient,
+  snowflakeOrigin,
+  type SqlClient,
+  type SqlQueryResult,
+} from "./http.ts";
 import { INTROSPECT_SQL, compileSelect } from "./sql.ts";
 
-export interface SqlQueryResult {
-  rows: Record<string, unknown>[];
-  fields?: Array<{ name: string }>;
+export type { SqlClient, SqlQueryResult };
+
+export interface SnowflakeSessionOptions {
+  account: string;
+  username: string;
+  password?: string;
+  warehouse?: string;
+  database?: string;
+  schema?: string;
+  role?: string;
+  authenticator?: string;
 }
 
-export interface SqlClient {
-  query(text: string, values?: unknown[]): Promise<SqlQueryResult>;
-  end(): Promise<void>;
-}
-
-const AUTHENTICATORS = new Set([
-  "SNOWFLAKE",
-  "SNOWFLAKE_JWT",
-  "USERNAME_PASSWORD_MFA",
-  "EXTERNALBROWSER",
-  "OAUTH",
-]);
-
-configure({ logLevel: "OFF" });
+const AUTHENTICATORS = new Set(["SNOWFLAKE", "USERNAME_PASSWORD_MFA"]);
 
 function firstPathSegments(pathname: string): string[] {
   return pathname.replace(/^\/+/, "").split("/").filter(Boolean);
@@ -72,7 +71,7 @@ function parseAuthenticator(value: string | null | undefined): string | undefine
 
 export function toConnectionOptions(
   config: SnowflakeConnectionConfig,
-): ConnectionOptions {
+): SnowflakeSessionOptions {
   const parsed = config.connectionString
     ? parseSnowflakeConnectionString(config.connectionString)
     : {};
@@ -81,6 +80,7 @@ export function toConnectionOptions(
   if (!account || !username) {
     throw new Error("Snowflake account and user are required");
   }
+  snowflakeOrigin(account);
   return {
     account,
     username,
@@ -90,30 +90,7 @@ export function toConnectionOptions(
     schema: parsed.schema ?? config.schema,
     role: parsed.role ?? config.role,
     authenticator: parseAuthenticator(parsed.authenticator ?? config.authenticator),
-    application: "Dash",
   };
-}
-
-function toBinds(values: unknown[] | undefined): Binds | undefined {
-  if (!values) {
-    return undefined;
-  }
-  return values.map((value) => {
-    if (value === null || value === undefined) {
-      return null;
-    }
-    if (
-      typeof value === "string" ||
-      typeof value === "number" ||
-      typeof value === "boolean"
-    ) {
-      return value;
-    }
-    if (value instanceof Date) {
-      return value.toISOString();
-    }
-    return String(value);
-  });
 }
 
 function clientFromConfig(config: SnowflakeConnectionConfig): SqlClient {
@@ -121,7 +98,7 @@ function clientFromConfig(config: SnowflakeConnectionConfig): SqlClient {
   return {
     async query(text, values) {
       if (!inner) {
-        inner = wrapConnection(createConnection(toConnectionOptions(config)));
+        inner = createSnowflakeHttpClient(toConnectionOptions(config));
       }
       return inner.query(text, values);
     },
@@ -129,50 +106,6 @@ function clientFromConfig(config: SnowflakeConnectionConfig): SqlClient {
       if (inner) {
         await inner.end();
       }
-    },
-  };
-}
-
-function wrapConnection(connection: Connection): SqlClient {
-  let connected = false;
-  return {
-    async query(text, values) {
-      if (!connected) {
-        await connection.connectAsync();
-        connected = true;
-      }
-      return await new Promise((resolve, reject) => {
-        connection.execute({
-          sqlText: text,
-          binds: toBinds(values),
-          rowMode: "object",
-          complete: (err, stmt, rows) => {
-            if (err) {
-              reject(err);
-              return;
-            }
-            resolve({
-              rows: (rows ?? []) as Record<string, unknown>[],
-              fields: stmt.getColumns()?.map((column) => ({ name: column.getName() })),
-            });
-          },
-        });
-      });
-    },
-    async end() {
-      if (!connected) {
-        return;
-      }
-      await new Promise<void>((resolve, reject) => {
-        connection.destroy((err) => {
-          if (err) {
-            reject(err);
-            return;
-          }
-          connected = false;
-          resolve();
-        });
-      });
     },
   };
 }
