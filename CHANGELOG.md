@@ -6,6 +6,7 @@ All notable changes to Dash are documented here.
 
 ### Added
 
+- `@dash/adapter-snowflake` implementing `DataAdapter` with parameterized SQL (`?` binds).
 - README screenshots of sign-in, dashboards, the sample warehouse, a custom regional revenue page, the same chart inside Claude Code, API tokens, settings, and profile.
 - PNPM workspace monorepo on Node.js 24 (Active LTS).
 - `@dash/core` package with data-adapter types, structured queries, chart specs, dashboards, and API token helpers.

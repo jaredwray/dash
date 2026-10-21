@@ -40,4 +40,36 @@ describe("data source records", () => {
     expect(listDataSources()).toEqual([]);
     expect(deleteDataSource(created.id)).toBe(false);
   });
+
+  it("summarizes a Snowflake source without exposing the password", async () => {
+    const admin = await createUser({
+      email: "snowflake-admin@example.com",
+      name: "Admin",
+      password: "password123",
+      role: "admin",
+    });
+    const created = createDataSource({
+      name: "Snowflake analytics",
+      description: "Warehouse",
+      config: {
+        kind: "snowflake",
+        account: "xy12345.us-east-1",
+        user: "analyst",
+        password: "s3cret",
+        warehouse: "COMPUTE_WH",
+        database: "ANALYTICS",
+        schema: "PUBLIC",
+      },
+      createdBy: admin.id,
+    });
+    expect(created.kind).toBe("snowflake");
+    expect(created.summary).toEqual({
+      account: "xy12345.us-east-1",
+      warehouse: "COMPUTE_WH",
+      database: "ANALYTICS",
+      schema: "PUBLIC",
+      role: "",
+    });
+    expect(JSON.stringify(created.summary)).not.toContain("s3cret");
+  });
 });

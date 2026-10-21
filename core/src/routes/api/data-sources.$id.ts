@@ -25,6 +25,18 @@ const patchSchema = z.object({
         password: z.string().optional(),
         ssl: z.boolean().optional(),
       }),
+      z.object({
+        kind: z.literal("snowflake"),
+        connectionString: z.string().optional(),
+        account: z.string().optional(),
+        user: z.string().optional(),
+        password: z.string().optional(),
+        warehouse: z.string().optional(),
+        database: z.string().optional(),
+        schema: z.string().optional(),
+        role: z.string().optional(),
+        authenticator: z.string().optional(),
+      }),
     ])
     .optional(),
 });

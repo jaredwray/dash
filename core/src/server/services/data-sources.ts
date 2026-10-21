@@ -22,6 +22,15 @@ function summarize(config: ConnectionConfig): DataSourceRecord["summary"] {
   if (config.kind === "demo") {
     return { warehouse: "built-in sample data" };
   }
+  if (config.kind === "snowflake") {
+    return {
+      account: config.account ?? (config.connectionString ? "(connection string)" : ""),
+      warehouse: config.warehouse ?? "",
+      database: config.database ?? "",
+      schema: config.schema ?? "",
+      role: config.role ?? "",
+    };
+  }
   return {
     host: config.host ?? (config.connectionString ? "(connection string)" : ""),
     port: config.port ?? 5432,

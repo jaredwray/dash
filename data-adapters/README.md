@@ -8,10 +8,10 @@ Each adapter lives in its own package under `data-adapters/` and implements
 | Package | Kind | Status |
 | --- | --- | --- |
 | `@dash/adapter-postgres` | `postgres` | MVP |
+| `@dash/adapter-snowflake` | `snowflake` | MVP |
 | — | `mysql` | Planned |
 | — | `mongodb` | Planned |
 | — | `bigquery` | Planned |
-| — | `snowflake` | Planned |
 | — | `redshift` | Planned |
 | — | `clickhouse` | Planned |
 

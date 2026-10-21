@@ -1,11 +1,23 @@
 import { type ConnectionConfig, type DataAdapter } from "@dash/core";
 import { PostgresAdapter } from "@dash/adapter-postgres";
+import { SnowflakeAdapter } from "@dash/adapter-snowflake";
 import { demoAdapter } from "./demo.ts";
 
 const cache = new Map<string, { fingerprint: string; adapter: DataAdapter }>();
 
 function fingerprint(config: ConnectionConfig): string {
   return JSON.stringify(config);
+}
+
+function createAdapter(config: ConnectionConfig): DataAdapter {
+  switch (config.kind) {
+    case "demo":
+      return demoAdapter;
+    case "snowflake":
+      return SnowflakeAdapter.fromConfig(config);
+    case "postgres":
+      return PostgresAdapter.fromConfig(config);
+  }
 }
 
 export function getAdapter(
@@ -21,7 +33,7 @@ export function getAdapter(
     return existing.adapter;
   }
   void existing?.adapter.close().catch(() => undefined);
-  const adapter = PostgresAdapter.fromConfig(config);
+  const adapter = createAdapter(config);
   cache.set(dataSourceId, { fingerprint: mark, adapter });
   return adapter;
 }
@@ -29,8 +41,5 @@ export function getAdapter(
 export async function testAdapter(
   config: ConnectionConfig,
 ): Promise<DataAdapter> {
-  if (config.kind === "demo") {
-    return demoAdapter;
-  }
-  return PostgresAdapter.fromConfig(config);
+  return createAdapter(config);
 }
