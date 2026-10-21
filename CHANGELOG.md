@@ -13,10 +13,6 @@ All notable changes to Dash are documented here.
 - `@dash/adapter-postgres` implementing `DataAdapter` with parameterized SQL.
 - `@dash/web` MVP (in `packages/web`): login, register, profile, settings, admin data sources, dynamic dashboards, TanStack Charts, TanStack Table, REST API with session and hashed API tokens, and an MCP server at `/mcp`.
 
-### Security
-
-- Upgrade `@tanstack/react-start` to `1.168.61` (and the aligned `@tanstack/react-router@1.170.42`) so the resolved `@tanstack/start-server-core` is `1.169.40`. That clears CVE-2026-102989 / AIKIDO-2026-796907, the unauthenticated reflected XSS in TanStack Start server-function responses. `1.168.61` is the newest patched release on the current minor outside the 7-day dependency cooldown.
-
 ### Changed
 
 - `@dash/web` moved from `core/` to `packages/web`. `@dash/adapter-postgres` moved from `data-adapters/postgres` to `packages/postgres-adapter`. The root `pnpm-workspace.yaml` lists `packages/*`. A database left at `core/data/dash.sqlite` is moved to the web package data directory on startup when the default `DASH_DATABASE_PATH` is still in use.
