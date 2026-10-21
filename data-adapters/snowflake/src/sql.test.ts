@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { compileSelect } from "./sql.ts";
 
 describe("compileSelect", () => {
-  it("parameterizes filters, limit, and offset with positional binds", () => {
+  it("binds identifiers, filters, limit, and offset", () => {
     const compiled = compileSelect({
       resource: "analytics.orders",
       columns: ["id", "total"],
@@ -17,16 +17,33 @@ describe("compileSelect", () => {
       offset: 10,
     });
     expect(compiled.text).toBe(
-      'SELECT "id", "total" FROM "analytics"."orders" WHERE "status" = ? AND "total" >= ? AND "id" IN (?, ?, ?) ORDER BY "total" DESC LIMIT ? OFFSET ?',
+      "SELECT IDENTIFIER(?), IDENTIFIER(?) FROM IDENTIFIER(?).IDENTIFIER(?) WHERE IDENTIFIER(?) = ? AND IDENTIFIER(?) >= ? AND IDENTIFIER(?) IN (?, ?, ?) ORDER BY IDENTIFIER(?) DESC LIMIT ? OFFSET ?",
     );
-    expect(compiled.values).toEqual(["paid", 10, 1, 2, 3, 50, 10]);
+    expect(compiled.values).toEqual([
+      "id",
+      "total",
+      "analytics",
+      "orders",
+      "status",
+      "paid",
+      "total",
+      10,
+      "id",
+      1,
+      2,
+      3,
+      "total",
+      50,
+      10,
+    ]);
   });
 
-  it("quotes identifiers and rejects injection in the resource name", () => {
+  it("rejects injection in the resource name", () => {
     expect(() => compileSelect({ resource: "orders;drop table users" })).toThrow(
       QueryValidationError,
     );
     const compiled = compileSelect({ resource: "monthly_revenue" });
-    expect(compiled.text.startsWith('SELECT * FROM "monthly_revenue"')).toBe(true);
+    expect(compiled.text.startsWith("SELECT * FROM IDENTIFIER(?)")).toBe(true);
+    expect(compiled.values[0]).toBe("monthly_revenue");
   });
 });

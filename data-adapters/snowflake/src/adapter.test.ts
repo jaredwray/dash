@@ -71,10 +71,10 @@ describe("SnowflakeAdapter", () => {
     });
     expect(result.rowCount).toBe(1);
     expect(result.rows[0]?.AMOUNT).toBe(10);
-    expect(String(client.query.mock.calls[0]?.[0])).toContain(
-      'SELECT "month", "amount" FROM "revenue"',
+    expect(String(client.query.mock.calls[0]?.[0])).toBe(
+      "SELECT IDENTIFIER(?), IDENTIFIER(?) FROM IDENTIFIER(?) LIMIT ? OFFSET ?",
     );
-    expect(client.query.mock.calls[0]?.[1]).toEqual([10, 0]);
+    expect(client.query.mock.calls[0]?.[1]).toEqual(["month", "amount", "revenue", 10, 0]);
   });
 
   it("fails a connection test when account or user is missing", async () => {
