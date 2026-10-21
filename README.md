@@ -60,13 +60,13 @@ The same product-revenue chart, drawn in the session after a Dash MCP query agai
 ## Monorepo
 
 ```text
-core/                      @dash/web        UX + REST API + MCP (TanStack Start)
-packages/core/             @dash/core       Shared types and adapter interfaces
-data-adapters/postgres/    @dash/adapter-postgres
-data-adapters/snowflake/   @dash/adapter-snowflake
+packages/web/                @dash/web              UX + REST API + MCP (TanStack Start)
+packages/core/               @dash/core             Shared types and adapter interfaces
+packages/postgres-adapter/   @dash/adapter-postgres
+packages/snowflake-adapter/  @dash/adapter-snowflake
 ```
 
-Workspaces are declared in `pnpm-workspace.yaml`.
+Workspaces are declared in the root `pnpm-workspace.yaml`.
 
 ## Quick start
 
@@ -162,6 +162,7 @@ Issue a token with the `mcp` scope, then point a client at `/mcp`. Tools include
 ## Architecture notes
 
 - [ADR 0001](docs/adr/0001-monorepo-architecture.md) — workspace layout
+- [Data adapters](docs/data-adapters.md) — adding a warehouse adapter
 - [ADR 0002](docs/adr/0002-charting-library.md) — original ECharts renderer (superseded)
 - [ADR 0004](docs/adr/0004-tanstack-charts.md) — TanStack Charts + `ChartSpec`
 - [ADR 0003](docs/adr/0003-api-tokens.md) — sessions, tokens, encryption
