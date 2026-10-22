@@ -146,10 +146,10 @@ vite.config.ts.timestamp-*
 *.sqlite
 *.sqlite-shm
 *.sqlite-wal
-core/data/*
-!core/data/.gitkeep
+packages/web/data/*
+!packages/web/data/.gitkeep
 
 # TanStack Start / Nitro
 .nitro
 .tanstack
-core/.output/
+packages/web/.output/

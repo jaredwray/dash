@@ -1,5 +1,5 @@
 /**
- * Adapter kinds Dash knows about. Only `postgres` and `demo` ship in the MVP;
+ * Adapter kinds Dash knows about. `postgres`, `snowflake`, and `demo` ship;
  * the rest are reserved so data-source records and the admin UI stay stable
  * as adapters land.
  */

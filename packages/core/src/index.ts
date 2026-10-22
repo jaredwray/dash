@@ -42,6 +42,7 @@ export type {
   DataSourceRecord,
   DemoConnectionConfig,
   PostgresConnectionConfig,
+  SnowflakeConnectionConfig,
 } from "./datasource.ts";
 
 export type {

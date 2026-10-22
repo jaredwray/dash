@@ -1,0 +1,47 @@
+{
+  "name": "@dash/web",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite dev",
+    "build": "vite build",
+    "preview": "vite preview",
+    "start": "node .output/server/index.mjs",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@dash/adapter-postgres": "workspace:*",
+    "@dash/adapter-snowflake": "workspace:*",
+    "@dash/core": "workspace:*",
+    "@modelcontextprotocol/server": "^2.0.0",
+    "@tanstack/charts": "1.0.0",
+    "@tanstack/react-query": "^5.103.1",
+    "@tanstack/react-router": "1.170.42",
+    "@tanstack/react-start": "1.168.61",
+    "@tanstack/react-table": "^9.2.4",
+    "clsx": "^2.1.1",
+    "d3-shape": "3.2.0",
+    "lucide-react": "^1.47.0",
+    "pg": "^8.16.3",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "tailwind-merge": "^3.7.0",
+    "zod": "4.6.6"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.1.13",
+    "@types/d3-shape": "3.2.0",
+    "@types/node": "^24.13.6",
+    "@types/pg": "^8.15.6",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.0.1",
+    "nitro": "3.0.260903-beta",
+    "tailwindcss": "^4.1.13",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.0",
+    "vitest": "^5.0.1"
+  }
+}

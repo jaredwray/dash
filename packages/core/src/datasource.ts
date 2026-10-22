@@ -27,4 +27,20 @@ export interface DemoConnectionConfig {
   kind: "demo";
 }
 
-export type ConnectionConfig = PostgresConnectionConfig | DemoConnectionConfig;
+export interface SnowflakeConnectionConfig {
+  kind: "snowflake";
+  connectionString?: string;
+  account?: string;
+  user?: string;
+  password?: string;
+  warehouse?: string;
+  database?: string;
+  schema?: string;
+  role?: string;
+  authenticator?: string;
+}
+
+export type ConnectionConfig =
+  | PostgresConnectionConfig
+  | DemoConnectionConfig
+  | SnowflakeConnectionConfig;
