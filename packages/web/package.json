@@ -15,7 +15,7 @@
     "@dash/adapter-postgres": "workspace:*",
     "@dash/adapter-snowflake": "workspace:*",
     "@dash/core": "workspace:*",
-    "@modelcontextprotocol/server": "^2.0.0",
+    "@modelcontextprotocol/server": "2.3.1",
     "@tanstack/charts": "1.0.0",
     "@tanstack/react-query": "^5.103.1",
     "@tanstack/react-router": "1.170.42",
@@ -41,7 +41,7 @@
     "nitro": "3.0.260903-beta",
     "tailwindcss": "^4.1.13",
     "typescript": "^7.0.2",
-    "vite": "^8.3.0",
+    "vite": "8.3.4",
     "vitest": "^5.0.1"
   }
 }
