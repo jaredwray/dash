@@ -20,11 +20,15 @@ export interface SqlClient {
 }
 
 function toPoolConfig(config: PostgresConnectionConfig): pg.PoolConfig {
+  const shared = {
+    ssl: config.ssl ? { rejectUnauthorized: false } : undefined,
+    max: 5,
+    connectionTimeoutMillis: 10_000,
+  };
   if (config.connectionString) {
     return {
       connectionString: config.connectionString,
-      ssl: config.ssl ? { rejectUnauthorized: false } : undefined,
-      max: 5,
+      ...shared,
     };
   }
   return {
@@ -33,8 +37,7 @@ function toPoolConfig(config: PostgresConnectionConfig): pg.PoolConfig {
     database: config.database,
     user: config.user,
     password: config.password,
-    ssl: config.ssl ? { rejectUnauthorized: false } : undefined,
-    max: 5,
+    ...shared,
   };
 }
 
