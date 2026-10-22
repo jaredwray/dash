@@ -11,8 +11,10 @@ You can contribute changes to this repo by opening a pull request:
 1) After forking this repository to your Git account, make the proposed changes on your forked branch.
 2) Use **Node.js 24** (Active LTS) and **pnpm**. From the repo root:
 	- `pnpm install`
+	- `pnpm test:services:start` (Docker Compose clusters for adapter tests)
 	- `pnpm test`
 	- `pnpm typecheck`
+	- `pnpm test:services:stop`
 	- If you changed the feature set, update the checklist in [README.md](README.md).
 3) Commit your changes and push them to your forked repository.
 4) Navigate to the main `dash` repository and select the *Pull Requests* tab.

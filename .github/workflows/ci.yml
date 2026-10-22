@@ -31,5 +31,8 @@ jobs:
           cache: pnpm
       - run: sfw pnpm install --frozen-lockfile
       - run: pnpm typecheck
+      - run: pnpm test:services:start
       - run: pnpm test
       - run: pnpm --filter @dash/web build
+      - if: always()
+        run: pnpm test:services:stop

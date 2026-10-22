@@ -10,6 +10,8 @@
     "dev": "pnpm --filter @dash/web dev",
     "build": "pnpm -r --if-present build",
     "test": "pnpm -r --if-present test",
+    "test:services:start": "bash ./scripts/test-services.sh start",
+    "test:services:stop": "bash ./scripts/test-services.sh stop",
     "typecheck": "pnpm -r --if-present typecheck"
   }
 }
