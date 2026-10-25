@@ -1,6 +1,37 @@
-import type { AdapterQuery, AdapterQueryResult, AdapterSchema } from "@dash/core";
+import type {
+  AdapterQuery,
+  AdapterQueryResult,
+  AdapterSchema,
+  ConnectionConfig,
+  ConnectionTestResult,
+  DataAdapter,
+} from "@dash/core";
 import { getAdapter, testAdapter } from "../adapters/registry.ts";
 import { getDataSourceConfig } from "./data-sources.ts";
+
+function failedTest(cause: unknown): ConnectionTestResult {
+  return {
+    ok: false,
+    latencyMs: 0,
+    message: cause instanceof Error ? cause.message : "Connection failed",
+  };
+}
+
+async function openAndTest(config: ConnectionConfig): Promise<ConnectionTestResult> {
+  let adapter: DataAdapter;
+  try {
+    adapter = await testAdapter(config);
+  } catch (cause) {
+    return failedTest(cause);
+  }
+  try {
+    return await adapter.testConnection();
+  } finally {
+    if (config.kind !== "demo") {
+      await adapter.close();
+    }
+  }
+}
 
 export async function queryDataSource(
   dataSourceId: string,
@@ -30,23 +61,9 @@ export async function testDataSourceConnection(dataSourceId: string) {
   if (!config) {
     throw new Error("Data source not found");
   }
-  const adapter = await testAdapter(config);
-  try {
-    return await adapter.testConnection();
-  } finally {
-    if (config.kind !== "demo") {
-      await adapter.close();
-    }
-  }
+  return openAndTest(config);
 }
 
-export async function testConnectionConfig(config: import("@dash/core").ConnectionConfig) {
-  const adapter = await testAdapter(config);
-  try {
-    return await adapter.testConnection();
-  } finally {
-    if (config.kind !== "demo") {
-      await adapter.close();
-    }
-  }
+export async function testConnectionConfig(config: ConnectionConfig) {
+  return openAndTest(config);
 }

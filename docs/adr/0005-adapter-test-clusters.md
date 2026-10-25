@@ -12,10 +12,10 @@ Warehouse adapters compile structured queries into engine-specific calls. Mock c
 
 - Docker Compose (`docker-compose.test.yml`) runs one local cluster per warehouse adapter.
 - `pnpm test:services:start` brings the clusters up and waits until they are healthy. `pnpm test:services:stop` removes them and their volumes.
-- Tests in `packages/postgres-adapter` that talk to Postgres use that cluster. The in-process demo adapter is not a cluster.
+- Tests in `packages/postgres-adapter` that talk to Postgres use that cluster. Tests in `packages/mongodb-adapter` that talk to MongoDB use the `mongodb` service. The in-process demo adapter is not a cluster.
 - SQL string compilation stays unit-tested. Executing that SQL is covered by the cluster tests.
 - CI starts the clusters before `pnpm test` and always stops them afterward.
 
 ## Consequences
 
-`pnpm test` needs Docker running and the clusters started. A down cluster fails the adapter suite with a message that points at `pnpm test:services:start`. The next adapter adds a service to the same Compose file instead of a new harness.
+`pnpm test` needs Docker running and the clusters started. A down cluster fails the adapter suite with a message that points at `pnpm test:services:start`. The next adapter adds a service to the same Compose file instead of a new harness. MongoDB uses `127.0.0.1:27029` (`dash` / `dash`, auth database `admin`).

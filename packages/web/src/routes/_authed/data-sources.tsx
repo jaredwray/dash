@@ -18,7 +18,7 @@ export const Route = createFileRoute("/_authed/data-sources")({
   component: DataSourcesPage,
 });
 
-type SourceKind = "demo" | "postgres" | "snowflake";
+type SourceKind = "demo" | "postgres" | "snowflake" | "mongodb";
 
 const emptyForm = {
   name: "",
@@ -30,6 +30,8 @@ const emptyForm = {
   user: "postgres",
   password: "",
   ssl: false,
+  tls: false,
+  authSource: "admin",
   connectionString: "",
   useConnectionString: false,
   account: "",
@@ -84,7 +86,24 @@ function DataSourcesPage() {
                   schema: form.schema,
                   role: form.role || undefined,
                 }
-            : form.useConnectionString
+            : form.kind === "mongodb"
+              ? form.useConnectionString
+                ? {
+                    kind: "mongodb" as const,
+                    connectionString: form.connectionString,
+                    tls: form.tls,
+                  }
+                : {
+                    kind: "mongodb" as const,
+                    host: form.host,
+                    port: Number(form.port),
+                    database: form.database,
+                    user: form.user || undefined,
+                    password: form.password || undefined,
+                    authSource: form.user ? form.authSource || "admin" : undefined,
+                    tls: form.tls,
+                  }
+              : form.useConnectionString
               ? {
                   kind: "postgres" as const,
                   connectionString: form.connectionString,
@@ -151,8 +170,8 @@ function DataSourcesPage() {
           <h1 className="mt-1 text-3xl font-semibold">Data sources</h1>
           <p className="mt-2 max-w-2xl text-sm text-mist">
             Add a warehouse for dashboards and MCP, or remove one that is no longer needed.
-            Postgres and Snowflake are tested on save. Use Sample warehouse when you do not have a
-            database yet.
+            Postgres, Snowflake, and MongoDB are tested on save. Use Sample warehouse when you do not
+            have a database yet.
           </p>
         </div>
         {isAdmin ? (
@@ -170,7 +189,7 @@ function DataSourcesPage() {
         <div className="mt-10 rounded-2xl border border-dashed border-line p-10 text-center">
           <p className="text-paper">No data sources yet.</p>
           <p className="mt-2 text-sm text-mist">
-            Add a sample warehouse, PostgreSQL, or Snowflake connection to start querying.
+            Add a sample warehouse, PostgreSQL, Snowflake, or MongoDB connection to start querying.
           </p>
           {isAdmin ? (
             <PrimaryButton className="mt-4" type="button" onClick={openAdd}>
@@ -222,7 +241,7 @@ function DataSourcesPage() {
       {open ? (
         <div className="fixed inset-0 z-20 grid place-items-center bg-black/50 p-4">
           <form
-            className="w-full max-w-lg space-y-3 rounded-3xl border border-line bg-panel p-6"
+            className="max-h-[90vh] w-full max-w-lg space-y-3 overflow-y-auto rounded-3xl border border-line bg-panel p-6"
             onSubmit={(event) => {
               event.preventDefault();
               create.mutate();
@@ -252,14 +271,17 @@ function DataSourcesPage() {
                   setForm({
                     ...form,
                     kind,
+                    port: kind === "mongodb" ? "27017" : kind === "postgres" ? "5432" : form.port,
                     user: kind === "postgres" ? "postgres" : form.user === "postgres" ? "" : form.user,
                     schema: kind === "snowflake" ? form.schema || "PUBLIC" : form.schema,
+                    authSource: form.authSource || "admin",
                     useConnectionString: false,
                   });
                 }}
               >
                 <option value="postgres">PostgreSQL</option>
                 <option value="snowflake">Snowflake</option>
+                <option value="mongodb">MongoDB</option>
                 <option value="demo">Sample warehouse</option>
               </Select>
             </Field>
@@ -429,6 +451,92 @@ function DataSourcesPage() {
                     </Field>
                   </>
                 )}
+              </>
+            ) : form.kind === "mongodb" ? (
+              <>
+                <label className="flex items-center gap-2 text-sm text-mist">
+                  <input
+                    type="checkbox"
+                    checked={form.useConnectionString}
+                    onChange={(event) =>
+                      setForm({ ...form, useConnectionString: event.target.checked })
+                    }
+                  />
+                  Use a connection string
+                </label>
+                {form.useConnectionString ? (
+                  <Field label="Connection string">
+                    <TextInput
+                      value={form.connectionString}
+                      onChange={(event) =>
+                        setForm({ ...form, connectionString: event.target.value })
+                      }
+                      placeholder="mongodb://user:pass@host:27017/analytics?authSource=admin"
+                      required
+                    />
+                  </Field>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-3 gap-3">
+                      <Field label="Host">
+                        <TextInput
+                          value={form.host}
+                          onChange={(event) => setForm({ ...form, host: event.target.value })}
+                          required
+                        />
+                      </Field>
+                      <Field label="Port">
+                        <TextInput
+                          value={form.port}
+                          onChange={(event) => setForm({ ...form, port: event.target.value })}
+                          required
+                        />
+                      </Field>
+                      <Field label="Database">
+                        <TextInput
+                          value={form.database}
+                          onChange={(event) =>
+                            setForm({ ...form, database: event.target.value })
+                          }
+                          required
+                        />
+                      </Field>
+                    </div>
+                    <Field label="User">
+                      <TextInput
+                        value={form.user}
+                        onChange={(event) => setForm({ ...form, user: event.target.value })}
+                        placeholder="Optional"
+                      />
+                    </Field>
+                    <Field label="Password">
+                      <TextInput
+                        type="password"
+                        value={form.password}
+                        onChange={(event) =>
+                          setForm({ ...form, password: event.target.value })
+                        }
+                      />
+                    </Field>
+                    <Field label="Auth database">
+                      <TextInput
+                        value={form.authSource}
+                        onChange={(event) =>
+                          setForm({ ...form, authSource: event.target.value })
+                        }
+                        placeholder="admin"
+                      />
+                    </Field>
+                  </>
+                )}
+                <label className="flex items-center gap-2 text-sm text-mist">
+                  <input
+                    type="checkbox"
+                    checked={form.tls}
+                    onChange={(event) => setForm({ ...form, tls: event.target.checked })}
+                  />
+                  Use TLS
+                </label>
               </>
             ) : (
               <p className="text-sm text-mist">

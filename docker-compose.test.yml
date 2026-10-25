@@ -32,5 +32,31 @@ services:
       retries: 40
       start_period: 10s
 
+  mongodb:
+    image: mongo:7.0
+    container_name: dash-test-mongodb
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: dash
+      MONGO_INITDB_ROOT_PASSWORD: dash
+      MONGO_INITDB_DATABASE: dash
+    ports:
+      - "127.0.0.1:${DASH_TEST_MONGODB_PORT:-27029}:27017"
+    volumes:
+      - dash-test-mongodb:/data/db
+      - ./docker/mongodb/init:/docker-entrypoint-initdb.d:ro
+    # Require the fixture view so --wait means init scripts have finished
+    # and the authenticated server is queryable. countDocuments() is async.
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "mongosh --quiet 'mongodb://dash:dash@127.0.0.1:27017/dash?authSource=admin' --eval 'if ((await db.revenue.countDocuments()) !== 3 || (await db.paid_orders.countDocuments()) !== 3) quit(1)'",
+        ]
+      interval: 2s
+      timeout: 5s
+      retries: 40
+      start_period: 10s
+
 volumes:
   dash-test-postgres:
+  dash-test-mongodb:

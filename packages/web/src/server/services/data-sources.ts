@@ -18,6 +18,20 @@ interface DataSourceRow {
   updated_at: string;
 }
 
+function databaseFromMongoUri(uri: string): string {
+  const match = /^mongodb(?:\+srv)?:\/\/[^/?#]*\/([^/?#]+)/i.exec(uri);
+  if (!match?.[1]) {
+    return "";
+  }
+  let name = match[1];
+  try {
+    name = decodeURIComponent(name);
+  } catch {
+    return "";
+  }
+  return /^[A-Za-z0-9_-]{1,64}$/.test(name) ? name : "";
+}
+
 function summarize(config: ConnectionConfig): DataSourceRecord["summary"] {
   if (config.kind === "demo") {
     return { warehouse: "built-in sample data" };
@@ -30,6 +44,21 @@ function summarize(config: ConnectionConfig): DataSourceRecord["summary"] {
       schema: config.schema ?? "",
       role: config.role ?? "",
     };
+  }
+  if (config.kind === "mongodb") {
+    const usingUri = Boolean(config.connectionString) && !config.host;
+    const summary: DataSourceRecord["summary"] = {
+      host: config.host ?? (usingUri ? "(connection string)" : ""),
+      database: config.database || (config.connectionString ? databaseFromMongoUri(config.connectionString) : ""),
+      user: config.user ?? "",
+      tls: Boolean(config.tls),
+    };
+    if (config.port != null) {
+      summary.port = config.port;
+    } else if (!usingUri) {
+      summary.port = 27017;
+    }
+    return summary;
   }
   return {
     host: config.host ?? (config.connectionString ? "(connection string)" : ""),

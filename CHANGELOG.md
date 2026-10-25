@@ -6,7 +6,8 @@ All notable changes to Dash are documented here.
 
 ### Added
 
-- Local Docker Compose clusters for adapter tests, started with `pnpm test:services:start` and stopped with `pnpm test:services:stop`. Postgres adapter tests run against that cluster.
+- `@dash/adapter-mongodb` (`packages/mongodb-adapter`) implementing `DataAdapter`. Structured queries compile to a MongoDB `find` with validated field names and scalar BSON values. The local test cluster is the `mongodb` service in `docker-compose.test.yml`.
+- Local Docker Compose clusters for adapter tests, started with `pnpm test:services:start` and stopped with `pnpm test:services:stop`. Postgres and MongoDB adapter tests run against those clusters.
 - `@dash/adapter-snowflake` (`packages/snowflake-adapter`) implementing `DataAdapter` with parameterized SQL (`?` binds) over the Snowflake HTTPS session API.
 - README screenshots of sign-in, dashboards, the sample warehouse, a custom regional revenue page, the same chart inside Claude Code, API tokens, settings, and profile.
 - PNPM workspace monorepo on Node.js 24 (Active LTS).

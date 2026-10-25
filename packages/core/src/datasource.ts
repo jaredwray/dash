@@ -40,7 +40,21 @@ export interface SnowflakeConnectionConfig {
   authenticator?: string;
 }
 
+export interface MongoConnectionConfig {
+  kind: "mongodb";
+  connectionString?: string;
+  host?: string;
+  port?: number;
+  database?: string;
+  user?: string;
+  password?: string;
+  /** Authentication database. Defaults to `admin` when a user is set without a connection string. */
+  authSource?: string;
+  tls?: boolean;
+}
+
 export type ConnectionConfig =
   | PostgresConnectionConfig
   | DemoConnectionConfig
-  | SnowflakeConnectionConfig;
+  | SnowflakeConnectionConfig
+  | MongoConnectionConfig;

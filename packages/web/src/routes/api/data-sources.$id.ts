@@ -37,6 +37,17 @@ const patchSchema = z.object({
         role: z.string().optional(),
         authenticator: z.string().optional(),
       }),
+      z.object({
+        kind: z.literal("mongodb"),
+        connectionString: z.string().optional(),
+        host: z.string().optional(),
+        port: z.number().int().optional(),
+        database: z.string().optional(),
+        user: z.string().optional(),
+        password: z.string().optional(),
+        authSource: z.string().optional(),
+        tls: z.boolean().optional(),
+      }),
     ])
     .optional(),
 });

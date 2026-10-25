@@ -3,7 +3,8 @@
 Each warehouse adapter is its own package under `packages/` and implements
 `DataAdapter` from `@dash/core`. Postgres ships as `packages/postgres-adapter`
 (`@dash/adapter-postgres`). Snowflake ships as `packages/snowflake-adapter`
-(`@dash/adapter-snowflake`).
+(`@dash/adapter-snowflake`). MongoDB ships as `packages/mongodb-adapter`
+(`@dash/adapter-mongodb`).
 
 ## Shipping
 
@@ -11,8 +12,8 @@ Each warehouse adapter is its own package under `packages/` and implements
 | --- | --- | --- | --- |
 | `@dash/adapter-postgres` | `packages/postgres-adapter` | `postgres` | MVP |
 | `@dash/adapter-snowflake` | `packages/snowflake-adapter` | `snowflake` | MVP |
+| `@dash/adapter-mongodb` | `packages/mongodb-adapter` | `mongodb` | MVP |
 | — | — | `mysql` | Planned |
-| — | — | `mongodb` | Planned |
 | — | — | `bigquery` | Planned |
 | — | — | `redshift` | Planned |
 | — | — | `clickhouse` | Planned |
@@ -22,7 +23,7 @@ without an external warehouse. The demo adapter stays in-process.
 
 ## Testing
 
-Postgres adapter tests run against the local cluster in `docker-compose.test.yml`.
+Postgres and MongoDB adapter tests run against the local clusters in `docker-compose.test.yml`.
 
 ```bash
 pnpm test:services:start
@@ -30,9 +31,11 @@ pnpm test
 pnpm test:services:stop
 ```
 
-The cluster listens on `127.0.0.1:54329` (`dash` / `dash`, database `dash`).
-The root README lists the environment overrides. When an engine can run
-locally, add it to that Compose file and point the package tests at it.
+Postgres listens on `127.0.0.1:54329` (`dash` / `dash`, database `dash`).
+MongoDB listens on `127.0.0.1:27029` (`dash` / `dash`, database `dash`, auth
+database `admin`). The root README lists the environment overrides. When an
+engine can run locally, add it to that Compose file and point the package
+tests at it.
 
 ## Adding an adapter
 

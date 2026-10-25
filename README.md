@@ -64,6 +64,7 @@ packages/web/                @dash/web              UX + REST API + MCP (TanStac
 packages/core/               @dash/core             Shared types and adapter interfaces
 packages/postgres-adapter/   @dash/adapter-postgres
 packages/snowflake-adapter/  @dash/adapter-snowflake
+packages/mongodb-adapter/    @dash/adapter-mongodb
 ```
 
 Workspaces are declared in the root `pnpm-workspace.yaml`.
@@ -98,7 +99,7 @@ Keep this list in sync as PRs land. Checked items are in the tree today.
 - [x] Postgres adapter (`@dash/adapter-postgres`)
 - [x] Local Docker Compose clusters for adapter tests (`pnpm test:services:start` / `test:services:stop`)
 - [ ] MySQL adapter
-- [ ] MongoDB adapter
+- [x] MongoDB adapter (`@dash/adapter-mongodb`)
 - [ ] Google BigQuery adapter
 - [x] Snowflake adapter (`@dash/adapter-snowflake`)
 - [ ] Redshift adapter
@@ -112,7 +113,7 @@ Keep this list in sync as PRs land. Checked items are in the tree today.
 - [x] Dynamic dashboard pages
 - [x] Chart widgets (TanStack Charts)
 - [x] Sortable and filterable tables (TanStack Table)
-- [x] Data sources page (admin): add and remove sources (demo warehouse, Postgres, Snowflake)
+- [x] Data sources page (admin): add and remove sources (demo warehouse, Postgres, Snowflake, MongoDB)
 - [ ] Real-time multi-user dashboard collaboration
 - [ ] Light theme
 
@@ -158,13 +159,13 @@ Issue a token with the `mcp` scope, then point a client at `/mcp`. Tools include
 | `pnpm dev` | Start `@dash/web` |
 | `pnpm test:services:start` | Start warehouse clusters (Docker Compose) |
 | `pnpm test:services:stop` | Stop clusters and delete their data |
-| `pnpm test` | Run package tests. Postgres adapter tests use the cluster |
+| `pnpm test` | Run package tests. Postgres and MongoDB adapter tests use the clusters |
 | `pnpm typecheck` | TypeScript across workspaces |
 | `pnpm build` | Production build |
 
 ## Adapter test clusters
 
-Postgres adapter tests run against the Compose cluster. Add the next local engine beside Postgres in `docker-compose.test.yml` when that adapter can run here.
+Postgres and MongoDB adapter tests run against the Compose cluster. Add the next local engine beside them in `docker-compose.test.yml` when that adapter can run here.
 
 ```bash
 pnpm test:services:start
@@ -174,16 +175,16 @@ pnpm test:services:stop
 
 `test:services:start` waits until each cluster is healthy. `test:services:stop` removes containers and volumes, so the next start reloads fixture SQL.
 
-| | Postgres |
-| --- | --- |
-| URL | `postgres://dash:dash@127.0.0.1:54329/dash` |
-| Host | `127.0.0.1` |
-| Port | `54329` |
-| Database | `dash` |
-| User | `dash` |
-| Password | `dash` |
+| | Postgres | MongoDB |
+| --- | --- | --- |
+| URL | `postgres://dash:dash@127.0.0.1:54329/dash` | `mongodb://dash:dash@127.0.0.1:27029/dash?authSource=admin` |
+| Host | `127.0.0.1` | `127.0.0.1` |
+| Port | `54329` | `27029` |
+| Database | `dash` | `dash` |
+| User | `dash` | `dash` |
+| Password | `dash` | `dash` |
 
-Override the endpoint with `DASH_TEST_POSTGRES_HOST`, `DASH_TEST_POSTGRES_PORT`, `DASH_TEST_POSTGRES_DATABASE`, `DASH_TEST_POSTGRES_USER`, and `DASH_TEST_POSTGRES_PASSWORD`. The same `DASH_TEST_POSTGRES_PORT` value is the host port Compose publishes. These credentials are for the local test cluster only.
+Override the Postgres endpoint with `DASH_TEST_POSTGRES_HOST`, `DASH_TEST_POSTGRES_PORT`, `DASH_TEST_POSTGRES_DATABASE`, `DASH_TEST_POSTGRES_USER`, and `DASH_TEST_POSTGRES_PASSWORD`. Override MongoDB with `DASH_TEST_MONGODB_HOST`, `DASH_TEST_MONGODB_PORT`, `DASH_TEST_MONGODB_DATABASE`, `DASH_TEST_MONGODB_USER`, `DASH_TEST_MONGODB_PASSWORD`, and `DASH_TEST_MONGODB_AUTH_SOURCE`. The port values are the host ports Compose publishes. These credentials are for the local test clusters only.
 
 ## Architecture notes
 

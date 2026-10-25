@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@dash/adapter-mongodb": "workspace:*",
     "@dash/adapter-postgres": "workspace:*",
     "@dash/adapter-snowflake": "workspace:*",
     "@dash/core": "workspace:*",
@@ -24,6 +25,7 @@
     "clsx": "^2.1.1",
     "d3-shape": "3.2.0",
     "lucide-react": "^1.47.0",
+    "mongodb": "7.7.0",
     "pg": "^8.16.3",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",

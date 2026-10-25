@@ -1,5 +1,5 @@
 /**
- * Adapter kinds Dash knows about. `postgres`, `snowflake`, and `demo` ship;
+ * Adapter kinds Dash knows about. `postgres`, `snowflake`, `mongodb`, and `demo` ship;
  * the rest are reserved so data-source records and the admin UI stay stable
  * as adapters land.
  */
