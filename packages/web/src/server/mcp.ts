@@ -13,11 +13,19 @@ import {
 import { listDataSources } from "./services/data-sources.ts";
 import { queryDataSource, schemaForDataSource } from "./services/query.ts";
 
+/** Combined array elements and object members allowed in one tools/call payload. */
+const MAX_TOOL_INPUT_ELEMENTS = 10_000;
+
 function buildServer(auth: AuthContext): McpServer {
-  const server = new McpServer({
-    name: "dash",
-    version: "0.0.0",
-  });
+  const server = new McpServer(
+    {
+      name: "dash",
+      version: "0.0.0",
+    },
+    // GHSA-46jr-4wx8-v453: the 2.3 limit is off unless set. Reject oversized
+    // tool arguments before schema validation can exhaust memory.
+    { maxToolInputElements: MAX_TOOL_INPUT_ELEMENTS },
+  );
 
   server.registerTool(
     "list_data_sources",
@@ -204,24 +212,29 @@ function buildServer(auth: AuthContext): McpServer {
   return server;
 }
 
-export const mcpHandler = createMcpHandler(({ authInfo }) => {
-  if (!authInfo?.clientId) {
-    throw new Error("MCP requires authentication");
-  }
-  const row = findUserById(authInfo.clientId);
-  if (!row) {
-    throw new Error("Unknown MCP user");
-  }
-  const auth: AuthContext = {
-    user: {
-      id: row.id,
-      email: row.email,
-      name: row.name,
-      role: row.role,
-      createdAt: row.created_at,
-    },
-    scopes: (authInfo.scopes ?? ["read", "mcp"]) as ApiTokenScope[],
-    via: "token",
-  };
-  return buildServer(auth);
-});
+export const mcpHandler = createMcpHandler(
+  ({ authInfo }) => {
+    if (!authInfo?.clientId) {
+      throw new Error("MCP requires authentication");
+    }
+    const row = findUserById(authInfo.clientId);
+    if (!row) {
+      throw new Error("Unknown MCP user");
+    }
+    const auth: AuthContext = {
+      user: {
+        id: row.id,
+        email: row.email,
+        name: row.name,
+        role: row.role,
+        createdAt: row.created_at,
+      },
+      scopes: (authInfo.scopes ?? ["read", "mcp"]) as ApiTokenScope[],
+      via: "token",
+    };
+    return buildServer(auth);
+  },
+  // Tool payloads are small structured queries. Cap the body well under the
+  // SDK default so a single request cannot force a multi-megabyte parse.
+  { maxRequestBodySize: 1_048_576 },
+);
