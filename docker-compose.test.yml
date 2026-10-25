@@ -45,12 +45,28 @@ services:
       - dash-test-mongodb:/data/db
       - ./docker/mongodb/init:/docker-entrypoint-initdb.d:ro
     # Require the fixture view so --wait means init scripts have finished
-    # and the authenticated server is queryable. countDocuments() is async.
+    # and the authenticated server is queryable. mongosh --eval is a classic
+    # script, so a top-level await is a SyntaxError and the probe can never
+    # pass. Await inside an async function, then quit with the result.
     healthcheck:
       test:
         [
-          "CMD-SHELL",
-          "mongosh --quiet 'mongodb://dash:dash@127.0.0.1:27017/dash?authSource=admin' --eval 'if ((await db.revenue.countDocuments()) !== 3 || (await db.paid_orders.countDocuments()) !== 3) quit(1)'",
+          "CMD",
+          "mongosh",
+          "--quiet",
+          "--host",
+          "127.0.0.1",
+          "--port",
+          "27017",
+          "-u",
+          "dash",
+          "-p",
+          "dash",
+          "--authenticationDatabase",
+          "admin",
+          "dash",
+          "--eval",
+          "(async () => { const revenue = await db.revenue.countDocuments(); const paid = await db.paid_orders.countDocuments(); if (revenue !== 3 || paid !== 3) quit(1); quit(0); })()",
         ]
       interval: 2s
       timeout: 5s
