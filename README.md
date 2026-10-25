@@ -96,6 +96,7 @@ Keep this list in sync as PRs land. Checked items are in the tree today.
 - [x] Core types package (`@dash/core`)
 - [x] Data adapter interface (`DataAdapter`)
 - [x] Postgres adapter (`@dash/adapter-postgres`)
+- [x] Local Docker Compose clusters for adapter tests (`pnpm test:services:start` / `test:services:stop`)
 - [ ] MySQL adapter
 - [ ] MongoDB adapter
 - [ ] Google BigQuery adapter
@@ -155,17 +156,43 @@ Issue a token with the `mcp` scope, then point a client at `/mcp`. Tools include
 | Command | |
 | --- | --- |
 | `pnpm dev` | Start `@dash/web` |
-| `pnpm test` | Run package tests |
+| `pnpm test:services:start` | Start warehouse clusters (Docker Compose) |
+| `pnpm test:services:stop` | Stop clusters and delete their data |
+| `pnpm test` | Run package tests. Postgres adapter tests use the cluster |
 | `pnpm typecheck` | TypeScript across workspaces |
 | `pnpm build` | Production build |
+
+## Adapter test clusters
+
+Postgres adapter tests run against the Compose cluster. Add the next local engine beside Postgres in `docker-compose.test.yml` when that adapter can run here.
+
+```bash
+pnpm test:services:start
+pnpm test
+pnpm test:services:stop
+```
+
+`test:services:start` waits until each cluster is healthy. `test:services:stop` removes containers and volumes, so the next start reloads fixture SQL.
+
+| | Postgres |
+| --- | --- |
+| URL | `postgres://dash:dash@127.0.0.1:54329/dash` |
+| Host | `127.0.0.1` |
+| Port | `54329` |
+| Database | `dash` |
+| User | `dash` |
+| Password | `dash` |
+
+Override the endpoint with `DASH_TEST_POSTGRES_HOST`, `DASH_TEST_POSTGRES_PORT`, `DASH_TEST_POSTGRES_DATABASE`, `DASH_TEST_POSTGRES_USER`, and `DASH_TEST_POSTGRES_PASSWORD`. The same `DASH_TEST_POSTGRES_PORT` value is the host port Compose publishes. These credentials are for the local test cluster only.
 
 ## Architecture notes
 
 - [ADR 0001](docs/adr/0001-monorepo-architecture.md) — workspace layout
 - [Data adapters](docs/data-adapters.md) — adding a warehouse adapter
 - [ADR 0002](docs/adr/0002-charting-library.md) — original ECharts renderer (superseded)
-- [ADR 0004](docs/adr/0004-tanstack-charts.md) — TanStack Charts + `ChartSpec`
 - [ADR 0003](docs/adr/0003-api-tokens.md) — sessions, tokens, encryption
+- [ADR 0004](docs/adr/0004-tanstack-charts.md) — TanStack Charts + `ChartSpec`
+- [ADR 0005](docs/adr/0005-adapter-test-clusters.md) — Postgres adapter tests use a local cluster
 
 ## License
 

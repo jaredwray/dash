@@ -18,7 +18,21 @@ Each warehouse adapter is its own package under `packages/` and implements
 | — | — | `clickhouse` | Planned |
 
 The web app also ships a built-in `demo` adapter so the product is usable
-without an external warehouse.
+without an external warehouse. The demo adapter stays in-process.
+
+## Testing
+
+Postgres adapter tests run against the local cluster in `docker-compose.test.yml`.
+
+```bash
+pnpm test:services:start
+pnpm test
+pnpm test:services:stop
+```
+
+The cluster listens on `127.0.0.1:54329` (`dash` / `dash`, database `dash`).
+The root README lists the environment overrides. When an engine can run
+locally, add it to that Compose file and point the package tests at it.
 
 ## Adding an adapter
 
@@ -27,4 +41,6 @@ without an external warehouse.
 3. Compile structured `AdapterQuery` values with bound parameters — never
    interpolate identifiers or literals from the client without validation.
 4. Register the factory in `packages/web/src/server/adapters/registry.ts`.
-5. Check the new item off in the root README feature checklist.
+5. When the engine can run locally, add it to `docker-compose.test.yml` and
+   run the adapter tests against that cluster.
+6. Check the new item off in the root README feature checklist.
