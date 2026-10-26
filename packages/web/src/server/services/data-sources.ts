@@ -40,6 +40,23 @@ function summarize(config: ConnectionConfig): DataSourceRecord["summary"] {
       role: config.role ?? "",
     };
   }
+  if (config.kind === "bigquery") {
+    let endpoint = "bigquery.googleapis.com";
+    if (config.apiEndpoint) {
+      try {
+        endpoint = new URL(config.apiEndpoint).host;
+      } catch {
+        endpoint = "";
+      }
+    }
+    return {
+      project: config.projectId,
+      dataset: config.dataset ?? "",
+      location: config.location ?? "",
+      endpoint,
+      auth: config.credentials ? "service-account" : config.apiEndpoint ? "anonymous" : "adc",
+    };
+  }
   if (config.kind === "mongodb") {
     const usingUri = Boolean(config.connectionString) && !config.host;
     const summary: DataSourceRecord["summary"] = {

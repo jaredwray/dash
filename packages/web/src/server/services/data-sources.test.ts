@@ -163,4 +163,57 @@ describe("data source records", () => {
     expect(replica.summary.tls).toBe(false);
     expect(JSON.stringify(replica.summary)).not.toContain("super-secret");
   });
+
+  it("summarizes a BigQuery source without the service account key", async () => {
+    const admin = await createUser({
+      email: "bq-admin@example.com",
+      name: "Admin",
+      password: "password123",
+      role: "admin",
+    });
+    const created = createDataSource({
+      name: "Warehouse",
+      description: "BigQuery",
+      config: {
+        kind: "bigquery",
+        projectId: "dash-prod",
+        dataset: "analytics",
+        location: "US",
+        credentials: {
+          client_email: "dash@example.iam.gserviceaccount.com",
+          private_key: "-----BEGIN PRIVATE KEY-----\nsecret-key-material\n-----END PRIVATE KEY-----\n",
+        },
+      },
+      createdBy: admin.id,
+    });
+    expect(created.kind).toBe("bigquery");
+    expect(created.summary).toEqual({
+      project: "dash-prod",
+      dataset: "analytics",
+      location: "US",
+      endpoint: "bigquery.googleapis.com",
+      auth: "service-account",
+    });
+    expect(JSON.stringify(created.summary)).not.toContain("secret-key-material");
+    expect(JSON.stringify(created.summary)).not.toContain("PRIVATE KEY");
+
+    const emulator = createDataSource({
+      name: "Local BigQuery",
+      description: "Emulator",
+      config: {
+        kind: "bigquery",
+        projectId: "dash",
+        dataset: "analytics",
+        apiEndpoint: "http://127.0.0.1:9059",
+      },
+      createdBy: admin.id,
+    });
+    expect(emulator.summary).toEqual({
+      project: "dash",
+      dataset: "analytics",
+      location: "",
+      endpoint: "127.0.0.1:9059",
+      auth: "anonymous",
+    });
+  });
 });

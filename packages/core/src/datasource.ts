@@ -53,8 +53,31 @@ export interface MongoConnectionConfig {
   tls?: boolean;
 }
 
+export interface BigQueryConnectionConfig {
+  kind: "bigquery";
+  projectId: string;
+  /** Default dataset. Unqualified resources are `dataset.table`. */
+  dataset?: string;
+  /** BigQuery location, such as `US` or `us-central1`. */
+  location?: string;
+  /**
+   * Service account key fields. Omit to use Application Default Credentials.
+   * The private key stays inside the encrypted data-source config.
+   */
+  credentials?: {
+    client_email: string;
+    private_key: string;
+  };
+  /**
+   * API origin. The local emulator is `http://127.0.0.1:9059`.
+   * Non-Google hosts are called without an access token.
+   */
+  apiEndpoint?: string;
+}
+
 export type ConnectionConfig =
   | PostgresConnectionConfig
   | DemoConnectionConfig
   | SnowflakeConnectionConfig
-  | MongoConnectionConfig;
+  | MongoConnectionConfig
+  | BigQueryConnectionConfig;

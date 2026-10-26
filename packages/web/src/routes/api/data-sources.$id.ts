@@ -48,6 +48,19 @@ const patchSchema = z.object({
         authSource: z.string().optional(),
         tls: z.boolean().optional(),
       }),
+      z.object({
+        kind: z.literal("bigquery"),
+        projectId: z.string().min(1),
+        dataset: z.string().optional(),
+        location: z.string().optional(),
+        apiEndpoint: z.string().optional(),
+        credentials: z
+          .object({
+            client_email: z.string().min(1),
+            private_key: z.string().min(1),
+          })
+          .optional(),
+      }),
     ])
     .optional(),
 });
