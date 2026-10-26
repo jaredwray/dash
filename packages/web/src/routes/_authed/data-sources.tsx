@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import type { Dashboard, DataSourceRecord } from "@dash/core";
 import { api } from "~/lib/api";
+import { parseBigQueryUri } from "~/lib/bigquery-uri";
 import {
   DangerButton,
   Field,
@@ -14,11 +15,84 @@ import {
 } from "~/components/ui";
 import { fetchMe } from "~/lib/session";
 
+function serviceAccountCredentials(raw: string):
+  | { client_email: string; private_key: string }
+  | undefined {
+  const trimmed = raw.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(trimmed);
+  } catch {
+    throw new Error("Service account JSON is invalid");
+  }
+  if (!parsed || typeof parsed !== "object") {
+    throw new Error("Service account JSON must include client_email and private_key");
+  }
+  const record = parsed as { client_email?: unknown; private_key?: unknown };
+  if (typeof record.client_email !== "string" || typeof record.private_key !== "string") {
+    throw new Error("Service account JSON must include client_email and private_key");
+  }
+  return { client_email: record.client_email, private_key: record.private_key };
+}
+
 export const Route = createFileRoute("/_authed/data-sources")({
   component: DataSourcesPage,
 });
 
-type SourceKind = "postgres" | "snowflake" | "mongodb";
+type SourceKind = "postgres" | "snowflake" | "mongodb" | "bigquery";
+
+const URI_PLACEHOLDER: Record<SourceKind, string> = {
+  postgres: "postgres://user:password@localhost:5432/analytics",
+  snowflake: "snowflake://user:password@account/database/schema?warehouse=COMPUTE_WH",
+  mongodb: "mongodb://user:password@host:27017/analytics?authSource=admin",
+  bigquery: "bigquery://project/dataset?location=US&endpoint=http://127.0.0.1:9059",
+};
+
+function ConnectionUriField({
+  kind,
+  value,
+  onChange,
+}: {
+  kind: SourceKind;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <Field label="Connection URI">
+      <TextArea
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={URI_PLACEHOLDER[kind]}
+        required
+        rows={3}
+        spellCheck={false}
+        autoComplete="off"
+        className="min-h-16 font-mono"
+      />
+    </Field>
+  );
+}
+
+function ConnectionModeToggle({
+  usingUri,
+  onChange,
+}: {
+  usingUri: boolean;
+  onChange: (usingUri: boolean) => void;
+}) {
+  return (
+    <button
+      type="button"
+      className="text-sm text-accent hover:underline"
+      onClick={() => onChange(!usingUri)}
+    >
+      {usingUri ? "Enter fields instead" : "Paste a connection URI instead"}
+    </button>
+  );
+}
 
 const emptyForm = {
   name: "",
@@ -33,11 +107,16 @@ const emptyForm = {
   tls: false,
   authSource: "admin",
   connectionString: "",
-  useConnectionString: false,
+  useConnectionString: true,
   account: "",
   warehouse: "",
   schema: "PUBLIC",
   role: "",
+  projectId: "",
+  bqDataset: "",
+  location: "",
+  apiEndpoint: "",
+  serviceAccountJson: "",
 };
 
 function DataSourcesPage() {
@@ -68,11 +147,24 @@ function DataSourcesPage() {
   const create = useMutation({
     mutationFn: async () => {
       const config =
-        form.kind === "snowflake"
+        form.kind === "bigquery"
+          ? {
+              kind: "bigquery" as const,
+              ...(form.useConnectionString
+                ? parseBigQueryUri(form.connectionString)
+                : {
+                    projectId: form.projectId.trim(),
+                    dataset: form.bqDataset.trim() || undefined,
+                    location: form.location.trim() || undefined,
+                    apiEndpoint: form.apiEndpoint.trim() || undefined,
+                  }),
+              credentials: serviceAccountCredentials(form.serviceAccountJson),
+            }
+          : form.kind === "snowflake"
             ? form.useConnectionString
               ? {
                   kind: "snowflake" as const,
-                  connectionString: form.connectionString,
+                  connectionString: form.connectionString.trim(),
                 }
               : {
                   kind: "snowflake" as const,
@@ -88,7 +180,7 @@ function DataSourcesPage() {
               ? form.useConnectionString
                 ? {
                     kind: "mongodb" as const,
-                    connectionString: form.connectionString,
+                    connectionString: form.connectionString.trim(),
                     database: form.database.trim() || undefined,
                     tls: form.tls,
                   }
@@ -105,7 +197,7 @@ function DataSourcesPage() {
               : form.useConnectionString
               ? {
                   kind: "postgres" as const,
-                  connectionString: form.connectionString,
+                  connectionString: form.connectionString.trim(),
                   ssl: form.ssl,
                 }
               : {
@@ -169,7 +261,8 @@ function DataSourcesPage() {
           <h1 className="mt-1 text-3xl font-semibold">Data sources</h1>
           <p className="mt-2 max-w-2xl text-sm text-mist">
             Add a warehouse for dashboards and MCP, or remove one that is no longer needed.
-            Postgres, Snowflake, and MongoDB are tested on save.
+            Paste a connection URI, or enter the fields. Postgres, Snowflake, MongoDB, and
+            BigQuery are tested on save.
           </p>
         </div>
         {isAdmin ? (
@@ -187,7 +280,7 @@ function DataSourcesPage() {
         <div className="mt-10 rounded-2xl border border-dashed border-line p-10 text-center">
           <p className="text-paper">No data sources yet.</p>
           <p className="mt-2 text-sm text-mist">
-            Add a PostgreSQL, Snowflake, or MongoDB connection to start querying.
+            Add a PostgreSQL, Snowflake, MongoDB, or BigQuery connection to start querying.
           </p>
           {isAdmin ? (
             <PrimaryButton className="mt-4" type="button" onClick={openAdd}>
@@ -273,39 +366,30 @@ function DataSourcesPage() {
                     user: kind === "postgres" ? "postgres" : form.user === "postgres" ? "" : form.user,
                     schema: kind === "snowflake" ? form.schema || "PUBLIC" : form.schema,
                     authSource: form.authSource || "admin",
-                    useConnectionString: false,
+                    useConnectionString: true,
                   });
                 }}
               >
                 <option value="postgres">PostgreSQL</option>
                 <option value="snowflake">Snowflake</option>
                 <option value="mongodb">MongoDB</option>
+                <option value="bigquery">Google BigQuery</option>
               </Select>
             </Field>
             {form.kind === "postgres" ? (
               <>
-                <label className="flex items-center gap-2 text-sm text-mist">
-                  <input
-                    type="checkbox"
-                    checked={form.useConnectionString}
-                    onChange={(event) =>
-                      setForm({ ...form, useConnectionString: event.target.checked })
-                    }
-                  />
-                  Use a connection string
-                </label>
                 {form.useConnectionString ? (
-                  <Field label="Connection string">
-                    <TextInput
-                      value={form.connectionString}
-                      onChange={(event) =>
-                        setForm({ ...form, connectionString: event.target.value })
-                      }
-                      placeholder="postgres://user:pass@host:5432/analytics"
-                      required
-                    />
-                  </Field>
-                ) : (
+                  <ConnectionUriField
+                    kind="postgres"
+                    value={form.connectionString}
+                    onChange={(connectionString) => setForm({ ...form, connectionString })}
+                  />
+                ) : null}
+                <ConnectionModeToggle
+                  usingUri={form.useConnectionString}
+                  onChange={(useConnectionString) => setForm({ ...form, useConnectionString })}
+                />
+                {form.useConnectionString ? null : (
                   <>
                     <div className="grid grid-cols-3 gap-3">
                       <Field label="Host">
@@ -361,28 +445,18 @@ function DataSourcesPage() {
               </>
             ) : form.kind === "snowflake" ? (
               <>
-                <label className="flex items-center gap-2 text-sm text-mist">
-                  <input
-                    type="checkbox"
-                    checked={form.useConnectionString}
-                    onChange={(event) =>
-                      setForm({ ...form, useConnectionString: event.target.checked })
-                    }
-                  />
-                  Use a connection string
-                </label>
                 {form.useConnectionString ? (
-                  <Field label="Connection string">
-                    <TextInput
-                      value={form.connectionString}
-                      onChange={(event) =>
-                        setForm({ ...form, connectionString: event.target.value })
-                      }
-                      placeholder="snowflake://user:pass@account/db/schema?warehouse=COMPUTE_WH"
-                      required
-                    />
-                  </Field>
-                ) : (
+                  <ConnectionUriField
+                    kind="snowflake"
+                    value={form.connectionString}
+                    onChange={(connectionString) => setForm({ ...form, connectionString })}
+                  />
+                ) : null}
+                <ConnectionModeToggle
+                  usingUri={form.useConnectionString}
+                  onChange={(useConnectionString) => setForm({ ...form, useConnectionString })}
+                />
+                {form.useConnectionString ? null : (
                   <>
                     <Field label="Account">
                       <TextInput
@@ -451,28 +525,13 @@ function DataSourcesPage() {
               </>
             ) : form.kind === "mongodb" ? (
               <>
-                <label className="flex items-center gap-2 text-sm text-mist">
-                  <input
-                    type="checkbox"
-                    checked={form.useConnectionString}
-                    onChange={(event) =>
-                      setForm({ ...form, useConnectionString: event.target.checked })
-                    }
-                  />
-                  Use a connection string
-                </label>
                 {form.useConnectionString ? (
                   <>
-                    <Field label="Connection string">
-                      <TextInput
-                        value={form.connectionString}
-                        onChange={(event) =>
-                          setForm({ ...form, connectionString: event.target.value })
-                        }
-                        placeholder="mongodb://user:pass@host:27017/analytics?authSource=admin"
-                        required
-                      />
-                    </Field>
+                    <ConnectionUriField
+                      kind="mongodb"
+                      value={form.connectionString}
+                      onChange={(connectionString) => setForm({ ...form, connectionString })}
+                    />
                     <Field label="Database">
                       <TextInput
                         value={form.database}
@@ -483,7 +542,12 @@ function DataSourcesPage() {
                       />
                     </Field>
                   </>
-                ) : (
+                ) : null}
+                <ConnectionModeToggle
+                  usingUri={form.useConnectionString}
+                  onChange={(useConnectionString) => setForm({ ...form, useConnectionString })}
+                />
+                {form.useConnectionString ? null : (
                   <>
                     <div className="grid grid-cols-3 gap-3">
                       <Field label="Host">
@@ -545,6 +609,63 @@ function DataSourcesPage() {
                   />
                   Use TLS
                 </label>
+              </>
+            ) : form.kind === "bigquery" ? (
+              <>
+                {form.useConnectionString ? (
+                  <ConnectionUriField
+                    kind="bigquery"
+                    value={form.connectionString}
+                    onChange={(connectionString) => setForm({ ...form, connectionString })}
+                  />
+                ) : (
+                  <>
+                    <Field label="Project ID">
+                      <TextInput
+                        value={form.projectId}
+                        onChange={(event) => setForm({ ...form, projectId: event.target.value })}
+                        placeholder="my-gcp-project"
+                        required
+                      />
+                    </Field>
+                    <div className="grid grid-cols-2 gap-3">
+                      <Field label="Dataset">
+                        <TextInput
+                          value={form.bqDataset}
+                          onChange={(event) => setForm({ ...form, bqDataset: event.target.value })}
+                          placeholder="analytics"
+                        />
+                      </Field>
+                      <Field label="Location">
+                        <TextInput
+                          value={form.location}
+                          onChange={(event) => setForm({ ...form, location: event.target.value })}
+                          placeholder="US"
+                        />
+                      </Field>
+                    </div>
+                    <Field label="API endpoint">
+                      <TextInput
+                        value={form.apiEndpoint}
+                        onChange={(event) => setForm({ ...form, apiEndpoint: event.target.value })}
+                        placeholder="http://127.0.0.1:9059 for the local emulator"
+                      />
+                    </Field>
+                  </>
+                )}
+                <ConnectionModeToggle
+                  usingUri={form.useConnectionString}
+                  onChange={(useConnectionString) => setForm({ ...form, useConnectionString })}
+                />
+                <Field label="Service account JSON">
+                  <TextArea
+                    value={form.serviceAccountJson}
+                    onChange={(event) =>
+                      setForm({ ...form, serviceAccountJson: event.target.value })
+                    }
+                    placeholder="Optional. Leave empty for the emulator or Application Default Credentials."
+                  />
+                </Field>
               </>
             ) : null}
             {error ? <p className="text-sm text-rose-300">{error}</p> : null}

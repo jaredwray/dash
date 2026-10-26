@@ -65,6 +65,7 @@ packages/core/               @dash/core             Shared types and adapter int
 packages/postgres-adapter/   @dash/adapter-postgres
 packages/snowflake-adapter/  @dash/adapter-snowflake
 packages/mongodb-adapter/    @dash/adapter-mongodb
+packages/bigquery-adapter/   @dash/adapter-bigquery
 ```
 
 Workspaces are declared in the root `pnpm-workspace.yaml`.
@@ -100,7 +101,7 @@ Keep this list in sync as PRs land. Checked items are in the tree today.
 - [x] Local Docker Compose clusters for adapter tests (`pnpm test:services:start` / `test:services:stop`)
 - [ ] MySQL adapter
 - [x] MongoDB adapter (`@dash/adapter-mongodb`)
-- [ ] Google BigQuery adapter
+- [x] Google BigQuery adapter (`@dash/adapter-bigquery`)
 - [x] Snowflake adapter (`@dash/adapter-snowflake`)
 - [ ] Redshift adapter
 - [ ] ClickHouse adapter
@@ -113,7 +114,7 @@ Keep this list in sync as PRs land. Checked items are in the tree today.
 - [x] Dynamic dashboard pages
 - [x] Chart widgets (TanStack Charts)
 - [x] Sortable and filterable tables (TanStack Table)
-- [x] Data sources page (admin): add and remove sources (demo warehouse, Postgres, Snowflake, MongoDB)
+- [x] Data sources page (admin): add and remove sources (demo warehouse, Postgres, Snowflake, MongoDB, BigQuery)
 - [ ] Real-time multi-user dashboard collaboration
 - [ ] Light theme
 

@@ -171,6 +171,22 @@ importers:
 
   .: {}
 
+  packages/bigquery-adapter:
+    dependencies:
+      '@dash/core':
+        specifier: workspace:*
+        version: link:../core
+    devDependencies:
+      '@types/node':
+        specifier: ^24.13.6
+        version: 24.13.6
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+      vitest:
+        specifier: ^5.0.1
+        version: 5.0.1(@types/node@24.13.6)(vite@8.3.4(@types/node@24.13.6)(esbuild@0.28.2)(jiti@2.7.0))
+
   packages/core:
     devDependencies:
       typescript:
@@ -242,6 +258,9 @@ importers:
 
   packages/web:
     dependencies:
+      '@dash/adapter-bigquery':
+        specifier: workspace:*
+        version: link:../bigquery-adapter
       '@dash/adapter-mongodb':
         specifier: workspace:*
         version: link:../mongodb-adapter

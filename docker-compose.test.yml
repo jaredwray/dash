@@ -1,6 +1,6 @@
 # Local warehouse clusters for adapter tests.
 # Start with `pnpm test:services:start` and stop with `pnpm test:services:stop`.
-# Each service is one cluster endpoint. Add the next warehouse beside postgres
+# Each service is one cluster endpoint. Add the next warehouse beside these
 # when its adapter lands, and point that package's tests at the published port.
 
 name: dash-test
@@ -72,6 +72,32 @@ services:
       timeout: 5s
       retries: 40
       start_period: 10s
+
+  bigquery:
+    image: ghcr.io/goccy/bigquery-emulator:0.8.1
+    container_name: dash-test-bigquery
+    # In-memory emulator capped like a micro instance: 256 MiB and half a CPU.
+    # The image entrypoint is the emulator binary; replace it so the fixture
+    # view can be created after the YAML seed is loaded.
+    entrypoint: ["bash", "/opt/dash/entrypoint.sh"]
+    ports:
+      - "127.0.0.1:${DASH_TEST_BIGQUERY_PORT:-9059}:9050"
+    volumes:
+      - ./docker/bigquery/seed.yaml:/seed/analytics.yaml:ro
+      - ./docker/bigquery/entrypoint.sh:/opt/dash/entrypoint.sh:ro
+      - ./docker/bigquery/healthcheck.sh:/opt/dash/healthcheck.sh:ro
+    mem_limit: 256m
+    cpus: 0.5
+    # The emulator retains every jobs.query. A 2s probe filled this 256 MiB
+    # cap in about 15 minutes and the process was OOM-killed. Probe quickly
+    # during startup, then every 30s.
+    healthcheck:
+      test: ["CMD", "bash", "/opt/dash/healthcheck.sh", "view"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+      start_interval: 2s
 
 volumes:
   dash-test-postgres:
