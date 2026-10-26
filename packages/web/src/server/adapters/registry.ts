@@ -1,4 +1,5 @@
 import { type ConnectionConfig, type DataAdapter } from "@dash/core";
+import { MongoAdapter } from "@dash/adapter-mongodb";
 import { PostgresAdapter } from "@dash/adapter-postgres";
 import { SnowflakeAdapter } from "@dash/adapter-snowflake";
 import { demoAdapter } from "./demo.ts";
@@ -17,6 +18,8 @@ function createAdapter(config: ConnectionConfig): DataAdapter {
       return SnowflakeAdapter.fromConfig(config);
     case "postgres":
       return PostgresAdapter.fromConfig(config);
+    case "mongodb":
+      return MongoAdapter.fromConfig(config);
   }
 }
 

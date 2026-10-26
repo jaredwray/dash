@@ -24,6 +24,7 @@ case "$action" in
   start)
     "${compose[@]}" up -d --wait --remove-orphans
     echo "PostgreSQL test cluster is ready at postgres://dash:dash@127.0.0.1:${DASH_TEST_POSTGRES_PORT:-54329}/dash"
+    echo "MongoDB test cluster is ready at mongodb://dash:dash@127.0.0.1:${DASH_TEST_MONGODB_PORT:-27029}/dash?authSource=admin"
     ;;
   stop)
     "${compose[@]}" down --volumes --remove-orphans

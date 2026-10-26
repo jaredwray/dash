@@ -71,4 +71,96 @@ describe("data source records", () => {
     });
     expect(created.summary).not.toHaveProperty("password");
   });
+
+  it("summarizes a MongoDB source without the password", async () => {
+    const admin = await createUser({
+      email: "mongo-admin@example.com",
+      name: "Admin",
+      password: "password123",
+      role: "admin",
+    });
+    const created = createDataSource({
+      name: "Events",
+      description: "App events",
+      config: {
+        kind: "mongodb",
+        host: "mongo.internal",
+        port: 27017,
+        database: "events",
+        user: "reader",
+        password: "super-secret",
+        authSource: "admin",
+        tls: true,
+      },
+      createdBy: admin.id,
+    });
+    expect(created.kind).toBe("mongodb");
+    expect(created.summary).toEqual({
+      host: "mongo.internal",
+      port: 27017,
+      database: "events",
+      user: "reader",
+      tls: true,
+    });
+    expect(JSON.stringify(created.summary)).not.toContain("super-secret");
+
+    const fromUri = createDataSource({
+      name: "Events URI",
+      description: "URI",
+      config: {
+        kind: "mongodb",
+        connectionString: "mongodb://reader:super-secret@mongo.internal:27017/events?authSource=admin",
+        tls: true,
+      },
+      createdBy: admin.id,
+    });
+    expect(fromUri.summary).toEqual({
+      host: "(connection string)",
+      database: "events",
+      user: "",
+      tls: true,
+    });
+    expect(JSON.stringify(fromUri.summary)).not.toContain("super-secret");
+
+    const malformed = createDataSource({
+      name: "Events malformed",
+      description: "Malformed URI",
+      config: {
+        kind: "mongodb",
+        connectionString: "mongodb://reader:super/secret@mongo.internal/events",
+      },
+      createdBy: admin.id,
+    });
+    expect(malformed.summary.database).toBe("");
+    expect(JSON.stringify(malformed.summary)).not.toContain("secret");
+
+    const srv = createDataSource({
+      name: "Events SRV",
+      description: "SRV",
+      config: {
+        kind: "mongodb",
+        connectionString: "mongodb+srv://reader:super-secret@cluster.example.net/events",
+      },
+      createdBy: admin.id,
+    });
+    expect(srv.summary).toMatchObject({
+      database: "events",
+      tls: true,
+    });
+    expect(JSON.stringify(srv.summary)).not.toContain("super-secret");
+
+    const replica = createDataSource({
+      name: "Events replica",
+      description: "Replica set",
+      config: {
+        kind: "mongodb",
+        connectionString: "mongodb://reader:super-secret@h1:27017,h2:27017/analytics?replicaSet=rs0",
+        database: "analytics",
+      },
+      createdBy: admin.id,
+    });
+    expect(replica.summary.database).toBe("analytics");
+    expect(replica.summary.tls).toBe(false);
+    expect(JSON.stringify(replica.summary)).not.toContain("super-secret");
+  });
 });

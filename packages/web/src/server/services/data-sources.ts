@@ -1,3 +1,4 @@
+import { mongoUsesTls, parseMongoConnectionString } from "@dash/adapter-mongodb";
 import {
   type ConnectionConfig,
   type DataSourceKind,
@@ -18,6 +19,14 @@ interface DataSourceRow {
   updated_at: string;
 }
 
+function databaseFromMongoUri(uri: string): string {
+  try {
+    return parseMongoConnectionString(uri).database ?? "";
+  } catch {
+    return "";
+  }
+}
+
 function summarize(config: ConnectionConfig): DataSourceRecord["summary"] {
   if (config.kind === "demo") {
     return { warehouse: "built-in sample data" };
@@ -30,6 +39,21 @@ function summarize(config: ConnectionConfig): DataSourceRecord["summary"] {
       schema: config.schema ?? "",
       role: config.role ?? "",
     };
+  }
+  if (config.kind === "mongodb") {
+    const usingUri = Boolean(config.connectionString) && !config.host;
+    const summary: DataSourceRecord["summary"] = {
+      host: config.host ?? (usingUri ? "(connection string)" : ""),
+      database: config.database || (config.connectionString ? databaseFromMongoUri(config.connectionString) : ""),
+      user: config.user ?? "",
+      tls: mongoUsesTls(config),
+    };
+    if (config.port != null) {
+      summary.port = config.port;
+    } else if (!usingUri) {
+      summary.port = 27017;
+    }
+    return summary;
   }
   return {
     host: config.host ?? (config.connectionString ? "(connection string)" : ""),

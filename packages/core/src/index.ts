@@ -41,6 +41,7 @@ export type {
   ConnectionConfig,
   DataSourceRecord,
   DemoConnectionConfig,
+  MongoConnectionConfig,
   PostgresConnectionConfig,
   SnowflakeConnectionConfig,
 } from "./datasource.ts";

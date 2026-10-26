@@ -32,5 +32,47 @@ services:
       retries: 40
       start_period: 10s
 
+  mongodb:
+    image: mongo:7.0
+    container_name: dash-test-mongodb
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: dash
+      MONGO_INITDB_ROOT_PASSWORD: dash
+      MONGO_INITDB_DATABASE: dash
+    ports:
+      - "127.0.0.1:${DASH_TEST_MONGODB_PORT:-27029}:27017"
+    volumes:
+      - dash-test-mongodb:/data/db
+      - ./docker/mongodb/init:/docker-entrypoint-initdb.d:ro
+    # Require the fixture view so --wait means init scripts have finished
+    # and the authenticated server is queryable. mongosh --eval is a classic
+    # script, so a top-level await is a SyntaxError and the probe can never
+    # pass. Await inside an async function, then quit with the result.
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "mongosh",
+          "--quiet",
+          "--host",
+          "127.0.0.1",
+          "--port",
+          "27017",
+          "-u",
+          "dash",
+          "-p",
+          "dash",
+          "--authenticationDatabase",
+          "admin",
+          "dash",
+          "--eval",
+          "(async () => { const revenue = await db.revenue.countDocuments(); const paid = await db.paid_orders.countDocuments(); if (revenue !== 3 || paid !== 3) quit(1); quit(0); })()",
+        ]
+      interval: 2s
+      timeout: 5s
+      retries: 40
+      start_period: 10s
+
 volumes:
   dash-test-postgres:
+  dash-test-mongodb:

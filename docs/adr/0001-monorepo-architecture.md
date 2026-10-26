@@ -13,7 +13,7 @@ Dash needs a single TypeScript codebase for the product UI, REST API, and MCP se
 - Node.js 24 (Active LTS) and PNPM workspaces. Members are declared in the root `pnpm-workspace.yaml` (`packages/*`).
 - `packages/web` is the website (`@dash/web`) — TanStack Start hosts UX, REST routes, and MCP together.
 - `packages/core` (`@dash/core`) holds adapter and domain types only.
-- `packages/postgres-adapter` (`@dash/adapter-postgres`) is the Postgres warehouse adapter. `packages/snowflake-adapter` (`@dash/adapter-snowflake`) is the Snowflake warehouse adapter. Additional adapters are their own packages under `packages/`.
+- `packages/postgres-adapter` (`@dash/adapter-postgres`) is the Postgres warehouse adapter. `packages/snowflake-adapter` (`@dash/adapter-snowflake`) is the Snowflake warehouse adapter. `packages/mongodb-adapter` (`@dash/adapter-mongodb`) is the MongoDB adapter. Additional adapters are their own packages under `packages/`.
 
 ## Consequences
 

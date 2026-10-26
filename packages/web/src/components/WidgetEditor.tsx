@@ -111,7 +111,9 @@ export function WidgetEditor({
               <option value="">Select a table</option>
               {resources.map((item) => (
                 <option key={item.name} value={item.name}>
-                  {item.namespace ? `${item.namespace}.${item.name}` : item.name}
+                  {item.namespace && /^[A-Za-z_][A-Za-z0-9_]*$/.test(item.name)
+                    ? `${item.namespace}.${item.name}`
+                    : item.name}
                 </option>
               ))}
             </Select>
