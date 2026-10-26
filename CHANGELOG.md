@@ -20,6 +20,7 @@ All notable changes to Dash are documented here.
 
 - Security: `seroval` and `seroval-plugins` 1.6.7 → 1.6.11 (CVE-2026-116581, CVE-2026-116584, CVE-2026-116582, CVE-2026-116583). `@tanstack/router-core` and the Start packages still depend on `^1.6.7`, so `pnpm-workspace.yaml` overrides only versions below 1.6.11. No cooldown skip.
 - The data-source form no longer offers Sample warehouse. Postgres, Snowflake, MongoDB, and BigQuery are the kinds an administrator can add.
+- Adding a data source starts with a connection URI. Postgres, Snowflake, and MongoDB take their native URIs. BigQuery takes `bigquery://project/dataset`, with optional `location` and `endpoint` query parameters. Field entry is still available, and a BigQuery service account key is pasted separately.
 - MongoDB queries keep a dotted collection name when that collection exists, and otherwise still accept `database.collection` for the connected database. Connection strings may be replica-set seed lists and cannot turn off TLS verification. The saved summary reports effective TLS, including the `mongodb+srv` default. `neq null` matches values that are present and not null. Integers that do not fit a safe JavaScript number, and non-integer `Decimal128` values, stay strings.
 
 - Postgres adapter connections fail after 10 seconds instead of waiting on the operating system timeout.
