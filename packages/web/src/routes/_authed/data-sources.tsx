@@ -18,7 +18,7 @@ export const Route = createFileRoute("/_authed/data-sources")({
   component: DataSourcesPage,
 });
 
-type SourceKind = "demo" | "postgres" | "snowflake" | "mongodb";
+type SourceKind = "postgres" | "snowflake" | "mongodb";
 
 const emptyForm = {
   name: "",
@@ -68,9 +68,7 @@ function DataSourcesPage() {
   const create = useMutation({
     mutationFn: async () => {
       const config =
-        form.kind === "demo"
-          ? { kind: "demo" as const }
-          : form.kind === "snowflake"
+        form.kind === "snowflake"
             ? form.useConnectionString
               ? {
                   kind: "snowflake" as const,
@@ -171,8 +169,7 @@ function DataSourcesPage() {
           <h1 className="mt-1 text-3xl font-semibold">Data sources</h1>
           <p className="mt-2 max-w-2xl text-sm text-mist">
             Add a warehouse for dashboards and MCP, or remove one that is no longer needed.
-            Postgres, Snowflake, and MongoDB are tested on save. Use Sample warehouse when you do not
-            have a database yet.
+            Postgres, Snowflake, and MongoDB are tested on save.
           </p>
         </div>
         {isAdmin ? (
@@ -190,7 +187,7 @@ function DataSourcesPage() {
         <div className="mt-10 rounded-2xl border border-dashed border-line p-10 text-center">
           <p className="text-paper">No data sources yet.</p>
           <p className="mt-2 text-sm text-mist">
-            Add a sample warehouse, PostgreSQL, Snowflake, or MongoDB connection to start querying.
+            Add a PostgreSQL, Snowflake, or MongoDB connection to start querying.
           </p>
           {isAdmin ? (
             <PrimaryButton className="mt-4" type="button" onClick={openAdd}>
@@ -283,7 +280,6 @@ function DataSourcesPage() {
                 <option value="postgres">PostgreSQL</option>
                 <option value="snowflake">Snowflake</option>
                 <option value="mongodb">MongoDB</option>
-                <option value="demo">Sample warehouse</option>
               </Select>
             </Field>
             {form.kind === "postgres" ? (
@@ -550,22 +546,14 @@ function DataSourcesPage() {
                   Use TLS
                 </label>
               </>
-            ) : (
-              <p className="text-sm text-mist">
-                Sample warehouse uses built-in product analytics. No database required.
-              </p>
-            )}
+            ) : null}
             {error ? <p className="text-sm text-rose-300">{error}</p> : null}
             <div className="flex justify-end gap-2">
               <GhostButton type="button" onClick={() => setOpen(false)}>
                 Cancel
               </GhostButton>
               <PrimaryButton type="submit" disabled={create.isPending || !form.name.trim()}>
-                {create.isPending
-                  ? form.kind === "demo"
-                    ? "Saving…"
-                    : "Testing connection…"
-                  : "Add data source"}
+                {create.isPending ? "Testing connection…" : "Add data source"}
               </PrimaryButton>
             </div>
           </form>

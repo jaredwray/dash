@@ -17,6 +17,7 @@ All notable changes to Dash are documented here.
 
 ### Changed
 
+- The data-source form no longer offers Sample warehouse. Postgres, Snowflake, and MongoDB are the kinds an administrator can add.
 - MongoDB queries keep a dotted collection name when that collection exists, and otherwise still accept `database.collection` for the connected database. Connection strings may be replica-set seed lists and cannot turn off TLS verification. The saved summary reports effective TLS, including the `mongodb+srv` default. `neq null` matches values that are present and not null. Integers that do not fit a safe JavaScript number, and non-integer `Decimal128` values, stay strings.
 
 - Postgres adapter connections fail after 10 seconds instead of waiting on the operating system timeout.
@@ -25,4 +26,4 @@ All notable changes to Dash are documented here.
 - Chart widgets render with TanStack Charts (`@tanstack/charts@1.0.0`) instead of Apache ECharts. Stored `ChartSpec` documents are unchanged. That release is exempt from the 7-day dependency cooldown; the exception is version-scoped in `pnpm-workspace.yaml`.
 - `/` no longer shows a marketing landing page. Signed-in visitors go to dashboards; everyone else goes to sign-in.
 - README requirement is pnpm 12, matching the `package.json` pin (`12.5.1`).
-- Data sources admin page can add any supported source and remove any source, including the sample warehouse.
+- Data sources admin page can add Postgres, Snowflake, or MongoDB, and can remove any source, including a seeded sample warehouse.
