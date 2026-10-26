@@ -49,7 +49,7 @@ describe("BigQuery HTTP client", () => {
       { name: "p0", type: "INT64", value: 4 },
     ]);
     expect(result.rows).toEqual([{ id: 4, note: null, active: true }]);
-    expect(result.fields[0]).toEqual({ name: "id", type: "INTEGER", mode: "REQUIRED" });
+    expect(result.fields[0]).toEqual({ name: "id", type: "INT64", mode: "REQUIRED" });
     expect(fetchImpl).toHaveBeenCalledOnce();
     const init = requestInit(fetchImpl, 0);
     expect(String(fetchImpl.mock.calls[0]?.[0])).toBe(
@@ -127,6 +127,88 @@ describe("BigQuery HTTP client", () => {
     expect(new Headers(queryInit.headers).get("Authorization")).toBe("Bearer ya29.test");
     expect(String(queryInit.body)).not.toContain("PRIVATE KEY");
     expect(String(tokenInit.body)).not.toContain("PRIVATE KEY");
+  });
+
+  it("keeps exact numeric text, converts timestamps, and shortens the server wait", async () => {
+    const fetchImpl = vi.fn<typeof fetch>(async () =>
+      jsonResponse({
+        jobComplete: true,
+        schema: {
+          fields: [
+            { name: "precise", type: "NUMERIC" },
+            { name: "when", type: "TIMESTAMP" },
+            { name: "whole", type: "NUMERIC" },
+          ],
+        },
+        rows: [
+          {
+            f: [
+              { v: "12345678901234567.123456789" },
+              { v: "1.7040672E9" },
+              { v: "10" },
+            ],
+          },
+        ],
+      }),
+    );
+    const client = createBigQueryClient({
+      projectId: "dash",
+      apiEndpoint: "http://127.0.0.1:9059",
+      fetchImpl,
+      env: {},
+    });
+    const result = await client.query("SELECT precise");
+    expect(result.rows[0]).toEqual({
+      precise: "12345678901234567.123456789",
+      when: new Date(1.7040672e9 * 1000).toISOString(),
+      whole: 10,
+    });
+    const body = JSON.parse(String(requestInit(fetchImpl, 0).body)) as { timeoutMs: number };
+    expect(body.timeoutMs).toBe(10_000);
+  });
+
+  it("rejects plaintext Google endpoints and explains a missing credential", async () => {
+    expect(() =>
+      createBigQueryClient({
+        projectId: "dash",
+        apiEndpoint: "http://bigquery.googleapis.com",
+        env: {},
+      }),
+    ).toThrow(/https/);
+    const fetchImpl = vi.fn<typeof fetch>(async () => {
+      throw new TypeError("fetch failed");
+    });
+    const client = createBigQueryClient({
+      projectId: "dash",
+      fetchImpl,
+      env: {},
+    });
+    await expect(client.query("SELECT 1")).rejects.toThrow(/credentials are required/);
+  });
+
+  it("polls until a query job finishes", async () => {
+    const fetchImpl = vi.fn<typeof fetch>(async (url) => {
+      if (String(url).includes("/queries/job-9")) {
+        return jsonResponse({
+          jobComplete: true,
+          schema: { fields: [{ name: "id", type: "INTEGER" }] },
+          rows: [{ f: [{ v: "7" }] }],
+        });
+      }
+      return jsonResponse({
+        jobComplete: false,
+        jobReference: { jobId: "job-9", projectId: "dash" },
+      });
+    });
+    const client = createBigQueryClient({
+      projectId: "dash",
+      apiEndpoint: "http://127.0.0.1:9059",
+      fetchImpl,
+      env: {},
+    });
+    const result = await client.query("SELECT id");
+    expect(result.rows).toEqual([{ id: 7 }]);
+    expect(result.fields[0]?.type).toBe("INT64");
   });
 
   it("follows a query page token", async () => {

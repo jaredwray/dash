@@ -215,5 +215,18 @@ describe("data source records", () => {
       endpoint: "127.0.0.1:9059",
       auth: "anonymous",
     });
+
+    const google = createDataSource({
+      name: "Google BigQuery",
+      description: "ADC",
+      config: {
+        kind: "bigquery",
+        projectId: "dash-prod",
+        apiEndpoint: "https://bigquery.googleapis.com",
+      },
+      createdBy: admin.id,
+    });
+    expect(google.summary.auth).toBe("adc");
+    expect(google.summary.endpoint).toBe("bigquery.googleapis.com");
   });
 });

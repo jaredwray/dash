@@ -1,3 +1,4 @@
+import { bigQueryEndpoint, isGoogleApiHost } from "@dash/adapter-bigquery";
 import { mongoUsesTls, parseMongoConnectionString } from "@dash/adapter-mongodb";
 import {
   type ConnectionConfig,
@@ -42,11 +43,19 @@ function summarize(config: ConnectionConfig): DataSourceRecord["summary"] {
   }
   if (config.kind === "bigquery") {
     let endpoint = "bigquery.googleapis.com";
+    let auth = config.credentials ? "service-account" : "adc";
     if (config.apiEndpoint) {
       try {
-        endpoint = new URL(config.apiEndpoint).host;
+        const url = bigQueryEndpoint(config.apiEndpoint);
+        endpoint = url.host;
+        if (!config.credentials) {
+          auth = isGoogleApiHost(url) ? "adc" : "anonymous";
+        }
       } catch {
         endpoint = "";
+        if (!config.credentials) {
+          auth = "";
+        }
       }
     }
     return {
@@ -54,7 +63,7 @@ function summarize(config: ConnectionConfig): DataSourceRecord["summary"] {
       dataset: config.dataset ?? "",
       location: config.location ?? "",
       endpoint,
-      auth: config.credentials ? "service-account" : config.apiEndpoint ? "anonymous" : "adc",
+      auth,
     };
   }
   if (config.kind === "mongodb") {

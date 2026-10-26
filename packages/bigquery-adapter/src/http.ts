@@ -83,11 +83,14 @@ export function bigQueryEndpoint(value: string | undefined): URL {
   url.pathname = "/";
   url.search = "";
   url.hash = "";
+  if (isGoogleApiHost(url) && url.protocol !== "https:") {
+    throw new Error("BigQuery Google endpoints must use https");
+  }
   return url;
 }
 
 export function isGoogleApiHost(url: URL): boolean {
-  const host = url.hostname.toLowerCase();
+  const host = url.hostname.toLowerCase().replace(/\.$/, "");
   return host === "bigquery.googleapis.com" || host.endsWith(".googleapis.com");
 }
 
@@ -146,11 +149,21 @@ function decodeScalar(type: string, raw: unknown): unknown {
       return Number.isSafeInteger(parsed) ? parsed : text;
     }
     case "FLOAT":
-    case "FLOAT64":
+    case "FLOAT64": {
+      const parsed = Number(text);
+      return Number.isFinite(parsed) ? parsed : text;
+    }
     case "NUMERIC":
     case "BIGNUMERIC": {
       const parsed = Number(text);
-      return Number.isFinite(parsed) ? parsed : text;
+      return Number.isFinite(parsed) && String(parsed) === text ? parsed : text;
+    }
+    case "TIMESTAMP": {
+      const seconds = Number(text);
+      if (!Number.isFinite(seconds)) {
+        return text;
+      }
+      return new Date(seconds * 1000).toISOString();
     }
     case "BOOLEAN":
     case "BOOL":
@@ -158,6 +171,17 @@ function decodeScalar(type: string, raw: unknown): unknown {
     default:
       return text;
   }
+}
+
+const SQL_TYPE: Record<string, string> = {
+  INTEGER: "INT64",
+  FLOAT: "FLOAT64",
+  BOOLEAN: "BOOL",
+  RECORD: "STRUCT",
+};
+
+function sqlType(type: string): string {
+  return SQL_TYPE[type] ?? type;
 }
 
 function decodeValue(field: SchemaField, raw: unknown): unknown {
@@ -200,10 +224,13 @@ function rowsFromResponse(fields: SchemaField[], rows: QueryRow[] | undefined): 
 
 function apiMessage(payload: QueryResponse, status: number): string {
   if (payload.error?.message) {
-    return payload.error.message;
+    return `BigQuery API: ${payload.error.message}`;
   }
   return `BigQuery request failed (${status})`;
 }
+
+const CREDENTIALS_REQUIRED =
+  "BigQuery credentials are required: provide a service account key, GOOGLE_APPLICATION_CREDENTIALS, or run on GCE";
 
 export function createBigQueryClient(config: BigQueryClientConfig): BigQueryClient {
   const origin = bigQueryEndpoint(config.apiEndpoint);
@@ -213,6 +240,7 @@ export function createBigQueryClient(config: BigQueryClientConfig): BigQueryClie
   const readFile = config.readFile ?? ((path: string) => readFileSync(path, "utf8"));
   let closed = false;
   let cachedToken: { value: string; expiresAt: number } | undefined;
+  let pendingToken: Promise<string> | undefined;
 
   function assertOpen(): void {
     if (closed) {
@@ -247,10 +275,7 @@ export function createBigQueryClient(config: BigQueryClientConfig): BigQueryClie
     return { client_email: record.client_email, private_key: record.private_key };
   }
 
-  async function fetchAccessToken(timeoutMs: number): Promise<string> {
-    if (cachedToken && cachedToken.expiresAt > Date.now() + 60_000) {
-      return cachedToken.value;
-    }
+  async function mintAccessToken(timeoutMs: number): Promise<string> {
     const key = credentials();
     if (key) {
       const assertion = signServiceAccountJwt(key.client_email, key.private_key);
@@ -261,9 +286,15 @@ export function createBigQueryClient(config: BigQueryClientConfig): BigQueryClie
           grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
           assertion,
         }),
+        redirect: "error",
         signal: AbortSignal.timeout(timeoutMs),
       });
-      const payload = (await response.json()) as { access_token?: string; expires_in?: number; error_description?: string };
+      let payload: { access_token?: string; expires_in?: number; error_description?: string };
+      try {
+        payload = (await response.json()) as typeof payload;
+      } catch {
+        throw new Error("BigQuery service account token request failed");
+      }
       if (!response.ok || !payload.access_token) {
         throw new Error(payload.error_description || "BigQuery service account token request failed");
       }
@@ -274,19 +305,39 @@ export function createBigQueryClient(config: BigQueryClientConfig): BigQueryClie
       return payload.access_token;
     }
 
-    const response = await fetchImpl(METADATA_TOKEN_URL, {
-      headers: { "Metadata-Flavor": "Google" },
-      signal: AbortSignal.timeout(Math.min(timeoutMs, 1_000)),
-    });
-    const payload = (await response.json()) as { access_token?: string; expires_in?: number };
-    if (!response.ok || !payload.access_token) {
-      throw new Error("BigQuery credentials are required");
+    try {
+      const response = await fetchImpl(METADATA_TOKEN_URL, {
+        headers: { "Metadata-Flavor": "Google" },
+        redirect: "error",
+        signal: AbortSignal.timeout(Math.min(timeoutMs, 1_000)),
+      });
+      const payload = (await response.json()) as { access_token?: string; expires_in?: number };
+      if (!response.ok || !payload.access_token) {
+        throw new Error(CREDENTIALS_REQUIRED);
+      }
+      cachedToken = {
+        value: payload.access_token,
+        expiresAt: Date.now() + (payload.expires_in ?? 3600) * 1000,
+      };
+      return payload.access_token;
+    } catch (error) {
+      if (error instanceof Error && error.message === CREDENTIALS_REQUIRED) {
+        throw error;
+      }
+      throw new Error(CREDENTIALS_REQUIRED);
     }
-    cachedToken = {
-      value: payload.access_token,
-      expiresAt: Date.now() + (payload.expires_in ?? 3600) * 1000,
-    };
-    return payload.access_token;
+  }
+
+  function fetchAccessToken(timeoutMs: number): Promise<string> {
+    if (cachedToken && cachedToken.expiresAt > Date.now() + 60_000) {
+      return Promise.resolve(cachedToken.value);
+    }
+    if (!pendingToken) {
+      pendingToken = mintAccessToken(timeoutMs).finally(() => {
+        pendingToken = undefined;
+      });
+    }
+    return pendingToken;
   }
 
   async function authorization(timeoutMs: number): Promise<string | undefined> {
@@ -304,11 +355,20 @@ export function createBigQueryClient(config: BigQueryClientConfig): BigQueryClie
     if (token) {
       headers.set("Authorization", `Bearer ${token}`);
     }
-    const response = await fetchImpl(url, {
-      ...init,
-      headers,
-      signal: AbortSignal.timeout(timeoutMs),
-    });
+    let response: Response;
+    try {
+      response = await fetchImpl(url, {
+        ...init,
+        headers,
+        redirect: "error",
+        signal: AbortSignal.timeout(timeoutMs),
+      });
+    } catch (error) {
+      if (error instanceof Error && error.name === "TimeoutError") {
+        throw new Error(`BigQuery request timed out after ${timeoutMs} ms`);
+      }
+      throw error;
+    }
     let payload: QueryResponse;
     try {
       payload = (await response.json()) as QueryResponse;
@@ -321,7 +381,15 @@ export function createBigQueryClient(config: BigQueryClientConfig): BigQueryClie
     return payload;
   }
 
-  async function collectRows(initial: QueryResponse, timeoutMs: number): Promise<BigQueryQueryResult> {
+  function remaining(deadline: number): number {
+    const left = deadline - Date.now();
+    if (left <= 0) {
+      throw new Error("BigQuery query did not finish within the time limit");
+    }
+    return left;
+  }
+
+  async function collectRows(initial: QueryResponse, deadline: number): Promise<BigQueryQueryResult> {
     let current = initial;
     for (let attempt = 0; attempt < 30 && current.jobComplete === false; attempt += 1) {
       const jobId = current.jobReference?.jobId;
@@ -332,16 +400,17 @@ export function createBigQueryClient(config: BigQueryClientConfig): BigQueryClie
         `/bigquery/v2/projects/${encodeURIComponent(config.projectId)}/queries/${encodeURIComponent(jobId)}`,
         origin,
       );
-      url.searchParams.set("timeoutMs", String(Math.min(timeoutMs, 10_000)));
+      const waitMs = Math.min(remaining(deadline), 10_000);
+      url.searchParams.set("timeoutMs", String(waitMs));
       url.searchParams.set("maxResults", "10000");
       const location = current.jobReference?.location ?? config.location;
       if (location) {
         url.searchParams.set("location", location);
       }
-      current = await requestJson(url, { method: "GET" }, timeoutMs);
+      current = await requestJson(url, { method: "GET" }, waitMs);
     }
     if (current.jobComplete === false) {
-      throw new Error("BigQuery query did not finish");
+      throw new Error("BigQuery query did not finish within the time limit");
     }
 
     const fields = current.schema?.fields ?? [];
@@ -359,7 +428,7 @@ export function createBigQueryClient(config: BigQueryClientConfig): BigQueryClie
       if (location) {
         url.searchParams.set("location", location);
       }
-      const next = await requestJson(url, { method: "GET" }, timeoutMs);
+      const next = await requestJson(url, { method: "GET" }, remaining(deadline));
       rows.push(...(next.rows ?? []));
       pageToken = next.pageToken;
       current = next;
@@ -371,7 +440,7 @@ export function createBigQueryClient(config: BigQueryClientConfig): BigQueryClie
       )
       .map((field) => ({
         name: field.name,
-        type: field.type,
+        type: sqlType(field.type),
         ...(field.mode ? { mode: field.mode } : {}),
       }));
     return {
@@ -386,10 +455,12 @@ export function createBigQueryClient(config: BigQueryClientConfig): BigQueryClie
         `/bigquery/v2/projects/${encodeURIComponent(config.projectId)}/queries`,
         origin,
       );
+      const deadline = Date.now() + timeoutMs;
+      const serverWait = Math.min(10_000, Math.max(1_000, timeoutMs - 2_000));
       const body: Record<string, unknown> = {
         query: text,
         useLegacySql: false,
-        timeoutMs,
+        timeoutMs: serverWait,
         maxResults: 10_000,
       };
       if (config.location) {
@@ -413,9 +484,9 @@ export function createBigQueryClient(config: BigQueryClientConfig): BigQueryClie
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(body),
         },
-        timeoutMs,
+        remaining(deadline),
       );
-      return collectRows(payload, timeoutMs);
+      return collectRows(payload, deadline);
     },
     async listDatasets() {
       const ids: string[] = [];
@@ -437,12 +508,18 @@ export function createBigQueryClient(config: BigQueryClientConfig): BigQueryClie
           }
         }
         pageToken = payload.nextPageToken;
-      } while (pageToken && ids.length < MAX_DATASETS);
-      return ids.slice(0, MAX_DATASETS);
+        if (pageToken && ids.length >= MAX_DATASETS) {
+          throw new Error(
+            `BigQuery project has more than ${MAX_DATASETS} datasets; set a default dataset`,
+          );
+        }
+      } while (pageToken);
+      return ids;
     },
     async end() {
       closed = true;
       cachedToken = undefined;
+      pendingToken = undefined;
     },
   };
 }

@@ -177,6 +177,8 @@ describe("BigQueryAdapter against the test cluster", () => {
 
     const orders = schema.resources.find((resource) => resource.name === "orders");
     expect(orders).toMatchObject({ namespace: "analytics", kind: "table" });
+    // The emulator's INFORMATION_SCHEMA reports every column as nullable,
+    // including columns seeded REQUIRED. A fake client covers is_nullable NO.
     expect(orders?.columns).toEqual([
       { name: "id", type: "INT64", nullable: true },
       { name: "total", type: "INT64", nullable: true },
@@ -211,7 +213,7 @@ describe("BigQueryAdapter against the test cluster", () => {
     ]);
     expect(result.columns).toEqual([
       { name: "month", type: "STRING", nullable: true },
-      { name: "amount", type: "INTEGER", nullable: true },
+      { name: "amount", type: "INT64", nullable: true },
     ]);
   });
 

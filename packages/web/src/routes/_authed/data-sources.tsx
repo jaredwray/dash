@@ -584,7 +584,7 @@ function DataSourcesPage() {
                   Use TLS
                 </label>
               </>
-            ) : (
+            ) : form.kind === "bigquery" ? (
               <>
                 <Field label="Project ID">
                   <TextInput
@@ -627,7 +627,7 @@ function DataSourcesPage() {
                   />
                 </Field>
               </>
-            )}
+            ) : null}
             {error ? <p className="text-sm text-rose-300">{error}</p> : null}
             <div className="flex justify-end gap-2">
               <GhostButton type="button" onClick={() => setOpen(false)}>
