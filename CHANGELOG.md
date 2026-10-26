@@ -17,6 +17,8 @@ All notable changes to Dash are documented here.
 
 ### Changed
 
+- MongoDB queries keep a dotted collection name when that collection exists, and otherwise still accept `database.collection` for the connected database. Connection strings may be replica-set seed lists and cannot turn off TLS verification. The saved summary reports effective TLS, including the `mongodb+srv` default. `neq null` matches values that are present and not null. Integers that do not fit a safe JavaScript number, and non-integer `Decimal128` values, stay strings.
+
 - Postgres adapter connections fail after 10 seconds instead of waiting on the operating system timeout.
 - `@dash/web` moved from `core/` to `packages/web`. `@dash/adapter-postgres` moved from `data-adapters/postgres` to `packages/postgres-adapter`. The root `pnpm-workspace.yaml` lists `packages/*`. A database left at `core/data/dash.sqlite` is moved to the web package data directory on startup when the default `DASH_DATABASE_PATH` is still in use.
 - Security: `@tanstack/react-start` 1.168.56 → 1.168.61 (with aligned `@tanstack/react-router` 1.170.42 and `@tanstack/start-server-core` 1.169.40), `zod` 4.6.5 → 4.6.6, and `source-map-js` 1.2.1 → 1.2.2.

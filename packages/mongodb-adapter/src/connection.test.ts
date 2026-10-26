@@ -1,6 +1,6 @@
-import { ObjectId } from "mongodb";
+import { Decimal128, Double, Int32, Long, ObjectId } from "mongodb";
 import { describe, expect, it } from "vitest";
-import { resolveMongoTarget, scrubSecrets, toPlain } from "./adapter.ts";
+import { mongoUsesTls, resolveMongoTarget, scrubSecrets, toPlain } from "./adapter.ts";
 
 describe("resolveMongoTarget", () => {
   it("keeps discrete credentials out of the URI", () => {
@@ -65,6 +65,53 @@ describe("resolveMongoTarget", () => {
         connectionString: "mongodb://127.0.0.1:27029",
       }),
     ).toThrow(/database/i);
+
+    const replica = resolveMongoTarget({
+      kind: "mongodb",
+      connectionString: "mongodb://dash:s3cret@h1:27017,h2:27017/analytics?replicaSet=rs0",
+    });
+    expect(replica.database).toBe("analytics");
+    expect(replica.uri).toContain("h1:27017,h2:27017");
+
+    const fromField = resolveMongoTarget({
+      kind: "mongodb",
+      connectionString: "mongodb+srv://dash:s3cret@cluster.example.net/?retryWrites=true&w=majority",
+      database: "analytics",
+    });
+    expect(fromField.database).toBe("analytics");
+    expect(
+      mongoUsesTls({
+        kind: "mongodb",
+        connectionString: "mongodb+srv://dash:s3cret@cluster.example.net/?retryWrites=true&w=majority",
+      }),
+    ).toBe(true);
+
+    expect(() =>
+      resolveMongoTarget({
+        kind: "mongodb",
+        connectionString:
+          "mongodb://dash:s3cret@127.0.0.1:27029/events?tlsAllowInvalidCertificates=true",
+      }),
+    ).toThrow(/TLS verification/i);
+    expect(() =>
+      resolveMongoTarget({
+        kind: "mongodb",
+        connectionString: "mongodb://localhost/bad%",
+      }),
+    ).toThrow(/database name is invalid/i);
+    expect(
+      mongoUsesTls({
+        kind: "mongodb",
+        connectionString: "mongodb://dash:s3cret@127.0.0.1:27029/events?tls=true",
+      }),
+    ).toBe(true);
+    expect(
+      mongoUsesTls({
+        kind: "mongodb",
+        connectionString: "mongodb://dash:s3cret@127.0.0.1:27029/events",
+        tls: true,
+      }),
+    ).toBe(true);
   });
 });
 
@@ -97,5 +144,15 @@ describe("toPlain", () => {
     expect(plain.when).toBe("2026-01-02T03:04:05.000Z");
     expect(plain.nested.amount).toBe(10);
     expect(plain.tags).toEqual(["656e6f5f6e6f5f6e6f5f6e6f"]);
+  });
+
+  it("keeps integers that do not fit in a safe number, and decimal scale", () => {
+    expect(toPlain(Long.fromString("9007199254740993"))).toBe("9007199254740993");
+    expect(toPlain(Long.fromString("10"))).toBe(10);
+    expect(toPlain(new Int32(7))).toBe(7);
+    expect(toPlain(new Double(1.5))).toBe(1.5);
+    expect(toPlain(Decimal128.fromString("9007199254740993.5"))).toBe("9007199254740993.5");
+    expect(toPlain(Decimal128.fromString("10.50"))).toBe("10.50");
+    expect(toPlain(Decimal128.fromString("10"))).toBe(10);
   });
 });

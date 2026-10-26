@@ -1,3 +1,4 @@
+import { mongoUsesTls, parseMongoConnectionString } from "@dash/adapter-mongodb";
 import {
   type ConnectionConfig,
   type DataSourceKind,
@@ -19,17 +20,11 @@ interface DataSourceRow {
 }
 
 function databaseFromMongoUri(uri: string): string {
-  const match = /^mongodb(?:\+srv)?:\/\/[^/?#]*\/([^/?#]+)/i.exec(uri);
-  if (!match?.[1]) {
-    return "";
-  }
-  let name = match[1];
   try {
-    name = decodeURIComponent(name);
+    return parseMongoConnectionString(uri).database ?? "";
   } catch {
     return "";
   }
-  return /^[A-Za-z0-9_-]{1,64}$/.test(name) ? name : "";
 }
 
 function summarize(config: ConnectionConfig): DataSourceRecord["summary"] {
@@ -51,7 +46,7 @@ function summarize(config: ConnectionConfig): DataSourceRecord["summary"] {
       host: config.host ?? (usingUri ? "(connection string)" : ""),
       database: config.database || (config.connectionString ? databaseFromMongoUri(config.connectionString) : ""),
       user: config.user ?? "",
-      tls: Boolean(config.tls),
+      tls: mongoUsesTls(config),
     };
     if (config.port != null) {
       summary.port = config.port;

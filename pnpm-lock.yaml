@@ -186,6 +186,9 @@ importers:
       mongodb:
         specifier: 7.7.0
         version: 7.7.0
+      mongodb-connection-string-url:
+        specifier: 7.0.2
+        version: 7.0.2
     devDependencies:
       '@types/node':
         specifier: ^24.13.6
@@ -279,6 +282,9 @@ importers:
       mongodb:
         specifier: 7.7.0
         version: 7.7.0
+      mongodb-connection-string-url:
+        specifier: 7.0.2
+        version: 7.0.2
       pg:
         specifier: ^8.16.3
         version: 8.23.0

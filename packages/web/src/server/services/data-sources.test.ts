@@ -133,5 +133,34 @@ describe("data source records", () => {
     });
     expect(malformed.summary.database).toBe("");
     expect(JSON.stringify(malformed.summary)).not.toContain("secret");
+
+    const srv = createDataSource({
+      name: "Events SRV",
+      description: "SRV",
+      config: {
+        kind: "mongodb",
+        connectionString: "mongodb+srv://reader:super-secret@cluster.example.net/events",
+      },
+      createdBy: admin.id,
+    });
+    expect(srv.summary).toMatchObject({
+      database: "events",
+      tls: true,
+    });
+    expect(JSON.stringify(srv.summary)).not.toContain("super-secret");
+
+    const replica = createDataSource({
+      name: "Events replica",
+      description: "Replica set",
+      config: {
+        kind: "mongodb",
+        connectionString: "mongodb://reader:super-secret@h1:27017,h2:27017/analytics?replicaSet=rs0",
+        database: "analytics",
+      },
+      createdBy: admin.id,
+    });
+    expect(replica.summary.database).toBe("analytics");
+    expect(replica.summary.tls).toBe(false);
+    expect(JSON.stringify(replica.summary)).not.toContain("super-secret");
   });
 });

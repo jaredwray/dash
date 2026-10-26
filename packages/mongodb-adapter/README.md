@@ -2,7 +2,7 @@
 
 MongoDB adapter for Dash. Implements `DataAdapter` from `@dash/core`.
 
-Structured queries compile to a `find` command. Collection and field names are validated identifiers passed as document keys. Filter values are BSON scalars — objects are rejected so a client cannot inject operators such as `$gt` or `$where`. `like` and `ilike` become anchored, escaped patterns, not raw regular expressions. Discrete user and password fields are passed as driver auth options and are not interpolated into the connection URI.
+Structured queries compile to a `find` command. Field names are validated identifiers passed as document keys. A resource is the collection name. `database.collection` also selects that collection when both parts are identifiers and the database is the connected one, unless a collection with the full dotted name exists. Filter values are BSON scalars — objects are rejected so a client cannot inject operators such as `$gt` or `$where`. `like` and `ilike` become anchored, escaped patterns, not raw regular expressions. Discrete user and password fields are passed as driver auth options and are not interpolated into the connection URI. Connection strings may list replica-set hosts. `tlsAllowInvalidCertificates`, `tlsAllowInvalidHostnames`, and `tlsInsecure` are rejected.
 
 Schema introspection lists up to 200 collections and samples up to 50 documents in each. MongoDB has no declared column list, so nullability reflects that sample. Field names that fail the structured-query identifier rules are omitted.
 

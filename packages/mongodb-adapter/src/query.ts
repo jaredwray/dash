@@ -4,8 +4,8 @@ import {
   type AdapterQuery,
   QueryValidationError,
   normalizeAdapterQuery,
-  splitResourceName,
 } from "@dash/core";
+import { ObjectId } from "mongodb";
 
 export interface CompiledFind {
   collection: string;
@@ -19,7 +19,21 @@ export interface CompiledFind {
 const MAX_STRING = 10_000;
 const MAX_IN = 100;
 const MAX_LIKE = 200;
+const MAX_COLLECTION_BYTES = 255;
 const BANNED_KEYS = new Set(["__proto__", "constructor", "prototype"]);
+const IDENTIFIER = /^[A-Za-z_][A-Za-z0-9_]*$/;
+const OBJECT_ID_HEX = /^[a-f0-9]{24}$/i;
+const ISO_INSTANT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
+
+export interface CompileFindOptions {
+  /** Column types from introspection, keyed by collection name then field name. */
+  columnTypes?: ReadonlyMap<string, ReadonlyMap<string, string>>;
+  /**
+   * The resource string is itself a collection in this database.
+   * Do not treat `database.collection` as a qualifier in that case.
+   */
+  literalCollectionExists?: boolean;
+}
 
 function emptyRecord(): Record<string, unknown> {
   return Object.create(null) as Record<string, unknown>;
@@ -91,9 +105,21 @@ function explicitNull(column: string): Record<string, unknown> {
   return clause;
 }
 
-function notEqual(column: string, value: string | number | boolean | null): Record<string, unknown> {
+/** Present and not null. The inverse of `explicitNull`, which does not match a missing field. */
+function notEqualNull(column: string): Record<string, unknown> {
+  const exists = emptyRecord();
+  exists.$exists = true;
+  const clause = emptyRecord();
+  clause.$and = [fieldClause(column, comparison("$ne", null)), fieldClause(column, exists)];
+  return clause;
+}
+
+function notEqual(
+  column: string,
+  value: string | number | boolean | null | ObjectId | Date,
+): Record<string, unknown> {
   if (value === null) {
-    return matchNothing();
+    return notEqualNull(column);
   }
   const exists = emptyRecord();
   exists.$exists = true;
@@ -137,20 +163,47 @@ function likeToRegex(pattern: string, ignoreCase: boolean): Record<string, unkno
   return clause;
 }
 
-function compileFilter(filter: AdapterFilter): Record<string, unknown> {
+function coerceScalar(
+  column: string,
+  value: string | number | boolean | null,
+  types: ReadonlyMap<string, string> | undefined,
+): string | number | boolean | null | ObjectId | Date {
+  if (typeof value !== "string") {
+    return value;
+  }
+  const type = types?.get(column);
+  if ((column === "_id" || type === "objectid") && OBJECT_ID_HEX.test(value)) {
+    return new ObjectId(value);
+  }
+  if (type === "date" && ISO_INSTANT.test(value)) {
+    const date = new Date(value);
+    if (!Number.isNaN(date.getTime()) && date.toISOString() === value) {
+      return date;
+    }
+  }
+  return value;
+}
+
+function compileFilter(
+  filter: AdapterFilter,
+  types: ReadonlyMap<string, string> | undefined,
+): Record<string, unknown> {
   assertSafeKey(filter.column);
   switch (filter.op) {
     case "eq": {
-      const value = assertScalar(filter.value, "filter value");
+      const value = coerceScalar(filter.column, assertScalar(filter.value, "filter value"), types);
       return value === null ? explicitNull(filter.column) : fieldClause(filter.column, value);
     }
     case "neq":
-      return notEqual(filter.column, assertScalar(filter.value, "filter value"));
+      return notEqual(
+        filter.column,
+        coerceScalar(filter.column, assertScalar(filter.value, "filter value"), types),
+      );
     case "gt":
     case "gte":
     case "lt":
     case "lte": {
-      const value = assertScalar(filter.value, "filter value");
+      const value = coerceScalar(filter.column, assertScalar(filter.value, "filter value"), types);
       if (value === null) {
         return matchNothing();
       }
@@ -167,7 +220,9 @@ function compileFilter(filter: AdapterFilter): Record<string, unknown> {
           `Filter operator \`in\` accepts at most ${MAX_IN} values`,
         );
       }
-      const values = filter.value.map((entry) => assertScalar(entry, "filter value"));
+      const values = filter.value.map((entry) =>
+        coerceScalar(filter.column, assertScalar(entry, "filter value"), types),
+      );
       const nonNull = values.filter((entry) => entry !== null);
       const clauses: Record<string, unknown>[] = [];
       if (nonNull.length > 0) {
@@ -226,24 +281,81 @@ function compileSort(
   return sort;
 }
 
+function assertCollectionLiteral(name: string): string {
+  if (
+    name.length === 0 ||
+    Buffer.byteLength(name) > MAX_COLLECTION_BYTES ||
+    name.includes("\0") ||
+    name.includes("$") ||
+    name.startsWith("system.")
+  ) {
+    throw new QueryValidationError(`Invalid resource name: ${name}`);
+  }
+  return name;
+}
+
+/**
+ * A resource is the collection name. `database.collection` is also accepted
+ * when both parts are identifiers and the database is the one this client is
+ * connected to. Any other string, including a dotted name that is not that
+ * qualifier, is the collection name itself.
+ */
+export function resolveCollection(
+  resource: string,
+  databaseName: string,
+  literalCollectionExists = false,
+): string {
+  if (typeof resource !== "string") {
+    throw new QueryValidationError("Invalid resource name");
+  }
+  if (literalCollectionExists) {
+    return assertCollectionLiteral(resource);
+  }
+  const dot = resource.indexOf(".");
+  if (dot > 0 && resource.indexOf(".", dot + 1) === -1) {
+    const namespace = resource.slice(0, dot);
+    const name = resource.slice(dot + 1);
+    if (namespace === databaseName && IDENTIFIER.test(namespace) && IDENTIFIER.test(name)) {
+      return name;
+    }
+  }
+  return assertCollectionLiteral(resource);
+}
+
+/** Collections introspection can hand to the widget and query again unchanged. */
+export function isListedCollection(name: string): boolean {
+  return (
+    name.length > 0 &&
+    Buffer.byteLength(name) <= MAX_COLLECTION_BYTES &&
+    !name.startsWith("system.") &&
+    !name.includes("\0") &&
+    !name.includes("$")
+  );
+}
+
 /**
  * Compiles a structured query into a find command.
- * Collection and field names are validated identifiers passed as document keys.
+ * Field names are validated identifiers passed as document keys.
  * Filter values are scalars (or arrays of scalars for `in`) passed as BSON
  * values — objects are rejected so a client cannot inject query operators.
  * `like` / `ilike` patterns are escaped and anchored; they are not raw regular expressions.
  */
-export function compileFind(input: AdapterQuery, databaseName: string): CompiledFind {
-  const query = normalizeAdapterQuery(input);
-  const resource = splitResourceName(query.resource);
-  if (resource.namespace && resource.namespace !== databaseName) {
-    throw new QueryValidationError(
-      `Resource database "${resource.namespace}" does not match the connected database "${databaseName}"`,
-    );
-  }
-  assertSafeKey(resource.name);
+export function compileFind(
+  input: AdapterQuery,
+  databaseName: string,
+  options?: CompileFindOptions,
+): CompiledFind {
+  const collection = resolveCollection(
+    input.resource,
+    databaseName,
+    options?.literalCollectionExists,
+  );
+  // Resource names MongoDB accepts are wider than the SQL qualifier grammar.
+  // Validate filters, columns, and limits against a placeholder name.
+  const query = normalizeAdapterQuery({ ...input, resource: "collection" });
+  const types = options?.columnTypes?.get(collection);
 
-  const filters = (query.filters ?? []).map((filter) => compileFilter(filter));
+  const filters = (query.filters ?? []).map((filter) => compileFilter(filter, types));
   let filter = emptyRecord();
   if (filters.length === 1) {
     filter = filters[0]!;
@@ -254,7 +366,7 @@ export function compileFind(input: AdapterQuery, databaseName: string): Compiled
   const limit = query.limit ?? 1000;
   const skip = query.offset ?? 0;
   return {
-    collection: resource.name,
+    collection,
     filter,
     projection: compileProjection(query.columns),
     sort: compileSort(query.orderBy),
@@ -262,8 +374,6 @@ export function compileFind(input: AdapterQuery, databaseName: string): Compiled
     skip,
   };
 }
-
-const IDENTIFIER = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
 function valueType(value: unknown): string {
   if (value instanceof Date) {

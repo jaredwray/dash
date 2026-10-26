@@ -1,6 +1,7 @@
 import { QueryValidationError } from "@dash/core";
+import { ObjectId } from "mongodb";
 import { describe, expect, it } from "vitest";
-import { compileFind, inferColumns } from "./query.ts";
+import { compileFind, inferColumns, isListedCollection } from "./query.ts";
 
 describe("compileFind", () => {
   it("builds a find command from scalars and validated names", () => {
@@ -70,12 +71,60 @@ describe("compileFind", () => {
       "dash",
     );
     expect(notEqualNull.filter.$and).toEqual([
-      { _id: { $exists: true } },
-      { _id: { $exists: false } },
+      { note: { $ne: null } },
+      { note: { $exists: true } },
     ]);
   });
 
-  it("rejects operator objects, bad names, and a different database", () => {
+  it("keeps a dotted collection name unless it is exactly the connected database qualifier", () => {
+    expect(compileFind({ resource: "orders" }, "dash").collection).toBe("orders");
+    expect(compileFind({ resource: "dash.orders" }, "dash").collection).toBe("orders");
+    expect(compileFind({ resource: "other.orders" }, "dash").collection).toBe("other.orders");
+    expect(compileFind({ resource: "user-events" }, "dash").collection).toBe("user-events");
+    expect(compileFind({ resource: "logs.events" }, "logs").collection).toBe("events");
+    expect(compileFind({ resource: "logs.events.raw" }, "logs").collection).toBe("logs.events.raw");
+    expect(
+      compileFind({ resource: "logs.events" }, "logs", { literalCollectionExists: true }).collection,
+    ).toBe("logs.events");
+    expect(isListedCollection("orders")).toBe(true);
+    expect(isListedCollection("user-events")).toBe(true);
+    expect(isListedCollection("logs.events")).toBe(true);
+    expect(isListedCollection("system.users")).toBe(false);
+    expect(isListedCollection("bad$name")).toBe(false);
+  });
+
+  it("compares object ids and known date fields as BSON", () => {
+    const types = new Map([
+      [
+        "orders",
+        new Map([
+          ["when", "date"],
+          ["ref", "objectid"],
+        ]),
+      ],
+    ]);
+    const compiled = compileFind(
+      {
+        resource: "orders",
+        filters: [
+          { column: "_id", op: "eq", value: "656e6f5f6e6f5f6e6f5f6e6f" },
+          { column: "ref", op: "eq", value: "656e6f5f6e6f5f6e6f5f6e6f" },
+          { column: "when", op: "eq", value: "2026-01-02T03:04:05.000Z" },
+          { column: "note", op: "eq", value: "2026-01-02T03:04:05.000Z" },
+        ],
+      },
+      "dash",
+      { columnTypes: types },
+    );
+    const clauses = compiled.filter.$and as Array<Record<string, unknown>>;
+    expect(clauses[0]?._id).toBeInstanceOf(ObjectId);
+    expect((clauses[0]?._id as ObjectId).toHexString()).toBe("656e6f5f6e6f5f6e6f5f6e6f");
+    expect(clauses[1]?.ref).toBeInstanceOf(ObjectId);
+    expect(clauses[2]?.when).toBeInstanceOf(Date);
+    expect(clauses[3]).toEqual({ note: "2026-01-02T03:04:05.000Z" });
+  });
+
+  it("rejects operator objects, bad names, and system collections", () => {
     expect(() =>
       compileFind(
         {
@@ -85,14 +134,15 @@ describe("compileFind", () => {
         "dash",
       ),
     ).toThrow(QueryValidationError);
-    expect(() => compileFind({ resource: "orders;drop" }, "dash")).toThrow(QueryValidationError);
+    expect(compileFind({ resource: "orders;drop" }, "dash").collection).toBe("orders;drop");
     expect(() =>
       compileFind(
         { resource: "orders", filters: [{ column: "__proto__", op: "eq", value: 1 }] },
         "dash",
       ),
     ).toThrow(QueryValidationError);
-    expect(() => compileFind({ resource: "other.orders" }, "dash")).toThrow(/connected database/);
+    expect(() => compileFind({ resource: "system.users" }, "dash")).toThrow(QueryValidationError);
+    expect(() => compileFind({ resource: "bad$name" }, "dash")).toThrow(QueryValidationError);
     expect(() =>
       compileFind(
         { resource: "orders", filters: [{ column: "id", op: "in", value: [] }] },

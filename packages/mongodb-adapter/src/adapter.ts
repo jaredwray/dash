@@ -7,6 +7,7 @@ import {
   type MongoConnectionConfig,
   QueryValidationError,
 } from "@dash/core";
+import { ConnectionString } from "mongodb-connection-string-url";
 import {
   MongoClient,
   type Document,
@@ -14,7 +15,7 @@ import {
   type MongoClientOptions,
   type Sort,
 } from "mongodb";
-import { compileFind, inferColumns } from "./query.ts";
+import { compileFind, inferColumns, isListedCollection, resolveCollection } from "./query.ts";
 
 const SAMPLE_DOCUMENTS = 50;
 const MAX_COLLECTIONS = 200;
@@ -55,30 +56,100 @@ function assertCredential(value: string, label: string): string {
   return value;
 }
 
-export function parseMongoConnectionString(connectionString: string): { database?: string } {
+const INSECURE_TLS =
+  /^(?:tls|ssl)(?:insecure|allowinvalidcertificates|allowinvalidhostnames)$/i;
+
+interface ParsedMongoUri {
+  database?: string;
+  /** Set when the URI has `tls` or `ssl`. Undefined leaves the driver default. */
+  tls?: boolean;
+  srv: boolean;
+  password?: string;
+}
+
+function readMongoUri(connectionString: string): ParsedMongoUri {
   if (
     !/^mongodb(?:\+srv)?:\/\/\S+$/i.test(connectionString) ||
     connectionString.length > 2048
   ) {
     throw new Error("MongoDB connection string must use the mongodb:// or mongodb+srv:// scheme");
   }
-  const normalized = connectionString
-    .replace(/^mongodb\+srv:\/\//i, "https://")
-    .replace(/^mongodb:\/\//i, "http://");
-  let url: URL;
+  let url: ConnectionString;
   try {
-    url = new URL(normalized);
+    url = new ConnectionString(connectionString);
   } catch {
     throw new Error("Invalid MongoDB connection string");
   }
-  const database = decodeURIComponent(url.pathname.replace(/^\//, ""));
-  if (!database) {
-    return {};
+  for (const key of url.searchParams.keys()) {
+    if (INSECURE_TLS.test(key)) {
+      throw new Error("MongoDB connection string cannot disable TLS verification");
+    }
   }
-  if (database.includes("/")) {
-    throw new Error("MongoDB database name is invalid");
+  const tlsValues: boolean[] = [];
+  for (const [key, raw] of url.searchParams.entries()) {
+    if (!/^(?:tls|ssl)$/i.test(key)) {
+      continue;
+    }
+    if (raw !== "true" && raw !== "false") {
+      throw new Error("Invalid MongoDB connection string");
+    }
+    tlsValues.push(raw === "true");
   }
-  return { database: assertDatabase(database) };
+  if (tlsValues.some((value) => value !== tlsValues[0])) {
+    throw new Error("Invalid MongoDB connection string");
+  }
+  let database: string | undefined;
+  const pathname = url.pathname.replace(/^\//, "");
+  if (pathname) {
+    let decoded: string;
+    try {
+      decoded = decodeURIComponent(pathname);
+    } catch {
+      throw new Error("MongoDB database name is invalid");
+    }
+    if (decoded.includes("/")) {
+      throw new Error("MongoDB database name is invalid");
+    }
+    database = assertDatabase(decoded);
+  }
+  let password = url.password;
+  if (password) {
+    try {
+      password = decodeURIComponent(password);
+    } catch {
+      // Keep the password text the parser returned.
+    }
+  }
+  return {
+    database,
+    tls: tlsValues.length > 0 ? tlsValues[0] : undefined,
+    srv: url.isSRV,
+    password: password || undefined,
+  };
+}
+
+export function parseMongoConnectionString(connectionString: string): { database?: string } {
+  const parsed = readMongoUri(connectionString);
+  return parsed.database ? { database: parsed.database } : {};
+}
+
+/** TLS the driver will use. `mongodb+srv` defaults to TLS when the URI does not say. */
+export function mongoUsesTls(config: MongoConnectionConfig): boolean {
+  if (config.connectionString && !config.host) {
+    try {
+      const parsed = readMongoUri(config.connectionString);
+      if (parsed.tls !== undefined) {
+        return parsed.tls;
+      }
+      if (config.tls) {
+        return true;
+      }
+      return parsed.srv;
+    } catch {
+      return Boolean(config.tls);
+    }
+  }
+  return Boolean(config.tls);
 }
 
 function secretsFrom(config: MongoConnectionConfig): string[] {
@@ -89,11 +160,8 @@ function secretsFrom(config: MongoConnectionConfig): string[] {
     return secrets;
   }
   try {
-    const normalized = config.connectionString
-      .replace(/^mongodb\+srv:\/\//i, "https://")
-      .replace(/^mongodb:\/\//i, "http://");
-    const password = decodeURIComponent(new URL(normalized).password);
-    if (password.length >= 3) {
+    const password = readMongoUri(config.connectionString).password;
+    if (password && password.length >= 3) {
       secrets.push(password);
     }
   } catch {
@@ -113,12 +181,14 @@ export function resolveMongoTarget(config: MongoConnectionConfig): MongoTarget {
     connectTimeoutMS: 10_000,
     appName: "dash",
   };
-  if (config.tls) {
-    options.tls = true;
-  }
-
   if (config.connectionString) {
-    const parsed = parseMongoConnectionString(config.connectionString);
+    const parsed = readMongoUri(config.connectionString);
+    if (config.tls && parsed.tls === false) {
+      throw new Error("MongoDB TLS settings disagree");
+    }
+    if (config.tls && parsed.tls === undefined) {
+      options.tls = true;
+    }
     const database = config.database ? assertDatabase(config.database) : parsed.database;
     if (!database) {
       throw new Error("MongoDB database name is required");
@@ -127,6 +197,10 @@ export function resolveMongoTarget(config: MongoConnectionConfig): MongoTarget {
       options.authSource = assertDatabase(config.authSource);
     }
     return { uri: config.connectionString, database, options };
+  }
+
+  if (config.tls) {
+    options.tls = true;
   }
 
   if (!config.host) {
@@ -204,16 +278,23 @@ export function toPlain(value: unknown): unknown {
         return hex.call(value);
       }
     }
-    if (
-      kind === "Decimal128" ||
-      kind === "Long" ||
-      kind === "Int32" ||
-      kind === "Double" ||
-      kind === "Timestamp"
-    ) {
+    if (kind === "Double") {
       const rendered = typeof text === "function" ? text.call(value) : String(value);
       const numeric = Number(rendered);
       return Number.isFinite(numeric) ? numeric : rendered;
+    }
+    if (kind === "Decimal128" || kind === "Long" || kind === "Int32" || kind === "Timestamp") {
+      const rendered = typeof text === "function" ? text.call(value) : String(value);
+      if (kind === "Decimal128" && !/^-?\d+$/.test(rendered)) {
+        return rendered;
+      }
+      if (/^-?\d+$/.test(rendered)) {
+        const numeric = Number(rendered);
+        if (Number.isSafeInteger(numeric) && String(numeric) === rendered) {
+          return numeric;
+        }
+      }
+      return rendered;
     }
     if (typeof kind === "string" && kind !== "Object" && typeof text === "function") {
       const rendered = text.call(value);
@@ -253,6 +334,7 @@ export class MongoAdapter implements DataAdapter {
   #client: MongoClient;
   #database: string;
   #secrets: readonly string[];
+  #columnTypes = new Map<string, Map<string, string>>();
 
   constructor(client: MongoClient, database: string, secrets: readonly string[] = []) {
     this.#client = client;
@@ -291,7 +373,7 @@ export class MongoAdapter implements DataAdapter {
       const database = this.#client.db(this.#database);
       const listed = await database.listCollections({}, { nameOnly: false }).toArray();
       const selected = listed
-        .filter((entry) => !entry.name.startsWith("system."))
+        .filter((entry) => isListedCollection(entry.name))
         .sort((left, right) => left.name.localeCompare(right.name))
         .slice(0, MAX_COLLECTIONS);
       const resources: AdapterSchema["resources"] = [];
@@ -300,11 +382,16 @@ export class MongoAdapter implements DataAdapter {
           .collection(entry.name)
           .find({}, { limit: SAMPLE_DOCUMENTS })
           .toArray();
+        const columns = inferColumns(documents as Record<string, unknown>[]);
+        this.#columnTypes.set(
+          entry.name,
+          new Map(columns.map((column) => [column.name, column.type])),
+        );
         resources.push({
           name: entry.name,
           namespace: this.#database,
           kind: entry.type === "view" ? "view" : "collection",
-          columns: inferColumns(documents as Record<string, unknown>[]),
+          columns,
         });
       }
       return { kind: "mongodb", resources };
@@ -314,10 +401,23 @@ export class MongoAdapter implements DataAdapter {
   }
 
   async query(input: AdapterQuery): Promise<AdapterQueryResult> {
-    const compiled = compileFind(input, this.#database);
     try {
-      const documents = await this.#client
-        .db(this.#database)
+      const database = this.#client.db(this.#database);
+      let literalCollectionExists = false;
+      const stripped = resolveCollection(input.resource, this.#database);
+      if (stripped !== input.resource) {
+        const cursor = database.listCollections({ name: input.resource }, { nameOnly: true });
+        try {
+          literalCollectionExists = await cursor.hasNext();
+        } finally {
+          await cursor.close();
+        }
+      }
+      const compiled = compileFind(input, this.#database, {
+        columnTypes: this.#columnTypes,
+        literalCollectionExists,
+      });
+      const documents = await database
         .collection(compiled.collection)
         .find(compiled.filter as Filter<Document>, {
           projection: compiled.projection,

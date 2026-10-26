@@ -91,6 +91,7 @@ function DataSourcesPage() {
                 ? {
                     kind: "mongodb" as const,
                     connectionString: form.connectionString,
+                    database: form.database.trim() || undefined,
                     tls: form.tls,
                   }
                 : {
@@ -465,16 +466,27 @@ function DataSourcesPage() {
                   Use a connection string
                 </label>
                 {form.useConnectionString ? (
-                  <Field label="Connection string">
-                    <TextInput
-                      value={form.connectionString}
-                      onChange={(event) =>
-                        setForm({ ...form, connectionString: event.target.value })
-                      }
-                      placeholder="mongodb://user:pass@host:27017/analytics?authSource=admin"
-                      required
-                    />
-                  </Field>
+                  <>
+                    <Field label="Connection string">
+                      <TextInput
+                        value={form.connectionString}
+                        onChange={(event) =>
+                          setForm({ ...form, connectionString: event.target.value })
+                        }
+                        placeholder="mongodb://user:pass@host:27017/analytics?authSource=admin"
+                        required
+                      />
+                    </Field>
+                    <Field label="Database">
+                      <TextInput
+                        value={form.database}
+                        onChange={(event) =>
+                          setForm({ ...form, database: event.target.value })
+                        }
+                        placeholder="Required when the URI has no database"
+                      />
+                    </Field>
+                  </>
                 ) : (
                   <>
                     <div className="grid grid-cols-3 gap-3">

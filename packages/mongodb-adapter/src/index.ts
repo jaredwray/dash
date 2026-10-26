@@ -1,6 +1,7 @@
 export {
   MongoAdapter,
   createMongoAdapter,
+  mongoUsesTls,
   parseMongoConnectionString,
   resolveMongoTarget,
   scrubSecrets,
