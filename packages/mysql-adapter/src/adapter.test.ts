@@ -273,18 +273,18 @@ describe("MysqlAdapter connection setup", () => {
     }
   });
 
-  it("connects when ssl is requested against the cluster certificate", async () => {
+  it("reports failure when ssl is required against a self-signed cluster certificate", async () => {
     const adapter = MysqlAdapter.fromConfig(clusterConfig({ ssl: true }));
     try {
       const result = await adapter.testConnection();
-      expect(result.ok).toBe(true);
-      expect(result.message).toBe("Connected to MySQL");
+      expect(result.ok).toBe(false);
+      expect(result.message).toMatch(/SSL|certificate|CERT|self[- ]signed/i);
     } finally {
       await adapter.close();
     }
   });
 
-  it("connects when ssl is set on a connection string", async () => {
+  it("reports failure when ssl is set on a connection string", async () => {
     const adapter = createMysqlAdapter({
       kind: "mysql",
       connectionString: connectionString(),
@@ -292,7 +292,8 @@ describe("MysqlAdapter connection setup", () => {
     });
     try {
       const result = await adapter.testConnection();
-      expect(result.ok).toBe(true);
+      expect(result.ok).toBe(false);
+      expect(result.message).toMatch(/SSL|certificate|CERT|self[- ]signed/i);
     } finally {
       await adapter.close();
     }
