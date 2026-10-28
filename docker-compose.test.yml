@@ -58,7 +58,7 @@ services:
       test:
         [
           "CMD-SHELL",
-          "mysql --protocol=TCP --host=127.0.0.1 --user=dash --password=dash --database=dash --batch --execute='SELECT 1 FROM paid_orders LIMIT 1'",
+          "mysql --protocol=TCP --host=127.0.0.1 --user=$$MYSQL_USER --password=$$MYSQL_PASSWORD --database=$$MYSQL_DATABASE --batch --execute='SELECT 1 FROM paid_orders LIMIT 1'",
         ]
       interval: 3s
       timeout: 5s

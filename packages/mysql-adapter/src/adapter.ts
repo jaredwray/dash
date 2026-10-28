@@ -100,11 +100,7 @@ function usesSsl(config: MysqlConnectionConfig, parsed?: ParsedMysqlUri): boolea
   return Boolean(config.ssl || parsed?.ssl);
 }
 
-type MysqlPoolOptions = Omit<PoolOptions, "ssl"> & {
-  ssl?: true | PoolOptions["ssl"];
-};
-
-function toPoolConfig(config: MysqlConnectionConfig): MysqlPoolOptions {
+function toPoolConfig(config: MysqlConnectionConfig): PoolOptions {
   const parsed = config.connectionString
     ? parseMysqlConnectionString(config.connectionString)
     : undefined;
@@ -120,19 +116,10 @@ function toPoolConfig(config: MysqlConnectionConfig): MysqlPoolOptions {
     dateStrings: true,
     supportBigNumbers: true,
     flags: ["-LOCAL_FILES"],
-    ssl: usesSsl(config, parsed) ? true : undefined,
+    ssl: usesSsl(config, parsed)
+      ? { minVersion: "TLSv1.2", verifyIdentity: true }
+      : undefined,
   };
-}
-
-function createMysqlPool(options: MysqlPoolOptions): Pool {
-  const { ssl, ...rest } = options;
-  return createPool({
-    ...rest,
-    ssl:
-      ssl === true
-        ? { minVersion: "TLSv1.2", verifyIdentity: true }
-        : ssl,
-  });
 }
 
 function wrapPool(pool: Pool): SqlClient {
@@ -161,7 +148,7 @@ export class MysqlAdapter implements DataAdapter {
   }
 
   static fromConfig(config: MysqlConnectionConfig): MysqlAdapter {
-    return new MysqlAdapter(wrapPool(createMysqlPool(toPoolConfig(config))));
+    return new MysqlAdapter(wrapPool(createPool(toPoolConfig(config))));
   }
 
   async testConnection(): Promise<ConnectionTestResult> {
