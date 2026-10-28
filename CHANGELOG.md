@@ -4,8 +4,13 @@ All notable changes to Dash are documented here.
 
 ## Unreleased
 
+### Fixed
+
+- Databricks SQL sends integers outside the 32-bit range as `BIGINT`, keeps `DECIMAL` values and integers that do not fit a safe JavaScript number as strings, and inlines `LIMIT` and `OFFSET`. Query pages request one extra row so an exact page is not marked truncated. External result links are refused even when some rows arrived inline, repeated chunks are rejected, and closing the client or timing out cancels the warehouse statement. `http` is allowed only for loopback. Introspection normalizes DuckDB and Spark type names, skips unnamed columns, and stops after 10,000 columns unless a schema is set. The test cluster receives `DASH_TEST_DATABRICKS_TOKEN`, `DASH_TEST_DATABRICKS_WAREHOUSE`, `DASH_TEST_DATABRICKS_CATALOG`, and `DASH_TEST_DATABRICKS_SCHEMA`.
+
 ### Added
 
+- `@dash/adapter-databricks` (`packages/databricks-adapter`) implementing `DataAdapter`. Structured queries compile to parameterized Databricks SQL (`:p0` binds) over the Statement Execution API. The local test cluster is the `databricks` service in `docker-compose.test.yml`, a 512 MiB in-memory DuckDB warehouse behind that API.
 - `@dash/adapter-bigquery` (`packages/bigquery-adapter`) implementing `DataAdapter`. Structured queries compile to parameterized GoogleSQL. The local test cluster is the `bigquery` service in `docker-compose.test.yml`, a 256 MiB in-memory emulator.
 - `@dash/adapter-mongodb` (`packages/mongodb-adapter`) implementing `DataAdapter`. Structured queries compile to a MongoDB `find` with validated field names and scalar BSON values. The local test cluster is the `mongodb` service in `docker-compose.test.yml`.
 - Local Docker Compose clusters for adapter tests, started with `pnpm test:services:start` and stopped with `pnpm test:services:stop`. Postgres, MongoDB, and BigQuery adapter tests run against those clusters.

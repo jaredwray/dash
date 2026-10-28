@@ -12,6 +12,19 @@ describe("testConnectionConfig", () => {
     expect(result.message).toMatch(/project/i);
   });
 
+  it("reports an invalid Databricks SQL host as a failed connection test", async () => {
+    const result = await testConnectionConfig({
+      kind: "databricks",
+      host: "not a host",
+      httpPath: "/sql/1.0/warehouses/dash",
+      token: "dash",
+      catalog: "dash",
+    });
+    expect(result.ok).toBe(false);
+    expect(result.latencyMs).toBe(0);
+    expect(result.message).toMatch(/host/i);
+  });
+
   it("reports an invalid MongoDB host as a failed connection test", async () => {
     const result = await testConnectionConfig({
       kind: "mongodb",

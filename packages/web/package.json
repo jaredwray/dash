@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@dash/adapter-bigquery": "workspace:*",
+    "@dash/adapter-databricks": "workspace:*",
     "@dash/adapter-mongodb": "workspace:*",
     "@dash/adapter-postgres": "workspace:*",
     "@dash/adapter-snowflake": "workspace:*",

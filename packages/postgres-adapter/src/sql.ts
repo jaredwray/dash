@@ -17,6 +17,9 @@ function quoteIdent(name: string): string {
 
 function qualifyResource(resource: string): string {
   const parts = splitResourceName(resource);
+  if (parts.catalog) {
+    throw new QueryValidationError("PostgreSQL resource must be schema.table");
+  }
   return parts.namespace
     ? `${quoteIdent(parts.namespace)}.${quoteIdent(parts.name)}`
     : quoteIdent(parts.name);

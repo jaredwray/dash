@@ -41,6 +41,7 @@ export type {
   ConnectionConfig,
   DataSourceRecord,
   BigQueryConnectionConfig,
+  DatabricksConnectionConfig,
   DemoConnectionConfig,
   MongoConnectionConfig,
   PostgresConnectionConfig,

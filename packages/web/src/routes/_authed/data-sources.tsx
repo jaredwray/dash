@@ -42,13 +42,15 @@ export const Route = createFileRoute("/_authed/data-sources")({
   component: DataSourcesPage,
 });
 
-type SourceKind = "postgres" | "snowflake" | "mongodb" | "bigquery";
+type SourceKind = "postgres" | "snowflake" | "mongodb" | "bigquery" | "databricks";
 
 const URI_PLACEHOLDER: Record<SourceKind, string> = {
   postgres: "postgres://user:password@localhost:5432/analytics",
   snowflake: "snowflake://user:password@account/database/schema?warehouse=COMPUTE_WH",
   mongodb: "mongodb://user:password@host:27017/analytics?authSource=admin",
   bigquery: "bigquery://project/dataset?location=US&endpoint=http://127.0.0.1:9059",
+  databricks:
+    "databricks://token:dapi000@adb-000.0.azuredatabricks.net/sql/1.0/warehouses/abc?catalog=main&schema=default",
 };
 
 function ConnectionUriField({
@@ -117,6 +119,9 @@ const emptyForm = {
   location: "",
   apiEndpoint: "",
   serviceAccountJson: "",
+  httpPath: "",
+  token: "",
+  catalog: "",
 };
 
 function DataSourcesPage() {
@@ -194,7 +199,22 @@ function DataSourcesPage() {
                     authSource: form.user ? form.authSource || "admin" : undefined,
                     tls: form.tls,
                   }
-              : form.useConnectionString
+              : form.kind === "databricks"
+                ? form.useConnectionString
+                  ? {
+                      kind: "databricks" as const,
+                      connectionString: form.connectionString.trim(),
+                    }
+                  : {
+                      kind: "databricks" as const,
+                      host: form.host.trim(),
+                      httpPath: form.httpPath.trim(),
+                      token: form.token,
+                      catalog: form.catalog.trim(),
+                      schema: form.schema.trim() || undefined,
+                      apiEndpoint: form.apiEndpoint.trim() || undefined,
+                    }
+                : form.useConnectionString
               ? {
                   kind: "postgres" as const,
                   connectionString: form.connectionString.trim(),
@@ -261,8 +281,8 @@ function DataSourcesPage() {
           <h1 className="mt-1 text-3xl font-semibold">Data sources</h1>
           <p className="mt-2 max-w-2xl text-sm text-mist">
             Add a warehouse for dashboards and MCP, or remove one that is no longer needed.
-            Paste a connection URI, or enter the fields. Postgres, Snowflake, MongoDB, and
-            BigQuery are tested on save.
+            Paste a connection URI, or enter the fields. Postgres, Snowflake, MongoDB,
+            BigQuery, and Databricks SQL are tested on save.
           </p>
         </div>
         {isAdmin ? (
@@ -280,7 +300,7 @@ function DataSourcesPage() {
         <div className="mt-10 rounded-2xl border border-dashed border-line p-10 text-center">
           <p className="text-paper">No data sources yet.</p>
           <p className="mt-2 text-sm text-mist">
-            Add a PostgreSQL, Snowflake, MongoDB, or BigQuery connection to start querying.
+            Add a PostgreSQL, Snowflake, MongoDB, BigQuery, or Databricks SQL connection to start querying.
           </p>
           {isAdmin ? (
             <PrimaryButton className="mt-4" type="button" onClick={openAdd}>
@@ -359,12 +379,22 @@ function DataSourcesPage() {
                 value={form.kind}
                 onChange={(event) => {
                   const kind = event.target.value as SourceKind;
+                  const enteringDatabricks = kind === "databricks" && form.kind !== "databricks";
                   setForm({
                     ...form,
                     kind,
                     port: kind === "mongodb" ? "27017" : kind === "postgres" ? "5432" : form.port,
                     user: kind === "postgres" ? "postgres" : form.user === "postgres" ? "" : form.user,
-                    schema: kind === "snowflake" ? form.schema || "PUBLIC" : form.schema,
+                    schema:
+                      kind === "snowflake"
+                        ? form.schema || "PUBLIC"
+                        : enteringDatabricks
+                          ? form.schema === "public" || form.schema === "PUBLIC" || !form.schema
+                            ? "default"
+                            : form.schema
+                          : form.schema,
+                    host: enteringDatabricks && form.host.trim() === "localhost" ? "" : form.host,
+                    apiEndpoint: kind === form.kind ? form.apiEndpoint : "",
                     authSource: form.authSource || "admin",
                     useConnectionString: true,
                   });
@@ -374,6 +404,7 @@ function DataSourcesPage() {
                 <option value="snowflake">Snowflake</option>
                 <option value="mongodb">MongoDB</option>
                 <option value="bigquery">Google BigQuery</option>
+                <option value="databricks">Databricks SQL</option>
               </Select>
             </Field>
             {form.kind === "postgres" ? (
@@ -666,6 +697,79 @@ function DataSourcesPage() {
                     placeholder="Optional. Leave empty for the emulator or Application Default Credentials."
                   />
                 </Field>
+              </>
+            ) : form.kind === "databricks" ? (
+              <>
+                {form.useConnectionString ? (
+                  <ConnectionUriField
+                    kind="databricks"
+                    value={form.connectionString}
+                    onChange={(connectionString) => setForm({ ...form, connectionString })}
+                  />
+                ) : (
+                  <>
+                    <Field label="Host">
+                      <TextInput
+                        value={form.host}
+                        onChange={(event) => setForm({ ...form, host: event.target.value })}
+                        placeholder="adb-000.0.azuredatabricks.net"
+                        required
+                      />
+                    </Field>
+                    <Field label="HTTP path">
+                      <TextInput
+                        value={form.httpPath}
+                        onChange={(event) => setForm({ ...form, httpPath: event.target.value })}
+                        placeholder="/sql/1.0/warehouses/abc"
+                        required
+                        spellCheck={false}
+                        autoComplete="off"
+                        className="font-mono"
+                      />
+                    </Field>
+                    <div className="grid grid-cols-2 gap-3">
+                      <Field label="Catalog">
+                        <TextInput
+                          value={form.catalog}
+                          onChange={(event) => setForm({ ...form, catalog: event.target.value })}
+                          placeholder="main"
+                          required
+                        />
+                      </Field>
+                      <Field label="Schema">
+                        <TextInput
+                          value={form.schema}
+                          onChange={(event) => setForm({ ...form, schema: event.target.value })}
+                          placeholder="default, or analytics on the local cluster"
+                        />
+                      </Field>
+                    </div>
+                    <Field label="API endpoint">
+                      <TextInput
+                        value={form.apiEndpoint}
+                        onChange={(event) => setForm({ ...form, apiEndpoint: event.target.value })}
+                        placeholder="http://127.0.0.1:14439"
+                      />
+                      <p className="text-xs text-mist">
+                        Leave this empty for a Databricks workspace. For the local cluster, set the host to
+                        127.0.0.1 and the schema to analytics.
+                      </p>
+                    </Field>
+                    <Field label="Access token">
+                      <TextInput
+                        type="password"
+                        value={form.token}
+                        onChange={(event) => setForm({ ...form, token: event.target.value })}
+                        required
+                        autoComplete="off"
+                      />
+                    </Field>
+                  </>
+                )}
+                <ConnectionModeToggle
+                  usingUri={form.useConnectionString}
+                  onChange={(useConnectionString) => setForm({ ...form, useConnectionString })}
+                />
               </>
             ) : null}
             {error ? <p className="text-sm text-rose-300">{error}</p> : null}

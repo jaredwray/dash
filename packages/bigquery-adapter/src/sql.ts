@@ -60,6 +60,9 @@ function quoteIdent(name: string): string {
 function qualifyResource(resource: string, context: BigQuerySqlContext): string {
   const projectId = assertProjectId(context.projectId);
   const parts = splitResourceName(resource);
+  if (parts.catalog) {
+    throw new QueryValidationError("BigQuery resource must be dataset.table");
+  }
   const dataset = parts.namespace ?? context.dataset;
   if (!dataset) {
     throw new QueryValidationError(

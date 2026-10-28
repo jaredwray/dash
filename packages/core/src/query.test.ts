@@ -8,11 +8,17 @@ describe("splitResourceName", () => {
       name: "orders",
     });
     expect(splitResourceName("orders")).toEqual({ name: "orders" });
+    expect(splitResourceName("main.analytics.orders")).toEqual({
+      catalog: "main",
+      namespace: "analytics",
+      name: "orders",
+    });
+    expect(splitResourceName("order-items")).toEqual({ name: "order-items" });
   });
 
   it("rejects unsafe identifiers", () => {
     expect(() => splitResourceName("orders;drop")).toThrow(QueryValidationError);
-    expect(() => splitResourceName("a.b.c")).toThrow(QueryValidationError);
+    expect(() => splitResourceName("a.b.c.d")).toThrow(QueryValidationError);
   });
 });
 
