@@ -12,7 +12,27 @@ export interface CompiledSql {
 }
 
 function quoteIdent(name: string): string {
-  return "`" + name.replaceAll("`", "") + "`";
+  // Identifiers cannot be bound as parameters. Reject invalid names at the SQL
+  // boundary instead of removing characters and silently changing the name.
+  if (
+    typeof name !== "string" ||
+    !/^[A-Za-z_]/.test(name) ||
+    /[^A-Za-z0-9_]/.test(name)
+  ) {
+    throw new QueryValidationError("Invalid MySQL identifier");
+  }
+  return "`" + name + "`";
+}
+
+function compileDirection(direction: string): string {
+  switch (direction) {
+    case "asc":
+      return "ASC";
+    case "desc":
+      return "DESC";
+    default:
+      throw new QueryValidationError("Invalid MySQL order direction");
+  }
 }
 
 function qualifyResource(resource: string): string {
@@ -76,7 +96,7 @@ export function compileSelect(input: AdapterQuery): CompiledSql {
   const order =
     query.orderBy && query.orderBy.length > 0
       ? ` ORDER BY ${query.orderBy
-          .map((entry) => `${quoteIdent(entry.column)} ${entry.direction.toUpperCase()}`)
+          .map((entry) => `${quoteIdent(entry.column)} ${compileDirection(entry.direction)}`)
           .join(", ")}`
       : "";
   values.push(query.limit);

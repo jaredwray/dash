@@ -20,6 +20,7 @@ All notable changes to Dash are documented here.
 ### Changed
 
 - MySQL executes queries with server-side prepared statements, keeping filter values and pagination parameters separate from SQL text.
+- MySQL validates identifiers again at the SQL construction boundary and emits only fixed `ASC`/`DESC` sort keywords. Invalid names are rejected rather than cleaned; bound filter values retain their original text.
 - Security: `seroval` and `seroval-plugins` 1.6.7 → 1.6.11 (CVE-2026-116581, CVE-2026-116584, CVE-2026-116582, CVE-2026-116583). `@tanstack/router-core` and the Start packages still depend on `^1.6.7`, so `pnpm-workspace.yaml` overrides only versions below 1.6.11. No cooldown skip.
 - The data-source form no longer offers Sample warehouse. Postgres, MySQL, Snowflake, MongoDB, and BigQuery are the kinds an administrator can add.
 - Adding a data source starts with a connection URI. Postgres, MySQL, Snowflake, and MongoDB take their native URIs. BigQuery takes `bigquery://project/dataset`, with optional `location` and `endpoint` query parameters. Field entry is still available, and a BigQuery service account key is pasted separately.

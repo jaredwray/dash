@@ -3,6 +3,29 @@ import { describe, expect, it } from "vitest";
 import { compileSelect } from "./sql.ts";
 
 describe("compileSelect", () => {
+  it.each(["id`", "id; SELECT 1", "id--", "id/*comment*/", "id\u0000", "id\n"])(
+    "rejects invalid identifiers without cleaning them: %j",
+    (column) => {
+      for (const input of [
+        { columns: [column] },
+        { filters: [{ column, op: "eq" as const, value: "paid" }] },
+        { orderBy: [{ column, direction: "asc" as const }] },
+      ]) {
+        expect(() => compileSelect({ resource: "orders", ...input })).toThrow(QueryValidationError);
+      }
+    },
+  );
+
+  it("preserves legitimate punctuation in bound filter values", () => {
+    const value = "O'Reilly; -- \\ books";
+    const compiled = compileSelect({
+      resource: "orders",
+      filters: [{ column: "note", op: "eq", value }],
+    });
+    expect(compiled.text).toBe("SELECT * FROM `orders` WHERE `note` = ? LIMIT ? OFFSET ?");
+    expect(compiled.values).toEqual([value, 1000, 0]);
+  });
+
   it.each<Partial<AdapterQuery>>([
     { resource: "orders` WHERE 1=1 --" },
     { columns: ["id`, SLEEP(1) --"] },
