@@ -124,7 +124,8 @@ function toPoolConfig(config: MysqlConnectionConfig): PoolOptions {
 function wrapPool(pool: Pool): SqlClient {
   return {
     async query(text, values) {
-      const [rows, fields] = await pool.query<RowDataPacket[]>(text, values);
+      // Bind values on the server rather than interpolating them with client-side escaping.
+      const [rows, fields] = await pool.execute<RowDataPacket[]>(text, values);
       return {
         rows: rows as Record<string, unknown>[],
         fields: Array.isArray(fields)

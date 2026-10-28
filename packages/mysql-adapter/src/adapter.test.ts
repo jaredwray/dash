@@ -221,6 +221,17 @@ describe("MysqlAdapter against the test cluster", () => {
     expect(exact.truncated).toBe(true);
   });
 
+  it("treats SQL injection payloads as literal filter values", async () => {
+    for (const value of ["paid' OR 1=1 -- ", "paid\\' OR 1=1 -- "]) {
+      const result = await adapter.query({
+        resource: "orders",
+        columns: ["id"],
+        filters: [{ column: "status", op: "eq", value }],
+      });
+      expect(result.rows).toEqual([]);
+    }
+  });
+
   it("returns column metadata when the cluster sends no rows", async () => {
     const result = await adapter.query({
       resource: "orders",

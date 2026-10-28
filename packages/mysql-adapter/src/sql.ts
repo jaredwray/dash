@@ -81,6 +81,8 @@ export function compileSelect(input: AdapterQuery): CompiledSql {
       : "";
   values.push(query.limit);
   values.push(query.offset);
+  // SQL structure comes only from validated identifiers and fixed operators;
+  // all input values remain separate binds for the driver's prepared statement.
   const text = `SELECT ${projection} FROM ${from}${where}${order} LIMIT ? OFFSET ?`;
   return { text, values };
 }

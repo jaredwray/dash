@@ -1,8 +1,35 @@
-import { QueryValidationError } from "@dash/core";
+import { type AdapterQuery, QueryValidationError } from "@dash/core";
 import { describe, expect, it } from "vitest";
 import { compileSelect } from "./sql.ts";
 
 describe("compileSelect", () => {
+  it.each<Partial<AdapterQuery>>([
+    { resource: "orders` WHERE 1=1 --" },
+    { columns: ["id`, SLEEP(1) --"] },
+    { filters: [{ column: "status` OR 1=1 --", op: "eq", value: "paid" }] },
+    { orderBy: [{ column: "id` --", direction: "asc" }] },
+    { orderBy: [{ column: "id", direction: "desc; SELECT SLEEP(1)" as "desc" }] },
+    { limit: "1; DROP TABLE orders" as unknown as number },
+    { offset: "0 OR 1=1" as unknown as number },
+  ])("rejects SQL syntax in structural input: %j", (input) => {
+    expect(() => compileSelect({ resource: "orders", ...input })).toThrow(QueryValidationError);
+  });
+
+  it("keeps injection payloads out of SQL text, including IN values", () => {
+    const payload = "paid' OR 1=1; -- ";
+    const compiled = compileSelect({
+      resource: "orders",
+      filters: [
+        { column: "status", op: "eq", value: payload },
+        { column: "status", op: "in", value: [payload, "open"] },
+      ],
+    });
+    expect(compiled.text).toBe(
+      "SELECT * FROM `orders` WHERE `status` = ? AND `status` IN (?, ?) LIMIT ? OFFSET ?",
+    );
+    expect(compiled.values).toEqual([payload, payload, "open", 1000, 0]);
+  });
+
   it("parameterizes filters, limit, and offset", () => {
     const compiled = compileSelect({
       resource: "public.orders",
