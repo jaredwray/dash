@@ -5,6 +5,7 @@ import {
   type ConnectionTestResult,
   type DataAdapter,
   type MysqlConnectionConfig,
+  QueryValidationError,
 } from "@dash/core";
 import { createPool, type Pool, type PoolOptions, type RowDataPacket } from "mysql2/promise";
 import { INTROSPECT_SQL, compileSelect } from "./sql.ts";
@@ -125,7 +126,21 @@ function wrapPool(pool: Pool): SqlClient {
   return {
     async query(text, values) {
       // Bind values on the server rather than interpolating them with client-side escaping.
-      const [rows, fields] = await pool.execute<RowDataPacket[]>(text, values);
+      const binds = (values ?? []).map((value) => {
+        if (
+          value === null ||
+          typeof value === "string" ||
+          typeof value === "boolean" ||
+          typeof value === "bigint" ||
+          (typeof value === "number" && Number.isFinite(value)) ||
+          value instanceof Date ||
+          value instanceof Uint8Array
+        ) {
+          return value;
+        }
+        throw new QueryValidationError("MySQL filter values must be scalar values, dates, or binary data");
+      });
+      const [rows, fields] = await pool.execute<RowDataPacket[]>(text, binds);
       return {
         rows: rows as Record<string, unknown>[],
         fields: Array.isArray(fields)

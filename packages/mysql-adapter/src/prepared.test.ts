@@ -1,4 +1,5 @@
-import { expect, it, vi } from "vitest";
+import { beforeEach, expect, it, vi } from "vitest";
+import { QueryValidationError } from "@dash/core";
 import { MysqlAdapter } from "./adapter.ts";
 
 const pool = vi.hoisted(() => ({
@@ -8,6 +9,24 @@ const pool = vi.hoisted(() => ({
 }));
 
 vi.mock("mysql2/promise", () => ({ createPool: () => pool }));
+
+beforeEach(() => vi.clearAllMocks());
+
+it.each([undefined, {}, ["paid"], Number.NaN, Number.POSITIVE_INFINITY])(
+  "rejects unsupported bind values before executing SQL: %j",
+  async (value) => {
+    const adapter = MysqlAdapter.fromConfig({ kind: "mysql", host: "localhost" });
+    try {
+      await expect(adapter.query({
+        resource: "orders",
+        filters: [{ column: "status", op: "eq", value }],
+      })).rejects.toThrow(QueryValidationError);
+      expect(pool.execute).not.toHaveBeenCalled();
+    } finally {
+      await adapter.close();
+    }
+  },
+);
 
 it("sends untrusted values separately through server-side prepared statements", async () => {
   const adapter = MysqlAdapter.fromConfig({ kind: "mysql", host: "localhost" });
