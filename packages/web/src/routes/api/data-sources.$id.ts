@@ -26,6 +26,16 @@ const patchSchema = z.object({
         ssl: z.boolean().optional(),
       }),
       z.object({
+        kind: z.literal("mysql"),
+        connectionString: z.string().optional(),
+        host: z.string().optional(),
+        port: z.number().int().optional(),
+        database: z.string().optional(),
+        user: z.string().optional(),
+        password: z.string().optional(),
+        ssl: z.boolean().optional(),
+      }),
+      z.object({
         kind: z.literal("snowflake"),
         connectionString: z.string().optional(),
         account: z.string().optional(),

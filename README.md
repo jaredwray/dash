@@ -63,6 +63,7 @@ The same product-revenue chart, drawn in the session after a Dash MCP query agai
 packages/web/                @dash/web              UX + REST API + MCP (TanStack Start)
 packages/core/               @dash/core             Shared types and adapter interfaces
 packages/postgres-adapter/   @dash/adapter-postgres
+packages/mysql-adapter/      @dash/adapter-mysql
 packages/snowflake-adapter/  @dash/adapter-snowflake
 packages/mongodb-adapter/    @dash/adapter-mongodb
 packages/bigquery-adapter/   @dash/adapter-bigquery
@@ -100,7 +101,7 @@ Keep this list in sync as PRs land. Checked items are in the tree today.
 - [x] Data adapter interface (`DataAdapter`)
 - [x] Postgres adapter (`@dash/adapter-postgres`)
 - [x] Local Docker Compose clusters for adapter tests (`pnpm test:services:start` / `test:services:stop`)
-- [ ] MySQL adapter
+- [x] MySQL adapter (`@dash/adapter-mysql`)
 - [x] MongoDB adapter (`@dash/adapter-mongodb`)
 - [x] Google BigQuery adapter (`@dash/adapter-bigquery`)
 - [x] Snowflake adapter (`@dash/adapter-snowflake`)
@@ -116,7 +117,7 @@ Keep this list in sync as PRs land. Checked items are in the tree today.
 - [x] Dynamic dashboard pages
 - [x] Chart widgets (TanStack Charts)
 - [x] Sortable and filterable tables (TanStack Table)
-- [x] Data sources page (admin): add and remove sources (demo warehouse, Postgres, Snowflake, MongoDB, BigQuery, Databricks SQL)
+- [x] Data sources page (admin): add and remove sources (demo warehouse, Postgres, MySQL, Snowflake, MongoDB, BigQuery, Databricks SQL)
 - [ ] Real-time multi-user dashboard collaboration
 - [ ] Light theme
 
@@ -162,13 +163,13 @@ Issue a token with the `mcp` scope, then point a client at `/mcp`. Tools include
 | `pnpm dev` | Start `@dash/web` |
 | `pnpm test:services:start` | Start warehouse clusters (Docker Compose) |
 | `pnpm test:services:stop` | Stop clusters and delete their data |
-| `pnpm test` | Run package tests. Postgres, MongoDB, BigQuery, and Databricks SQL adapter tests use the clusters |
+| `pnpm test` | Run package tests. Postgres, MySQL, MongoDB, BigQuery, and Databricks SQL adapter tests use the clusters |
 | `pnpm typecheck` | TypeScript across workspaces |
 | `pnpm build` | Production build |
 
 ## Adapter test clusters
 
-Postgres, MongoDB, BigQuery, and Databricks SQL adapter tests run against the Compose cluster. Add the next local engine beside them in `docker-compose.test.yml` when that adapter can run here.
+Postgres, MySQL, MongoDB, BigQuery, and Databricks SQL adapter tests run against the Compose cluster. Add the next local engine beside them in `docker-compose.test.yml` when that adapter can run here.
 
 ```bash
 pnpm test:services:start
@@ -178,18 +179,18 @@ pnpm test:services:stop
 
 `test:services:start` waits until each cluster is healthy. `test:services:stop` removes containers and volumes, so the next start reloads fixture SQL.
 
-| | Postgres | MongoDB |
-| --- | --- | --- |
-| URL | `postgres://dash:dash@127.0.0.1:54329/dash` | `mongodb://dash:dash@127.0.0.1:27029/dash?authSource=admin` |
-| Host | `127.0.0.1` | `127.0.0.1` |
-| Port | `54329` | `27029` |
-| Database | `dash` | `dash` |
-| User | `dash` | `dash` |
-| Password | `dash` | `dash` |
+| | Postgres | MySQL | MongoDB |
+| --- | --- | --- | --- |
+| URL | `postgres://dash:dash@127.0.0.1:54329/dash` | `mysql://dash:dash@127.0.0.1:33029/dash` | `mongodb://dash:dash@127.0.0.1:27029/dash?authSource=admin` |
+| Host | `127.0.0.1` | `127.0.0.1` | `127.0.0.1` |
+| Port | `54329` | `33029` | `27029` |
+| Database | `dash` | `dash` | `dash` |
+| User | `dash` | `dash` | `dash` |
+| Password | `dash` | `dash` | `dash` |
 
 Databricks SQL listens at `http://127.0.0.1:14439` with token `dash`, warehouse `dash`, catalog `dash`, and schema `analytics`.
 
-Override the Postgres endpoint with `DASH_TEST_POSTGRES_HOST`, `DASH_TEST_POSTGRES_PORT`, `DASH_TEST_POSTGRES_DATABASE`, `DASH_TEST_POSTGRES_USER`, and `DASH_TEST_POSTGRES_PASSWORD`. Override MongoDB with `DASH_TEST_MONGODB_HOST`, `DASH_TEST_MONGODB_PORT`, `DASH_TEST_MONGODB_DATABASE`, `DASH_TEST_MONGODB_USER`, `DASH_TEST_MONGODB_PASSWORD`, and `DASH_TEST_MONGODB_AUTH_SOURCE`. Override Databricks SQL with `DASH_TEST_DATABRICKS_HOST`, `DASH_TEST_DATABRICKS_PORT`, `DASH_TEST_DATABRICKS_HTTP_PATH`, `DASH_TEST_DATABRICKS_TOKEN`, `DASH_TEST_DATABRICKS_WAREHOUSE`, `DASH_TEST_DATABRICKS_CATALOG`, and `DASH_TEST_DATABRICKS_SCHEMA`. The port is the host port Compose publishes. Token, warehouse, catalog, and schema are passed into the container; the HTTP path has to use that warehouse id. These credentials are for the local test clusters only.
+Override the Postgres endpoint with `DASH_TEST_POSTGRES_HOST`, `DASH_TEST_POSTGRES_PORT`, `DASH_TEST_POSTGRES_DATABASE`, `DASH_TEST_POSTGRES_USER`, and `DASH_TEST_POSTGRES_PASSWORD`. Override MySQL with `DASH_TEST_MYSQL_HOST`, `DASH_TEST_MYSQL_PORT`, `DASH_TEST_MYSQL_DATABASE`, `DASH_TEST_MYSQL_USER`, and `DASH_TEST_MYSQL_PASSWORD`. Override MongoDB with `DASH_TEST_MONGODB_HOST`, `DASH_TEST_MONGODB_PORT`, `DASH_TEST_MONGODB_DATABASE`, `DASH_TEST_MONGODB_USER`, `DASH_TEST_MONGODB_PASSWORD`, and `DASH_TEST_MONGODB_AUTH_SOURCE`. Override Databricks SQL with `DASH_TEST_DATABRICKS_HOST`, `DASH_TEST_DATABRICKS_PORT`, `DASH_TEST_DATABRICKS_HTTP_PATH`, `DASH_TEST_DATABRICKS_TOKEN`, `DASH_TEST_DATABRICKS_WAREHOUSE`, `DASH_TEST_DATABRICKS_CATALOG`, and `DASH_TEST_DATABRICKS_SCHEMA`. The port values are the host ports Compose publishes. Databricks token, warehouse, catalog, and schema are passed into the container; the HTTP path has to use that warehouse id. These credentials are for the local test clusters only.
 
 ## Architecture notes
 

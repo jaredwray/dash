@@ -72,6 +72,73 @@ describe("data source records", () => {
     expect(created.summary).not.toHaveProperty("password");
   });
 
+  it("summarizes a MySQL source without the password", async () => {
+    const admin = await createUser({
+      email: "mysql-admin@example.com",
+      name: "Admin",
+      password: "password123",
+      role: "admin",
+    });
+    const created = createDataSource({
+      name: "MySQL analytics",
+      description: "Warehouse",
+      config: {
+        kind: "mysql",
+        host: "mysql.internal",
+        port: 3306,
+        database: "analytics",
+        user: "reader",
+        password: "super-secret",
+        ssl: true,
+      },
+      createdBy: admin.id,
+    });
+    expect(created.kind).toBe("mysql");
+    expect(created.summary).toEqual({
+      host: "mysql.internal",
+      port: 3306,
+      database: "analytics",
+      user: "reader",
+      ssl: true,
+    });
+    expect(JSON.stringify(created.summary)).not.toContain("super-secret");
+
+    const fromUri = createDataSource({
+      name: "MySQL URI",
+      description: "URI",
+      config: {
+        kind: "mysql",
+        connectionString: "mysql://reader:super-secret@mysql.internal:3306/analytics",
+      },
+      createdBy: admin.id,
+    });
+    expect(fromUri.summary).toEqual({
+      host: "mysql.internal",
+      port: 3306,
+      database: "analytics",
+      user: "reader",
+      ssl: false,
+    });
+    expect(JSON.stringify(fromUri.summary)).not.toContain("super-secret");
+
+    const malformed = createDataSource({
+      name: "MySQL malformed",
+      description: "Malformed URI",
+      config: {
+        kind: "mysql",
+        connectionString: "mysql://reader:super/secret@mysql.internal/analytics",
+      },
+      createdBy: admin.id,
+    });
+    expect(malformed.summary).toEqual({
+      host: "(connection string)",
+      database: "",
+      user: "",
+      ssl: false,
+    });
+    expect(JSON.stringify(malformed.summary)).not.toContain("secret");
+  });
+
   it("summarizes a MongoDB source without the password", async () => {
     const admin = await createUser({
       email: "mongo-admin@example.com",

@@ -2,6 +2,7 @@ import { type ConnectionConfig, type DataAdapter } from "@dash/core";
 import { BigQueryAdapter } from "@dash/adapter-bigquery";
 import { DatabricksAdapter } from "@dash/adapter-databricks";
 import { MongoAdapter } from "@dash/adapter-mongodb";
+import { MysqlAdapter } from "@dash/adapter-mysql";
 import { PostgresAdapter } from "@dash/adapter-postgres";
 import { SnowflakeAdapter } from "@dash/adapter-snowflake";
 import { demoAdapter } from "./demo.ts";
@@ -20,6 +21,8 @@ function createAdapter(config: ConnectionConfig): DataAdapter {
       return SnowflakeAdapter.fromConfig(config);
     case "postgres":
       return PostgresAdapter.fromConfig(config);
+    case "mysql":
+      return MysqlAdapter.fromConfig(config);
     case "mongodb":
       return MongoAdapter.fromConfig(config);
     case "bigquery":

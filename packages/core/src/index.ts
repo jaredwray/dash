@@ -44,6 +44,7 @@ export type {
   DatabricksConnectionConfig,
   DemoConnectionConfig,
   MongoConnectionConfig,
+  MysqlConnectionConfig,
   PostgresConnectionConfig,
   SnowflakeConnectionConfig,
 } from "./datasource.ts";
