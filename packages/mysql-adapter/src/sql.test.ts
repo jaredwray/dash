@@ -30,7 +30,7 @@ describe("compileSelect", () => {
       limit: 10,
     });
     expect(compiled.text).toBe(
-      "SELECT `id` FROM `orders` WHERE LOWER(`region`) LIKE LOWER(?) COLLATE utf8mb4_bin LIMIT ? OFFSET ?",
+      "SELECT `id` FROM `orders` WHERE LOWER(`region` COLLATE utf8mb4_bin) LIKE LOWER(?) LIMIT ? OFFSET ?",
     );
     expect(compiled.values).toEqual(["%EUROPE%", 10, 0]);
   });
@@ -43,7 +43,7 @@ describe("compileSelect", () => {
       limit: 10,
     });
     expect(compiled.text).toBe(
-      "SELECT `id` FROM `orders` WHERE `status` LIKE ? COLLATE utf8mb4_bin LIMIT ? OFFSET ?",
+      "SELECT `id` FROM `orders` WHERE `status` COLLATE utf8mb4_bin LIKE ? LIMIT ? OFFSET ?",
     );
     expect(compiled.values).toEqual(["p%", 10, 0]);
   });

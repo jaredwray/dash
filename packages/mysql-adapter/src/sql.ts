@@ -43,9 +43,9 @@ function compileFilter(filter: AdapterFilter, values: unknown[]): string {
     case "lte":
       return `${column} <= ${next()}`;
     case "like":
-      return `${column} LIKE ${next()} COLLATE utf8mb4_bin`;
+      return `${column} COLLATE utf8mb4_bin LIKE ${next()}`;
     case "ilike":
-      return `LOWER(${column}) LIKE LOWER(${next()}) COLLATE utf8mb4_bin`;
+      return `LOWER(${column} COLLATE utf8mb4_bin) LIKE LOWER(${next()})`;
     case "in": {
       if (!Array.isArray(filter.value) || filter.value.length === 0) {
         throw new QueryValidationError("Filter operator `in` requires a non-empty array");
