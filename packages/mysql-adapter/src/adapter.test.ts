@@ -39,6 +39,21 @@ describe("parseMysqlConnectionString", () => {
   });
 });
 
+describe("MysqlAdapter TLS config", () => {
+  it("accepts ssl: true without throwing in mysql2", async () => {
+    const adapter = MysqlAdapter.fromConfig({
+      kind: "mysql",
+      host: "127.0.0.1",
+      port: 65535,
+      database: "dash",
+      user: "dash",
+      password: "dash",
+      ssl: true,
+    });
+    await adapter.close();
+  });
+});
+
 const NOT_READY = "MySQL test cluster is not ready. Start it with `pnpm test:services:start`.";
 
 function clusterEndpoint(): {
