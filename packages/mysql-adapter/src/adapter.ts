@@ -116,7 +116,7 @@ function toPoolConfig(config: MysqlConnectionConfig): PoolOptions {
     dateStrings: true,
     supportBigNumbers: true,
     flags: ["-LOCAL_FILES"],
-    ssl: usesSsl(config, parsed) ? {} : undefined,
+    ssl: usesSsl(config, parsed) ? { rejectUnauthorized: true } : undefined,
   };
 }
 
