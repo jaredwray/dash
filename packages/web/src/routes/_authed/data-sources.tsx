@@ -42,10 +42,11 @@ export const Route = createFileRoute("/_authed/data-sources")({
   component: DataSourcesPage,
 });
 
-type SourceKind = "postgres" | "snowflake" | "mongodb" | "bigquery";
+type SourceKind = "postgres" | "mysql" | "snowflake" | "mongodb" | "bigquery";
 
 const URI_PLACEHOLDER: Record<SourceKind, string> = {
   postgres: "postgres://user:password@localhost:5432/analytics",
+  mysql: "mysql://user:password@localhost:3306/analytics",
   snowflake: "snowflake://user:password@account/database/schema?warehouse=COMPUTE_WH",
   mongodb: "mongodb://user:password@host:27017/analytics?authSource=admin",
   bigquery: "bigquery://project/dataset?location=US&endpoint=http://127.0.0.1:9059",
@@ -194,21 +195,37 @@ function DataSourcesPage() {
                     authSource: form.user ? form.authSource || "admin" : undefined,
                     tls: form.tls,
                   }
-              : form.useConnectionString
-              ? {
-                  kind: "postgres" as const,
-                  connectionString: form.connectionString.trim(),
-                  ssl: form.ssl,
-                }
-              : {
-                  kind: "postgres" as const,
-                  host: form.host,
-                  port: Number(form.port),
-                  database: form.database,
-                  user: form.user,
-                  password: form.password,
-                  ssl: form.ssl,
-                };
+              : form.kind === "mysql"
+                ? form.useConnectionString
+                  ? {
+                      kind: "mysql" as const,
+                      connectionString: form.connectionString.trim(),
+                      ssl: form.ssl,
+                    }
+                  : {
+                      kind: "mysql" as const,
+                      host: form.host,
+                      port: Number(form.port),
+                      database: form.database,
+                      user: form.user,
+                      password: form.password,
+                      ssl: form.ssl,
+                    }
+                : form.useConnectionString
+                  ? {
+                      kind: "postgres" as const,
+                      connectionString: form.connectionString.trim(),
+                      ssl: form.ssl,
+                    }
+                  : {
+                      kind: "postgres" as const,
+                      host: form.host,
+                      port: Number(form.port),
+                      database: form.database,
+                      user: form.user,
+                      password: form.password,
+                      ssl: form.ssl,
+                    };
       return api<{ dataSource: DataSourceRecord }>("/api/data-sources", {
         method: "POST",
         body: JSON.stringify({
@@ -261,7 +278,7 @@ function DataSourcesPage() {
           <h1 className="mt-1 text-3xl font-semibold">Data sources</h1>
           <p className="mt-2 max-w-2xl text-sm text-mist">
             Add a warehouse for dashboards and MCP, or remove one that is no longer needed.
-            Paste a connection URI, or enter the fields. Postgres, Snowflake, MongoDB, and
+            Paste a connection URI, or enter the fields. Postgres, MySQL, Snowflake, MongoDB, and
             BigQuery are tested on save.
           </p>
         </div>
@@ -280,7 +297,7 @@ function DataSourcesPage() {
         <div className="mt-10 rounded-2xl border border-dashed border-line p-10 text-center">
           <p className="text-paper">No data sources yet.</p>
           <p className="mt-2 text-sm text-mist">
-            Add a PostgreSQL, Snowflake, MongoDB, or BigQuery connection to start querying.
+            Add a PostgreSQL, MySQL, Snowflake, MongoDB, or BigQuery connection to start querying.
           </p>
           {isAdmin ? (
             <PrimaryButton className="mt-4" type="button" onClick={openAdd}>
@@ -362,7 +379,14 @@ function DataSourcesPage() {
                   setForm({
                     ...form,
                     kind,
-                    port: kind === "mongodb" ? "27017" : kind === "postgres" ? "5432" : form.port,
+                    port:
+                      kind === "mongodb"
+                        ? "27017"
+                        : kind === "postgres"
+                          ? "5432"
+                          : kind === "mysql"
+                            ? "3306"
+                            : form.port,
                     user: kind === "postgres" ? "postgres" : form.user === "postgres" ? "" : form.user,
                     schema: kind === "snowflake" ? form.schema || "PUBLIC" : form.schema,
                     authSource: form.authSource || "admin",
@@ -371,16 +395,17 @@ function DataSourcesPage() {
                 }}
               >
                 <option value="postgres">PostgreSQL</option>
+                <option value="mysql">MySQL</option>
                 <option value="snowflake">Snowflake</option>
                 <option value="mongodb">MongoDB</option>
                 <option value="bigquery">Google BigQuery</option>
               </Select>
             </Field>
-            {form.kind === "postgres" ? (
+            {form.kind === "postgres" || form.kind === "mysql" ? (
               <>
                 {form.useConnectionString ? (
                   <ConnectionUriField
-                    kind="postgres"
+                    kind={form.kind}
                     value={form.connectionString}
                     onChange={(connectionString) => setForm({ ...form, connectionString })}
                   />

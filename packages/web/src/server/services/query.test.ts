@@ -12,6 +12,16 @@ describe("testConnectionConfig", () => {
     expect(result.message).toMatch(/project/i);
   });
 
+  it("reports an invalid MySQL connection URI as a failed connection test", async () => {
+    const result = await testConnectionConfig({
+      kind: "mysql",
+      connectionString: "postgres://localhost/dash",
+    });
+    expect(result.ok).toBe(false);
+    expect(result.latencyMs).toBe(0);
+    expect(result.message).toMatch(/mysql:\/\//);
+  });
+
   it("reports an invalid MongoDB host as a failed connection test", async () => {
     const result = await testConnectionConfig({
       kind: "mongodb",

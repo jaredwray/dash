@@ -1,5 +1,6 @@
 import { bigQueryEndpoint, isGoogleApiHost } from "@dash/adapter-bigquery";
 import { mongoUsesTls, parseMongoConnectionString } from "@dash/adapter-mongodb";
+import { parseMysqlConnectionString } from "@dash/adapter-mysql";
 import {
   type ConnectionConfig,
   type DataSourceKind,
@@ -64,6 +65,38 @@ function summarize(config: ConnectionConfig): DataSourceRecord["summary"] {
       location: config.location ?? "",
       endpoint,
       auth,
+    };
+  }
+  if (config.kind === "mysql") {
+    const usingUri = Boolean(config.connectionString) && !config.host;
+    if (usingUri && config.connectionString) {
+      try {
+        const parsed = parseMysqlConnectionString(config.connectionString);
+        const summary: DataSourceRecord["summary"] = {
+          host: parsed.host ?? "(connection string)",
+          database: parsed.database ?? "",
+          user: parsed.user ?? "",
+          ssl: Boolean(config.ssl || parsed.ssl),
+        };
+        if (parsed.port != null) {
+          summary.port = parsed.port;
+        }
+        return summary;
+      } catch {
+        return {
+          host: "(connection string)",
+          database: "",
+          user: "",
+          ssl: Boolean(config.ssl),
+        };
+      }
+    }
+    return {
+      host: config.host ?? "",
+      port: config.port ?? 3306,
+      database: config.database ?? "",
+      user: config.user ?? "",
+      ssl: Boolean(config.ssl),
     };
   }
   if (config.kind === "mongodb") {

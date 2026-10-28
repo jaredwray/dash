@@ -23,6 +23,17 @@ export interface PostgresConnectionConfig {
   ssl?: boolean;
 }
 
+export interface MysqlConnectionConfig {
+  kind: "mysql";
+  connectionString?: string;
+  host?: string;
+  port?: number;
+  database?: string;
+  user?: string;
+  password?: string;
+  ssl?: boolean;
+}
+
 export interface DemoConnectionConfig {
   kind: "demo";
 }
@@ -77,6 +88,7 @@ export interface BigQueryConnectionConfig {
 
 export type ConnectionConfig =
   | PostgresConnectionConfig
+  | MysqlConnectionConfig
   | DemoConnectionConfig
   | SnowflakeConnectionConfig
   | MongoConnectionConfig
