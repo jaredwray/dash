@@ -100,6 +100,13 @@ function usesSsl(config: MysqlConnectionConfig, parsed?: ParsedMysqlUri): boolea
   return Boolean(config.ssl || parsed?.ssl);
 }
 
+function tlsOptions(config: MysqlConnectionConfig, parsed?: ParsedMysqlUri): PoolOptions["ssl"] {
+  if (!usesSsl(config, parsed)) {
+    return undefined;
+  }
+  return { rejectUnauthorized: true };
+}
+
 function toPoolConfig(config: MysqlConnectionConfig): PoolOptions {
   const parsed = config.connectionString
     ? parseMysqlConnectionString(config.connectionString)
@@ -116,7 +123,7 @@ function toPoolConfig(config: MysqlConnectionConfig): PoolOptions {
     dateStrings: true,
     supportBigNumbers: true,
     flags: ["-LOCAL_FILES"],
-    ssl: usesSsl(config, parsed) ? { rejectUnauthorized: true } : undefined,
+    ssl: tlsOptions(config, parsed),
   };
 }
 
