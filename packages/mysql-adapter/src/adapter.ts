@@ -8,6 +8,7 @@ import {
 } from "@dash/core";
 import { createPool, type Pool, type PoolOptions, type RowDataPacket } from "mysql2/promise";
 import { INTROSPECT_SQL, compileSelect } from "./sql.ts";
+import { mysqlTls } from "./tls.ts";
 
 export interface SqlQueryResult {
   rows: Record<string, unknown>[];
@@ -116,9 +117,7 @@ function toPoolConfig(config: MysqlConnectionConfig): PoolOptions {
     dateStrings: true,
     supportBigNumbers: true,
     flags: ["-LOCAL_FILES"],
-    ssl: usesSsl(config, parsed)
-      ? { minVersion: "TLSv1.2", verifyIdentity: true }
-      : undefined,
+    ssl: mysqlTls(usesSsl(config, parsed)),
   };
 }
 
