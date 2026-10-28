@@ -104,7 +104,7 @@ function tlsOptions(config: MysqlConnectionConfig, parsed?: ParsedMysqlUri): Poo
   if (!usesSsl(config, parsed)) {
     return undefined;
   }
-  return { rejectUnauthorized: true };
+  return {};
 }
 
 function toPoolConfig(config: MysqlConnectionConfig): PoolOptions {
