@@ -158,6 +158,29 @@ services:
       retries: 40
       start_period: 10s
 
+  databricks:
+    build:
+      context: ./docker/databricks
+    image: dash-test-databricks:local
+    container_name: dash-test-databricks
+    # Statement Execution API in front of an in-memory DuckDB catalog.
+    # 512 MiB covers the Python process and the fixture warehouse.
+    ports:
+      - "127.0.0.1:${DASH_TEST_DATABRICKS_PORT:-14439}:14439"
+    environment:
+      DASH_DATABRICKS_TOKEN: ${DASH_TEST_DATABRICKS_TOKEN:-dash}
+      DASH_DATABRICKS_WAREHOUSE: ${DASH_TEST_DATABRICKS_WAREHOUSE:-dash}
+      DASH_DATABRICKS_CATALOG: ${DASH_TEST_DATABRICKS_CATALOG:-dash}
+      DASH_DATABRICKS_SCHEMA: ${DASH_TEST_DATABRICKS_SCHEMA:-analytics}
+    mem_limit: 512m
+    cpus: 0.5
+    healthcheck:
+      test: ["CMD", "python", "/opt/dash/healthcheck.py"]
+      interval: 2s
+      timeout: 5s
+      retries: 40
+      start_period: 15s
+
 volumes:
   dash-test-postgres:
   dash-test-mysql:

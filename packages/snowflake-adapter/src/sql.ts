@@ -44,6 +44,9 @@ function compileFilter(filter: AdapterFilter, values: unknown[]): string {
 
 function qualifyResource(resource: string, values: unknown[]): string {
   const parts = splitResourceName(resource);
+  if (parts.catalog) {
+    throw new QueryValidationError("Snowflake resource must be schema.table");
+  }
   if (parts.namespace) {
     values.push(parts.namespace, parts.name);
     return "IDENTIFIER(?).IDENTIFIER(?)";

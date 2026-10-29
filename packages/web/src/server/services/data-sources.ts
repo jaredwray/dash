@@ -1,4 +1,5 @@
 import { bigQueryEndpoint, isGoogleApiHost } from "@dash/adapter-bigquery";
+import { databricksPublicSummary } from "@dash/adapter-databricks";
 import { redshiftPublicSummary } from "@dash/adapter-redshift";
 import { mongoUsesTls, parseMongoConnectionString } from "@dash/adapter-mongodb";
 import { parseMysqlConnectionString } from "@dash/adapter-mysql";
@@ -42,6 +43,9 @@ function summarize(config: ConnectionConfig): DataSourceRecord["summary"] {
       schema: config.schema ?? "",
       role: config.role ?? "",
     };
+  }
+  if (config.kind === "databricks") {
+    return databricksPublicSummary(config);
   }
   if (config.kind === "bigquery") {
     let endpoint = "bigquery.googleapis.com";

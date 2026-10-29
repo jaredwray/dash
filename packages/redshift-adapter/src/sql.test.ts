@@ -28,6 +28,15 @@ describe("compileSelect", () => {
     );
     const compiled = compileSelect({ resource: "monthly_revenue" });
     expect(compiled.text.startsWith('SELECT * FROM "monthly_revenue"')).toBe(true);
+    expect(compileSelect({ resource: "analytics.order-items" }).text).toContain(
+      '"analytics"."order-items"',
+    );
+  });
+
+  it("rejects a catalog-qualified resource", () => {
+    expect(() => compileSelect({ resource: "dev.analytics.orders" })).toThrow(
+      /Redshift resource must be schema\.table/,
+    );
   });
 
   it("keeps Redshift system schemas out of introspection", () => {

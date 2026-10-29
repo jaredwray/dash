@@ -67,6 +67,7 @@ packages/mysql-adapter/      @dash/adapter-mysql
 packages/snowflake-adapter/  @dash/adapter-snowflake
 packages/mongodb-adapter/    @dash/adapter-mongodb
 packages/bigquery-adapter/   @dash/adapter-bigquery
+packages/databricks-adapter/ @dash/adapter-databricks
 packages/redshift-adapter/   @dash/adapter-redshift
 ```
 
@@ -105,6 +106,7 @@ Keep this list in sync as PRs land. Checked items are in the tree today.
 - [x] MongoDB adapter (`@dash/adapter-mongodb`)
 - [x] Google BigQuery adapter (`@dash/adapter-bigquery`)
 - [x] Snowflake adapter (`@dash/adapter-snowflake`)
+- [x] Databricks SQL adapter (`@dash/adapter-databricks`)
 - [x] Redshift adapter (`@dash/adapter-redshift`)
 - [ ] ClickHouse adapter
 
@@ -116,7 +118,7 @@ Keep this list in sync as PRs land. Checked items are in the tree today.
 - [x] Dynamic dashboard pages
 - [x] Chart widgets (TanStack Charts)
 - [x] Sortable and filterable tables (TanStack Table)
-- [x] Data sources page (admin): add and remove sources (demo warehouse, Postgres, MySQL, Snowflake, MongoDB, BigQuery, Redshift)
+- [x] Data sources page (admin): add and remove sources (demo warehouse, Postgres, MySQL, Snowflake, MongoDB, BigQuery, Databricks SQL, Redshift)
 - [ ] Real-time multi-user dashboard collaboration
 - [ ] Light theme
 
@@ -162,13 +164,13 @@ Issue a token with the `mcp` scope, then point a client at `/mcp`. Tools include
 | `pnpm dev` | Start `@dash/web` |
 | `pnpm test:services:start` | Start warehouse clusters (Docker Compose) |
 | `pnpm test:services:stop` | Stop clusters and delete their data |
-| `pnpm test` | Run package tests. Postgres, MySQL, MongoDB, BigQuery, and Redshift adapter tests use the clusters |
+| `pnpm test` | Run package tests. Postgres, MySQL, MongoDB, BigQuery, Databricks SQL, and Redshift adapter tests use the clusters |
 | `pnpm typecheck` | TypeScript across workspaces |
 | `pnpm build` | Production build |
 
 ## Adapter test clusters
 
-Postgres, MySQL, MongoDB, BigQuery, and Redshift adapter tests run against the Compose cluster. The Redshift service is a PostgreSQL wire-protocol stand-in. Add the next local engine beside them in `docker-compose.test.yml` when that adapter can run here.
+Postgres, MySQL, MongoDB, BigQuery, Databricks SQL, and Redshift adapter tests run against the Compose cluster. The Redshift service is a PostgreSQL wire-protocol stand-in. Add the next local engine beside them in `docker-compose.test.yml` when that adapter can run here.
 
 ```bash
 pnpm test:services:start
@@ -187,7 +189,9 @@ pnpm test:services:stop
 | User | `dash` | `dash` | `dash` | `dash` |
 | Password | `dash` | `dash` | `dash` | `dash` |
 
-Override the Postgres endpoint with `DASH_TEST_POSTGRES_HOST`, `DASH_TEST_POSTGRES_PORT`, `DASH_TEST_POSTGRES_DATABASE`, `DASH_TEST_POSTGRES_USER`, and `DASH_TEST_POSTGRES_PASSWORD`. Override MySQL with `DASH_TEST_MYSQL_HOST`, `DASH_TEST_MYSQL_PORT`, `DASH_TEST_MYSQL_DATABASE`, `DASH_TEST_MYSQL_USER`, and `DASH_TEST_MYSQL_PASSWORD`. Override MongoDB with `DASH_TEST_MONGODB_HOST`, `DASH_TEST_MONGODB_PORT`, `DASH_TEST_MONGODB_DATABASE`, `DASH_TEST_MONGODB_USER`, `DASH_TEST_MONGODB_PASSWORD`, and `DASH_TEST_MONGODB_AUTH_SOURCE`. Override Redshift with `DASH_TEST_REDSHIFT_HOST`, `DASH_TEST_REDSHIFT_PORT`, `DASH_TEST_REDSHIFT_DATABASE`, `DASH_TEST_REDSHIFT_USER`, and `DASH_TEST_REDSHIFT_PASSWORD`. The port values are the host ports Compose publishes. These credentials are for the local test clusters only.
+Databricks SQL listens at `http://127.0.0.1:14439` with token `dash`, warehouse `dash`, catalog `dash`, and schema `analytics`.
+
+Override the Postgres endpoint with `DASH_TEST_POSTGRES_HOST`, `DASH_TEST_POSTGRES_PORT`, `DASH_TEST_POSTGRES_DATABASE`, `DASH_TEST_POSTGRES_USER`, and `DASH_TEST_POSTGRES_PASSWORD`. Override MySQL with `DASH_TEST_MYSQL_HOST`, `DASH_TEST_MYSQL_PORT`, `DASH_TEST_MYSQL_DATABASE`, `DASH_TEST_MYSQL_USER`, and `DASH_TEST_MYSQL_PASSWORD`. Override MongoDB with `DASH_TEST_MONGODB_HOST`, `DASH_TEST_MONGODB_PORT`, `DASH_TEST_MONGODB_DATABASE`, `DASH_TEST_MONGODB_USER`, `DASH_TEST_MONGODB_PASSWORD`, and `DASH_TEST_MONGODB_AUTH_SOURCE`. Override Databricks SQL with `DASH_TEST_DATABRICKS_HOST`, `DASH_TEST_DATABRICKS_PORT`, `DASH_TEST_DATABRICKS_HTTP_PATH`, `DASH_TEST_DATABRICKS_TOKEN`, `DASH_TEST_DATABRICKS_WAREHOUSE`, `DASH_TEST_DATABRICKS_CATALOG`, and `DASH_TEST_DATABRICKS_SCHEMA`. Override Redshift with `DASH_TEST_REDSHIFT_HOST`, `DASH_TEST_REDSHIFT_PORT`, `DASH_TEST_REDSHIFT_DATABASE`, `DASH_TEST_REDSHIFT_USER`, and `DASH_TEST_REDSHIFT_PASSWORD`. The port values are the host ports Compose publishes. Databricks token, warehouse, catalog, and schema are passed into the container; the HTTP path has to use that warehouse id. These credentials are for the local test clusters only.
 
 ## Architecture notes
 

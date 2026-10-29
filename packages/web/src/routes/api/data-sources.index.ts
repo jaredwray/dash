@@ -64,6 +64,16 @@ const configSchema = z.discriminatedUnion("kind", [
     tls: z.boolean().optional(),
   }),
   z.object({
+    kind: z.literal("databricks"),
+    connectionString: z.string().optional(),
+    host: z.string().optional(),
+    httpPath: z.string().optional(),
+    token: z.string().optional(),
+    catalog: z.string().optional(),
+    schema: z.string().optional(),
+    apiEndpoint: z.string().optional(),
+  }),
+  z.object({
     kind: z.literal("bigquery"),
     projectId: z.string().min(1),
     dataset: z.string().optional(),

@@ -14,7 +14,7 @@ export interface CompiledSql {
 function quoteIdent(name: string): string {
   // Identifiers cannot be bound as parameters. Reject invalid names at the SQL
   // boundary instead of removing characters and silently changing the name.
-  if (typeof name !== "string" || !/^[A-Za-z_]/.test(name) || /[^A-Za-z0-9_]/.test(name)) {
+  if (typeof name !== "string" || !/^[A-Za-z_][A-Za-z0-9_-]*$/.test(name)) {
     throw new QueryValidationError("Invalid Redshift identifier");
   }
   return `"${name}"`;
@@ -33,6 +33,9 @@ function compileDirection(direction: string): string {
 
 function qualifyResource(resource: string): string {
   const parts = splitResourceName(resource);
+  if (parts.catalog) {
+    throw new QueryValidationError("Redshift resource must be schema.table");
+  }
   return parts.namespace
     ? `${quoteIdent(parts.namespace)}.${quoteIdent(parts.name)}`
     : quoteIdent(parts.name);
