@@ -385,4 +385,42 @@ describe("data source records", () => {
     });
     expect(JSON.stringify(malformed.summary)).not.toContain("super-secret");
   });
+
+  it("summarizes a Stripe source without the secret key", async () => {
+    const admin = await createUser({
+      email: "stripe-admin@example.com",
+      name: "Admin",
+      password: "password123",
+      role: "admin",
+    });
+    const created = createDataSource({
+      name: "Billing",
+      description: "Stripe",
+      config: {
+        kind: "stripe",
+        apiKey: "sk_test_supersecret",
+        apiEndpoint: "https://api.stripe.com",
+      },
+      createdBy: admin.id,
+    });
+    expect(created.kind).toBe("stripe");
+    expect(created.summary).toEqual({
+      endpoint: "api.stripe.com",
+      mode: "test",
+      restricted: false,
+    });
+    expect(JSON.stringify(created.summary)).not.toContain("sk_test_supersecret");
+
+    const malformed = createDataSource({
+      name: "Broken billing",
+      description: "Bad URI",
+      config: {
+        kind: "stripe",
+        connectionString: "stripe://sk_test_supersecret@evil.example?debug=1",
+      },
+      createdBy: admin.id,
+    });
+    expect(malformed.summary).toEqual({ endpoint: "", mode: "", restricted: false });
+    expect(JSON.stringify(malformed.summary)).not.toContain("sk_test_supersecret");
+  });
 });

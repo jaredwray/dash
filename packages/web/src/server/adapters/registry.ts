@@ -5,6 +5,7 @@ import { MongoAdapter } from "@dash/adapter-mongodb";
 import { MysqlAdapter } from "@dash/adapter-mysql";
 import { PostgresAdapter } from "@dash/adapter-postgres";
 import { RedshiftAdapter } from "@dash/adapter-redshift";
+import { StripeAdapter } from "@dash/adapter-stripe";
 import { SnowflakeAdapter } from "@dash/adapter-snowflake";
 import { demoAdapter } from "./demo.ts";
 
@@ -26,6 +27,8 @@ function createAdapter(config: ConnectionConfig): DataAdapter {
       return MysqlAdapter.fromConfig(config);
     case "redshift":
       return RedshiftAdapter.fromConfig(config);
+    case "stripe":
+      return StripeAdapter.fromConfig(config);
     case "mongodb":
       return MongoAdapter.fromConfig(config);
     case "bigquery":

@@ -181,6 +181,26 @@ services:
       retries: 40
       start_period: 15s
 
+  stripe:
+    build:
+      context: ./docker/stripe
+    image: dash-test-stripe:local
+    container_name: dash-test-stripe
+    # Stripe list API in front of a fixed customer and charge fixture.
+    # 128 MiB covers the Python process.
+    ports:
+      - "127.0.0.1:${DASH_TEST_STRIPE_PORT:-12119}:12119"
+    environment:
+      DASH_STRIPE_KEY: ${DASH_TEST_STRIPE_KEY:-sk_test_dash}
+    mem_limit: 128m
+    cpus: 0.25
+    healthcheck:
+      test: ["CMD", "python", "/opt/dash/healthcheck.py"]
+      interval: 2s
+      timeout: 5s
+      retries: 40
+      start_period: 5s
+
 volumes:
   dash-test-postgres:
   dash-test-mysql:

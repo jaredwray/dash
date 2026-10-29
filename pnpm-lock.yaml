@@ -313,6 +313,22 @@ importers:
         specifier: ^5.0.1
         version: 5.0.1(@types/node@24.13.6)(vite@8.3.4(@types/node@24.13.6)(esbuild@0.28.2)(jiti@2.7.0))
 
+  packages/stripe-adapter:
+    dependencies:
+      '@dash/core':
+        specifier: workspace:*
+        version: link:../core
+    devDependencies:
+      '@types/node':
+        specifier: ^24.13.6
+        version: 24.13.6
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+      vitest:
+        specifier: ^5.0.1
+        version: 5.0.1(@types/node@24.13.6)(vite@8.3.4(@types/node@24.13.6)(esbuild@0.28.2)(jiti@2.7.0))
+
   packages/web:
     dependencies:
       '@dash/adapter-bigquery':
@@ -336,6 +352,9 @@ importers:
       '@dash/adapter-snowflake':
         specifier: workspace:*
         version: link:../snowflake-adapter
+      '@dash/adapter-stripe':
+        specifier: workspace:*
+        version: link:../stripe-adapter
       '@dash/core':
         specifier: workspace:*
         version: link:../core

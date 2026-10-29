@@ -48,6 +48,7 @@ export type {
   PostgresConnectionConfig,
   RedshiftConnectionConfig,
   SnowflakeConnectionConfig,
+  StripeConnectionConfig,
 } from "./datasource.ts";
 
 export type {

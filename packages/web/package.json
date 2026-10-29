@@ -19,6 +19,7 @@
     "@dash/adapter-postgres": "workspace:*",
     "@dash/adapter-redshift": "workspace:*",
     "@dash/adapter-snowflake": "workspace:*",
+    "@dash/adapter-stripe": "workspace:*",
     "@dash/core": "workspace:*",
     "@modelcontextprotocol/server": "2.3.1",
     "@tanstack/charts": "1.0.0",
