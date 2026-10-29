@@ -40,8 +40,13 @@ export type {
 export type {
   ConnectionConfig,
   DataSourceRecord,
+  BigQueryConnectionConfig,
+  DatabricksConnectionConfig,
   DemoConnectionConfig,
+  MongoConnectionConfig,
+  MysqlConnectionConfig,
   PostgresConnectionConfig,
+  SnowflakeConnectionConfig,
 } from "./datasource.ts";
 
 export type {

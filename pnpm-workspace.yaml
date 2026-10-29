@@ -1,7 +1,5 @@
 packages:
-  - "core"
   - "packages/*"
-  - "data-adapters/*"
 
 allowBuilds:
   esbuild: true
@@ -13,10 +11,23 @@ blockExoticSubdeps: true
 minimumReleaseAge: 10080 # 7 days, in minutes
 minimumReleaseAgeStrict: true # fail instead of falling back to a too-new version
 minimumReleaseAgeIgnoreMissingTime: false # missing publish-time metadata fails closed
+# Explicit cooldown exception for the Charts 1.0 adoption (2026-10-06).
+# Version-scoped so later Charts releases still wait out the window.
+minimumReleaseAgeExclude:
+  - "@tanstack/charts@1.0.0"
 trustPolicy: no-downgrade # fail if a later version has weaker trust evidence
 
 # semver@6.3.1 fails trustPolicy: no-downgrade (no provenance;
 # later versions of the same package have attestations). Pin to a version that
 # already meets the gate — do not exclude first-party packages.
+#
+# seroval <1.6.11 is vulnerable to CVE-2026-116581, CVE-2026-116584,
+# CVE-2026-116582, and CVE-2026-116583. @tanstack/router-core and the Start
+# packages still depend on seroval ^1.6.7 / seroval-plugins ^1.6.7, and no
+# release requires >=1.6.11. Replace only the vulnerable releases. 1.6.11
+# (published 2026-10-18) is inside 1.6.x, satisfies those ranges, and is old
+# enough for the 7-day cooldown. 1.6.12 is not.
 overrides:
   semver@6.3.1: 7.8.5
+  "seroval@<1.6.11": 1.6.11
+  "seroval-plugins@<1.6.11": 1.6.11

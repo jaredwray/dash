@@ -1,7 +1,7 @@
 /**
- * Adapter kinds Dash knows about. Only `postgres` and `demo` ship in the MVP;
- * the rest are reserved so data-source records and the admin UI stay stable
- * as adapters land.
+ * Adapter kinds Dash knows about. `postgres`, `mysql`, `snowflake`, `mongodb`,
+ * `bigquery`, `databricks`, and `demo` ship; the rest are reserved so data-source
+ * records and the admin UI stay stable as adapters land.
  */
 export const DATA_SOURCE_KINDS = [
   "demo",
@@ -10,6 +10,7 @@ export const DATA_SOURCE_KINDS = [
   "mongodb",
   "bigquery",
   "snowflake",
+  "databricks",
   "redshift",
   "clickhouse",
 ] as const;
@@ -71,7 +72,10 @@ export interface AdapterOrderBy {
 }
 
 export interface AdapterQuery {
-  /** Table, view, or collection name. May be `schema.table` for SQL adapters. */
+  /**
+   * Table, view, or collection name.
+   * SQL adapters accept `schema.table`. Databricks also accepts `catalog.schema.table`.
+   */
   resource: string;
   columns?: string[];
   filters?: AdapterFilter[];

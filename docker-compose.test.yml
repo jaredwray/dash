@@ -1,0 +1,161 @@
+# Local warehouse clusters for adapter tests.
+# Start with `pnpm test:services:start` and stop with `pnpm test:services:stop`.
+# Each service is one cluster endpoint. Add the next warehouse beside these
+# when its adapter lands, and point that package's tests at the published port.
+
+name: dash-test
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: dash-test-postgres
+    environment:
+      POSTGRES_USER: dash
+      POSTGRES_PASSWORD: dash
+      POSTGRES_DB: dash
+    ports:
+      - "127.0.0.1:${DASH_TEST_POSTGRES_PORT:-54329}:5432"
+    volumes:
+      - dash-test-postgres:/var/lib/postgresql/data
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+    # pg_isready is true during the entrypoint's temporary server, before
+    # fixture SQL runs. Require a fixture view so --wait means the cluster
+    # is actually queryable.
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U dash -d dash && psql -U dash -d dash -v ON_ERROR_STOP=1 -c 'SELECT 1 FROM public.paid_orders LIMIT 1'",
+        ]
+      interval: 2s
+      timeout: 5s
+      retries: 40
+      start_period: 10s
+
+  mysql:
+    image: mysql:8.4
+    container_name: dash-test-mysql
+    command:
+      [
+        "--character-set-server=utf8mb4",
+        "--collation-server=utf8mb4_0900_ai_ci",
+        "--innodb-buffer-pool-size=64M",
+        "--performance-schema=OFF",
+      ]
+    environment:
+      MYSQL_ROOT_PASSWORD: dash
+      MYSQL_USER: dash
+      MYSQL_PASSWORD: dash
+      MYSQL_DATABASE: dash
+    ports:
+      - "127.0.0.1:${DASH_TEST_MYSQL_PORT:-33029}:3306"
+    volumes:
+      - dash-test-mysql:/var/lib/mysql
+      - ./docker/mysql/init:/docker-entrypoint-initdb.d:ro
+    # mysqladmin ping is true before fixture SQL runs. Require the fixture
+    # view so --wait means the cluster is actually queryable.
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "mysql --protocol=TCP --host=127.0.0.1 --user=$$MYSQL_USER --password=$$MYSQL_PASSWORD --database=$$MYSQL_DATABASE --batch --execute='SELECT 1 FROM paid_orders LIMIT 1'",
+        ]
+      interval: 3s
+      timeout: 5s
+      retries: 40
+      start_period: 40s
+
+  mongodb:
+    image: mongo:7.0
+    container_name: dash-test-mongodb
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: dash
+      MONGO_INITDB_ROOT_PASSWORD: dash
+      MONGO_INITDB_DATABASE: dash
+    ports:
+      - "127.0.0.1:${DASH_TEST_MONGODB_PORT:-27029}:27017"
+    volumes:
+      - dash-test-mongodb:/data/db
+      - ./docker/mongodb/init:/docker-entrypoint-initdb.d:ro
+    # Require the fixture view so --wait means init scripts have finished
+    # and the authenticated server is queryable. mongosh --eval is a classic
+    # script, so a top-level await is a SyntaxError and the probe can never
+    # pass. Await inside an async function, then quit with the result.
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "mongosh",
+          "--quiet",
+          "--host",
+          "127.0.0.1",
+          "--port",
+          "27017",
+          "-u",
+          "dash",
+          "-p",
+          "dash",
+          "--authenticationDatabase",
+          "admin",
+          "dash",
+          "--eval",
+          "(async () => { const revenue = await db.revenue.countDocuments(); const paid = await db.paid_orders.countDocuments(); if (revenue !== 3 || paid !== 3) quit(1); quit(0); })()",
+        ]
+      interval: 2s
+      timeout: 5s
+      retries: 40
+      start_period: 10s
+
+  bigquery:
+    image: ghcr.io/goccy/bigquery-emulator:0.8.1
+    container_name: dash-test-bigquery
+    # In-memory emulator capped like a micro instance: 256 MiB and half a CPU.
+    # The image entrypoint is the emulator binary; replace it so the fixture
+    # view can be created after the YAML seed is loaded.
+    entrypoint: ["bash", "/opt/dash/entrypoint.sh"]
+    ports:
+      - "127.0.0.1:${DASH_TEST_BIGQUERY_PORT:-9059}:9050"
+    volumes:
+      - ./docker/bigquery/seed.yaml:/seed/analytics.yaml:ro
+      - ./docker/bigquery/entrypoint.sh:/opt/dash/entrypoint.sh:ro
+      - ./docker/bigquery/healthcheck.sh:/opt/dash/healthcheck.sh:ro
+    mem_limit: 256m
+    cpus: 0.5
+    # The emulator retains every jobs.query. A 2s probe filled this 256 MiB
+    # cap in about 15 minutes and the process was OOM-killed. Probe quickly
+    # during startup, then every 30s.
+    healthcheck:
+      test: ["CMD", "bash", "/opt/dash/healthcheck.sh", "view"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+      start_interval: 2s
+
+  databricks:
+    build:
+      context: ./docker/databricks
+    image: dash-test-databricks:local
+    container_name: dash-test-databricks
+    # Statement Execution API in front of an in-memory DuckDB catalog.
+    # 512 MiB covers the Python process and the fixture warehouse.
+    ports:
+      - "127.0.0.1:${DASH_TEST_DATABRICKS_PORT:-14439}:14439"
+    environment:
+      DASH_DATABRICKS_TOKEN: ${DASH_TEST_DATABRICKS_TOKEN:-dash}
+      DASH_DATABRICKS_WAREHOUSE: ${DASH_TEST_DATABRICKS_WAREHOUSE:-dash}
+      DASH_DATABRICKS_CATALOG: ${DASH_TEST_DATABRICKS_CATALOG:-dash}
+      DASH_DATABRICKS_SCHEMA: ${DASH_TEST_DATABRICKS_SCHEMA:-analytics}
+    mem_limit: 512m
+    cpus: 0.5
+    healthcheck:
+      test: ["CMD", "python", "/opt/dash/healthcheck.py"]
+      interval: 2s
+      timeout: 5s
+      retries: 40
+      start_period: 15s
+
+volumes:
+  dash-test-postgres:
+  dash-test-mysql:
+  dash-test-mongodb:

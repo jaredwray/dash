@@ -4,20 +4,73 @@ AI-first analytics: dashboards, charts, and data sources you can drive from the 
 
 Dash is a modern Tableau / Looker-style workspace. Agents can list warehouses, run structured queries, and add chart widgets to dashboard pages through the built-in MCP server.
 
+## Screenshots
+
+Taken from the demo workspace (`admin@dash.dev`). The sample warehouse ships with a **Growth overview** page. **Regional revenue review** is a custom page on the same data.
+
+### Sign in
+
+`/` opens this page until you are signed in. A signed-in visit goes straight to dashboards.
+
+<img alt="Login form prefilled with the local demo account" src="docs/screenshots/login.png" width="880">
+
+### Dashboards
+
+<img alt="Dashboards list showing Growth overview and Regional revenue review" src="docs/screenshots/dashboards.png" width="880">
+
+### Growth overview
+
+KPI tiles, a stacked revenue area chart, product mix, signups versus churn, units by product, and a filterable product table.
+
+<img alt="Growth overview dashboard with KPI cards, charts, and a product table" src="docs/screenshots/growth-overview.png" width="880">
+
+### Regional revenue review
+
+A custom page: product revenue, share of sales, the regional stack for the last 12 months, and net new accounts.
+
+<img alt="Custom Regional revenue review dashboard" src="docs/screenshots/regional-revenue.png" width="880">
+
+### In Claude Code
+
+The same product-revenue chart, drawn in the session after a Dash MCP query against the sample warehouse.
+
+<img alt="Revenue by product bar chart inside Claude Code" src="docs/screenshots/claude-code.png" width="880">
+
+### Data sources
+
+<img alt="Data sources page with the built-in sample warehouse" src="docs/screenshots/data-sources.png" width="880">
+
+### API tokens
+
+<img alt="API tokens page for issuing a scoped MCP client token" src="docs/screenshots/api-tokens.png" width="880">
+
+### Settings
+
+<img alt="Workspace settings and the Dash MCP endpoint note" src="docs/screenshots/settings.png" width="880">
+
+### Profile
+
+<img alt="Profile page for the demo admin user" src="docs/screenshots/profile.png" width="880">
+
 ## Requirements
 
 - [Node.js 24](https://nodejs.org/) (Active LTS)
-- [pnpm](https://pnpm.io/) 10
+- [pnpm](https://pnpm.io/) 12 (pinned to 12.5.1 in `package.json`)
 
 ## Monorepo
 
 ```text
-core/                      @dash/web        UX + REST API + MCP (TanStack Start)
-packages/core/             @dash/core       Shared types and adapter interfaces
-data-adapters/postgres/    @dash/adapter-postgres
+packages/web/                @dash/web              UX + REST API + MCP (TanStack Start)
+packages/core/               @dash/core             Shared types and adapter interfaces
+packages/postgres-adapter/   @dash/adapter-postgres
+packages/mysql-adapter/      @dash/adapter-mysql
+packages/snowflake-adapter/  @dash/adapter-snowflake
+packages/mongodb-adapter/    @dash/adapter-mongodb
+packages/bigquery-adapter/   @dash/adapter-bigquery
+packages/databricks-adapter/ @dash/adapter-databricks
 ```
 
-Workspaces are declared in `pnpm-workspace.yaml`.
+Workspaces are declared in the root `pnpm-workspace.yaml`.
 
 ## Quick start
 
@@ -47,10 +100,12 @@ Keep this list in sync as PRs land. Checked items are in the tree today.
 - [x] Core types package (`@dash/core`)
 - [x] Data adapter interface (`DataAdapter`)
 - [x] Postgres adapter (`@dash/adapter-postgres`)
-- [ ] MySQL adapter
-- [ ] MongoDB adapter
-- [ ] Google BigQuery adapter
-- [ ] Snowflake adapter
+- [x] Local Docker Compose clusters for adapter tests (`pnpm test:services:start` / `test:services:stop`)
+- [x] MySQL adapter (`@dash/adapter-mysql`)
+- [x] MongoDB adapter (`@dash/adapter-mongodb`)
+- [x] Google BigQuery adapter (`@dash/adapter-bigquery`)
+- [x] Snowflake adapter (`@dash/adapter-snowflake`)
+- [x] Databricks SQL adapter (`@dash/adapter-databricks`)
 - [ ] Redshift adapter
 - [ ] ClickHouse adapter
 
@@ -60,9 +115,9 @@ Keep this list in sync as PRs land. Checked items are in the tree today.
 - [x] User profile
 - [x] Settings
 - [x] Dynamic dashboard pages
-- [x] Chart widgets (Apache ECharts)
+- [x] Chart widgets (TanStack Charts)
 - [x] Sortable and filterable tables (TanStack Table)
-- [x] Data sources page (admin): add and remove sources (demo warehouse + Postgres)
+- [x] Data sources page (admin): add and remove sources (demo warehouse, Postgres, MySQL, Snowflake, MongoDB, BigQuery, Databricks SQL)
 - [ ] Real-time multi-user dashboard collaboration
 - [ ] Light theme
 
@@ -106,15 +161,45 @@ Issue a token with the `mcp` scope, then point a client at `/mcp`. Tools include
 | Command | |
 | --- | --- |
 | `pnpm dev` | Start `@dash/web` |
-| `pnpm test` | Run package tests |
+| `pnpm test:services:start` | Start warehouse clusters (Docker Compose) |
+| `pnpm test:services:stop` | Stop clusters and delete their data |
+| `pnpm test` | Run package tests. Postgres, MySQL, MongoDB, BigQuery, and Databricks SQL adapter tests use the clusters |
 | `pnpm typecheck` | TypeScript across workspaces |
 | `pnpm build` | Production build |
+
+## Adapter test clusters
+
+Postgres, MySQL, MongoDB, BigQuery, and Databricks SQL adapter tests run against the Compose cluster. Add the next local engine beside them in `docker-compose.test.yml` when that adapter can run here.
+
+```bash
+pnpm test:services:start
+pnpm test
+pnpm test:services:stop
+```
+
+`test:services:start` waits until each cluster is healthy. `test:services:stop` removes containers and volumes, so the next start reloads fixture SQL.
+
+| | Postgres | MySQL | MongoDB |
+| --- | --- | --- | --- |
+| URL | `postgres://dash:dash@127.0.0.1:54329/dash` | `mysql://dash:dash@127.0.0.1:33029/dash` | `mongodb://dash:dash@127.0.0.1:27029/dash?authSource=admin` |
+| Host | `127.0.0.1` | `127.0.0.1` | `127.0.0.1` |
+| Port | `54329` | `33029` | `27029` |
+| Database | `dash` | `dash` | `dash` |
+| User | `dash` | `dash` | `dash` |
+| Password | `dash` | `dash` | `dash` |
+
+Databricks SQL listens at `http://127.0.0.1:14439` with token `dash`, warehouse `dash`, catalog `dash`, and schema `analytics`.
+
+Override the Postgres endpoint with `DASH_TEST_POSTGRES_HOST`, `DASH_TEST_POSTGRES_PORT`, `DASH_TEST_POSTGRES_DATABASE`, `DASH_TEST_POSTGRES_USER`, and `DASH_TEST_POSTGRES_PASSWORD`. Override MySQL with `DASH_TEST_MYSQL_HOST`, `DASH_TEST_MYSQL_PORT`, `DASH_TEST_MYSQL_DATABASE`, `DASH_TEST_MYSQL_USER`, and `DASH_TEST_MYSQL_PASSWORD`. Override MongoDB with `DASH_TEST_MONGODB_HOST`, `DASH_TEST_MONGODB_PORT`, `DASH_TEST_MONGODB_DATABASE`, `DASH_TEST_MONGODB_USER`, `DASH_TEST_MONGODB_PASSWORD`, and `DASH_TEST_MONGODB_AUTH_SOURCE`. Override Databricks SQL with `DASH_TEST_DATABRICKS_HOST`, `DASH_TEST_DATABRICKS_PORT`, `DASH_TEST_DATABRICKS_HTTP_PATH`, `DASH_TEST_DATABRICKS_TOKEN`, `DASH_TEST_DATABRICKS_WAREHOUSE`, `DASH_TEST_DATABRICKS_CATALOG`, and `DASH_TEST_DATABRICKS_SCHEMA`. The port values are the host ports Compose publishes. Databricks token, warehouse, catalog, and schema are passed into the container; the HTTP path has to use that warehouse id. These credentials are for the local test clusters only.
 
 ## Architecture notes
 
 - [ADR 0001](docs/adr/0001-monorepo-architecture.md) — workspace layout
-- [ADR 0002](docs/adr/0002-charting-library.md) — ECharts + `ChartSpec`
+- [Data adapters](docs/data-adapters.md) — adding a warehouse adapter
+- [ADR 0002](docs/adr/0002-charting-library.md) — original ECharts renderer (superseded)
 - [ADR 0003](docs/adr/0003-api-tokens.md) — sessions, tokens, encryption
+- [ADR 0004](docs/adr/0004-tanstack-charts.md) — TanStack Charts + `ChartSpec`
+- [ADR 0005](docs/adr/0005-adapter-test-clusters.md) — Postgres adapter tests use a local cluster
 
 ## License
 
