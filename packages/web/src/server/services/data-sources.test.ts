@@ -296,4 +296,53 @@ describe("data source records", () => {
     expect(google.summary.auth).toBe("adc");
     expect(google.summary.endpoint).toBe("bigquery.googleapis.com");
   });
+
+  it("summarizes a Databricks SQL source without the token", async () => {
+    const admin = await createUser({
+      email: "databricks-admin@example.com",
+      name: "Admin",
+      password: "password123",
+      role: "admin",
+    });
+    const created = createDataSource({
+      name: "Lakehouse",
+      description: "Databricks SQL",
+      config: {
+        kind: "databricks",
+        host: "adb-1.12.azuredatabricks.net",
+        httpPath: "/sql/1.0/warehouses/abc",
+        token: "dapi-secret-value",
+        catalog: "main",
+        schema: "analytics",
+      },
+      createdBy: admin.id,
+    });
+    expect(created.kind).toBe("databricks");
+    expect(created.summary).toEqual({
+      host: "adb-1.12.azuredatabricks.net",
+      warehouse: "abc",
+      catalog: "main",
+      schema: "analytics",
+      endpoint: "adb-1.12.azuredatabricks.net",
+    });
+    expect(JSON.stringify(created.summary)).not.toContain("dapi-secret-value");
+
+    const malformed = createDataSource({
+      name: "Broken warehouse",
+      description: "Bad URI",
+      config: {
+        kind: "databricks",
+        connectionString: "databricks://token:super-secret@/not-a-path",
+      },
+      createdBy: admin.id,
+    });
+    expect(malformed.summary).toEqual({
+      host: "",
+      warehouse: "",
+      catalog: "",
+      schema: "",
+      endpoint: "",
+    });
+    expect(JSON.stringify(malformed.summary)).not.toContain("super-secret");
+  });
 });

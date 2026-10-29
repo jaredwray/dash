@@ -64,6 +64,26 @@ export interface MongoConnectionConfig {
   tls?: boolean;
 }
 
+export interface DatabricksConnectionConfig {
+  kind: "databricks";
+  connectionString?: string;
+  /** Workspace host, such as `adb-123.azuredatabricks.net` or `127.0.0.1`. */
+  host?: string;
+  /** SQL warehouse HTTP path, `/sql/1.0/warehouses/{id}`. */
+  httpPath?: string;
+  /** Personal access token. Sent only to the workspace host. */
+  token?: string;
+  /** Unity Catalog catalog. Unqualified resources use this with `schema`. */
+  catalog?: string;
+  schema?: string;
+  /**
+   * API origin. Cloud warehouses use `https://{host}`.
+   * The local emulator is `http://127.0.0.1:14439`.
+   * The origin host must match `host`.
+   */
+  apiEndpoint?: string;
+}
+
 export interface BigQueryConnectionConfig {
   kind: "bigquery";
   projectId: string;
@@ -92,4 +112,5 @@ export type ConnectionConfig =
   | DemoConnectionConfig
   | SnowflakeConnectionConfig
   | MongoConnectionConfig
-  | BigQueryConnectionConfig;
+  | BigQueryConnectionConfig
+  | DatabricksConnectionConfig;

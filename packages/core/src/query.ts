@@ -1,5 +1,6 @@
-const IDENT = /^[A-Za-z_][A-Za-z0-9_]*$/;
-const QUALIFIED = /^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)?$/;
+const IDENT = /^[A-Za-z_][A-Za-z0-9_-]*$/;
+const PART = "[A-Za-z_][A-Za-z0-9_-]*";
+const QUALIFIED = new RegExp(`^${PART}(?:\\.${PART}){0,2}$`);
 
 export class QueryValidationError extends Error {
   constructor(message: string) {
@@ -16,6 +17,7 @@ export function assertIdentifier(name: string, label = "identifier"): string {
 }
 
 export function splitResourceName(resource: string): {
+  catalog?: string;
   namespace?: string;
   name: string;
 } {
@@ -23,6 +25,9 @@ export function splitResourceName(resource: string): {
     throw new QueryValidationError(`Invalid resource name: ${resource}`);
   }
   const parts = resource.split(".");
+  if (parts.length === 3) {
+    return { catalog: parts[0], namespace: parts[1], name: parts[2]! };
+  }
   if (parts.length === 2) {
     return { namespace: parts[0], name: parts[1]! };
   }
