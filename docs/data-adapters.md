@@ -6,7 +6,8 @@ Each warehouse adapter is its own package under `packages/` and implements
 (`@dash/adapter-mysql`). Snowflake ships as `packages/snowflake-adapter`
 (`@dash/adapter-snowflake`). MongoDB ships as `packages/mongodb-adapter`
 (`@dash/adapter-mongodb`). BigQuery ships as `packages/bigquery-adapter`
-(`@dash/adapter-bigquery`).
+(`@dash/adapter-bigquery`). Amazon Redshift ships as `packages/redshift-adapter`
+(`@dash/adapter-redshift`).
 
 ## Shipping
 
@@ -17,7 +18,7 @@ Each warehouse adapter is its own package under `packages/` and implements
 | `@dash/adapter-snowflake` | `packages/snowflake-adapter` | `snowflake` | MVP |
 | `@dash/adapter-mongodb` | `packages/mongodb-adapter` | `mongodb` | MVP |
 | `@dash/adapter-bigquery` | `packages/bigquery-adapter` | `bigquery` | MVP |
-| — | — | `redshift` | Planned |
+| `@dash/adapter-redshift` | `packages/redshift-adapter` | `redshift` | MVP |
 | — | — | `clickhouse` | Planned |
 
 The web app also ships a built-in `demo` adapter so the product is usable
@@ -25,7 +26,7 @@ without an external warehouse. The demo adapter stays in-process.
 
 ## Testing
 
-Postgres, MySQL, MongoDB, and BigQuery adapter tests run against the local clusters in `docker-compose.test.yml`.
+Postgres, MySQL, MongoDB, BigQuery, and Redshift adapter tests run against the local clusters in `docker-compose.test.yml`.
 
 ```bash
 pnpm test:services:start
@@ -36,7 +37,9 @@ pnpm test:services:stop
 Postgres listens on `127.0.0.1:54329` (`dash` / `dash`, database `dash`).
 MySQL listens on `127.0.0.1:33029` (`dash` / `dash`, database `dash`).
 MongoDB listens on `127.0.0.1:27029` (`dash` / `dash`, database `dash`, auth
-database `admin`). The root README lists the environment overrides. When an
+database `admin`). The Redshift stand-in listens on `127.0.0.1:54399`
+(`redshift://dash:dash@127.0.0.1:54399/dash`). The root README lists the
+environment overrides. When an
 engine can run locally, add it to that Compose file and point the package
 tests at it.
 

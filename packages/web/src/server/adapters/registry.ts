@@ -3,6 +3,7 @@ import { BigQueryAdapter } from "@dash/adapter-bigquery";
 import { MongoAdapter } from "@dash/adapter-mongodb";
 import { MysqlAdapter } from "@dash/adapter-mysql";
 import { PostgresAdapter } from "@dash/adapter-postgres";
+import { RedshiftAdapter } from "@dash/adapter-redshift";
 import { SnowflakeAdapter } from "@dash/adapter-snowflake";
 import { demoAdapter } from "./demo.ts";
 
@@ -22,6 +23,8 @@ function createAdapter(config: ConnectionConfig): DataAdapter {
       return PostgresAdapter.fromConfig(config);
     case "mysql":
       return MysqlAdapter.fromConfig(config);
+    case "redshift":
+      return RedshiftAdapter.fromConfig(config);
     case "mongodb":
       return MongoAdapter.fromConfig(config);
     case "bigquery":

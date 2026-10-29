@@ -6,10 +6,11 @@ All notable changes to Dash are documented here.
 
 ### Added
 
+- `@dash/adapter-redshift` (`packages/redshift-adapter`) implementing `DataAdapter`. Structured queries compile to parameterized SQL over the PostgreSQL wire protocol. Connections encrypt by default. `sslmode=require` and `verify-ca` check the certificate chain without the host name, and `verify-full` checks both. Queries stop after 60 seconds. Null filters compile to `IS NULL` / `IS NOT NULL`. The local test cluster is the `redshift` service in `docker-compose.test.yml`, a PostgreSQL stand-in on `127.0.0.1:54399`.
 - `@dash/adapter-mysql` (`packages/mysql-adapter`) implementing `DataAdapter`. Structured queries compile to parameterized SQL (`?` placeholders). `like` uses a binary collation so it stays case-sensitive; `ilike` compiles to `LOWER(column) LIKE LOWER(?)` because MySQL has no `ILIKE`. Connection URIs are parsed in-process so driver query parameters cannot enable `LOCAL_FILES` or `debug`. The local test cluster is the `mysql` service in `docker-compose.test.yml` (`mysql://dash:dash@127.0.0.1:33029/dash`). Administrators can add it from a `mysql://` URI or from host, port, database, user, and password fields.
 - `@dash/adapter-bigquery` (`packages/bigquery-adapter`) implementing `DataAdapter`. Structured queries compile to parameterized GoogleSQL. The local test cluster is the `bigquery` service in `docker-compose.test.yml`, a 256 MiB in-memory emulator.
 - `@dash/adapter-mongodb` (`packages/mongodb-adapter`) implementing `DataAdapter`. Structured queries compile to a MongoDB `find` with validated field names and scalar BSON values. The local test cluster is the `mongodb` service in `docker-compose.test.yml`.
-- Local Docker Compose clusters for adapter tests, started with `pnpm test:services:start` and stopped with `pnpm test:services:stop`. Postgres, MySQL, MongoDB, and BigQuery adapter tests run against those clusters.
+- Local Docker Compose clusters for adapter tests, started with `pnpm test:services:start` and stopped with `pnpm test:services:stop`. Postgres, MySQL, MongoDB, BigQuery, and Redshift adapter tests run against those clusters.
 - `@dash/adapter-snowflake` (`packages/snowflake-adapter`) implementing `DataAdapter` with parameterized SQL (`?` binds) over the Snowflake HTTPS session API.
 - README screenshots of sign-in, dashboards, the sample warehouse, a custom regional revenue page, the same chart inside Claude Code, API tokens, settings, and profile.
 - PNPM workspace monorepo on Node.js 24 (Active LTS).
@@ -19,11 +20,12 @@ All notable changes to Dash are documented here.
 
 ### Changed
 
+- The data-source form can add an Amazon Redshift connection. Choosing Redshift starts with encryption on and clears a URI left over from another kind. Pasting a Redshift URI updates the SSL checkbox from `ssl` and `sslmode`. An explicit SSL flag overrides the URI. Explicit host, port, database, user, and password fields override the same parts of a URI.
 - MySQL executes queries with server-side prepared statements, keeping filter values and pagination parameters separate from SQL text.
 - MySQL validates identifiers again at the SQL construction boundary and emits only fixed `ASC`/`DESC` sort keywords. Invalid names are rejected rather than cleaned; bound filter values retain their original text.
 - Security: `seroval` and `seroval-plugins` 1.6.7 → 1.6.11 (CVE-2026-116581, CVE-2026-116584, CVE-2026-116582, CVE-2026-116583). `@tanstack/router-core` and the Start packages still depend on `^1.6.7`, so `pnpm-workspace.yaml` overrides only versions below 1.6.11. No cooldown skip.
-- The data-source form no longer offers Sample warehouse. Postgres, MySQL, Snowflake, MongoDB, and BigQuery are the kinds an administrator can add.
-- Adding a data source starts with a connection URI. Postgres, MySQL, Snowflake, and MongoDB take their native URIs. BigQuery takes `bigquery://project/dataset`, with optional `location` and `endpoint` query parameters. Field entry is still available, and a BigQuery service account key is pasted separately.
+- The data-source form no longer offers Sample warehouse. Postgres, MySQL, Snowflake, MongoDB, BigQuery, and Redshift are the kinds an administrator can add.
+- Adding a data source starts with a connection URI. Postgres, MySQL, Redshift, Snowflake, and MongoDB take their native URIs. BigQuery takes `bigquery://project/dataset`, with optional `location` and `endpoint` query parameters. Field entry is still available, and a BigQuery service account key is pasted separately.
 - MongoDB queries keep a dotted collection name when that collection exists, and otherwise still accept `database.collection` for the connected database. Connection strings may be replica-set seed lists and cannot turn off TLS verification. The saved summary reports effective TLS, including the `mongodb+srv` default. `neq null` matches values that are present and not null. Integers that do not fit a safe JavaScript number, and non-integer `Decimal128` values, stay strings.
 
 - Postgres adapter connections fail after 10 seconds instead of waiting on the operating system timeout.

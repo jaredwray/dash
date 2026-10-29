@@ -16,6 +16,7 @@
     "@dash/adapter-mongodb": "workspace:*",
     "@dash/adapter-mysql": "workspace:*",
     "@dash/adapter-postgres": "workspace:*",
+    "@dash/adapter-redshift": "workspace:*",
     "@dash/adapter-snowflake": "workspace:*",
     "@dash/core": "workspace:*",
     "@modelcontextprotocol/server": "2.3.1",

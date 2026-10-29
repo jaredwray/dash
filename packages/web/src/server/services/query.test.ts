@@ -32,4 +32,32 @@ describe("testConnectionConfig", () => {
     expect(result.latencyMs).toBe(0);
     expect(result.message).toMatch(/host/i);
   });
+
+  it("reports an invalid Redshift host without echoing the password", async () => {
+    const result = await testConnectionConfig({
+      kind: "redshift",
+      host: "not a host",
+      database: "dash",
+      user: "dash",
+      password: "super-secret",
+    });
+    expect(result.ok).toBe(false);
+    expect(result.latencyMs).toBe(0);
+    expect(result.message).toMatch(/host/i);
+    expect(result.message).not.toContain("not a host");
+    expect(result.message).not.toContain("super-secret");
+  });
+
+  it("rejects a Redshift URI that tries to set driver options", async () => {
+    const result = await testConnectionConfig({
+      kind: "redshift",
+      connectionString:
+        "redshift://dash:super-secret@example.redshift.amazonaws.com/analytics?options=-c",
+    });
+    expect(result.ok).toBe(false);
+    expect(result.latencyMs).toBe(0);
+    expect(result.message).toMatch(/unsupported redshift connection parameter/i);
+    expect(result.message).not.toMatch(/options/i);
+    expect(result.message).not.toContain("super-secret");
+  });
 });

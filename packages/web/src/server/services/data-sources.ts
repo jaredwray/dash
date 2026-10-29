@@ -1,4 +1,5 @@
 import { bigQueryEndpoint, isGoogleApiHost } from "@dash/adapter-bigquery";
+import { redshiftPublicSummary } from "@dash/adapter-redshift";
 import { mongoUsesTls, parseMongoConnectionString } from "@dash/adapter-mongodb";
 import { parseMysqlConnectionString } from "@dash/adapter-mysql";
 import {
@@ -98,6 +99,9 @@ function summarize(config: ConnectionConfig): DataSourceRecord["summary"] {
       user: config.user ?? "",
       ssl: Boolean(config.ssl),
     };
+  }
+  if (config.kind === "redshift") {
+    return redshiftPublicSummary(config);
   }
   if (config.kind === "mongodb") {
     const usingUri = Boolean(config.connectionString) && !config.host;

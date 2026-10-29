@@ -1,6 +1,6 @@
 /**
  * Adapter kinds Dash knows about. `postgres`, `mysql`, `snowflake`, `mongodb`,
- * `bigquery`, and `demo` ship; the rest are reserved so data-source records and
+ * `bigquery`, `redshift`, and `demo` ship; the rest are reserved so data-source records and
  * the admin UI stay stable as adapters land.
  */
 export const DATA_SOURCE_KINDS = [

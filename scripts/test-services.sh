@@ -25,6 +25,7 @@ case "$action" in
     "${compose[@]}" up -d --wait --remove-orphans
     echo "PostgreSQL test cluster is ready at postgres://dash:dash@127.0.0.1:${DASH_TEST_POSTGRES_PORT:-54329}/dash"
     echo "MySQL test cluster is ready at mysql://dash:dash@127.0.0.1:${DASH_TEST_MYSQL_PORT:-33029}/dash"
+    echo "Redshift test cluster is ready at redshift://dash:dash@127.0.0.1:${DASH_TEST_REDSHIFT_PORT:-54399}/dash"
     echo "MongoDB test cluster is ready at mongodb://dash:dash@127.0.0.1:${DASH_TEST_MONGODB_PORT:-27029}/dash?authSource=admin"
     echo "BigQuery test cluster is ready at http://127.0.0.1:${DASH_TEST_BIGQUERY_PORT:-9059} (project dash, dataset analytics)"
     ;;
