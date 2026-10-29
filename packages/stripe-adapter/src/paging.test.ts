@@ -49,7 +49,8 @@ describe("Stripe paging", () => {
       resource: "customers",
       filters: [{ column: "email", op: "eq", value: "ada@example.com" }],
     });
-    const href = String(fetchMock.mock.calls[0]?.[0]);
+    const [url] = fetchMock.mock.calls[0] as unknown as [URL, RequestInit];
+    const href = String(url);
     expect(decodeURIComponent(href)).toContain("/v1/customers/search");
     expect(decodeURIComponent(href)).toContain('email:"ada@example.com"');
     await adapter.close();
