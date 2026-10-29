@@ -8,7 +8,8 @@ Each warehouse adapter is its own package under `packages/` and implements
 (`@dash/adapter-mongodb`). BigQuery ships as `packages/bigquery-adapter`
 (`@dash/adapter-bigquery`). Databricks SQL ships as `packages/databricks-adapter`
 (`@dash/adapter-databricks`). Amazon Redshift ships as `packages/redshift-adapter`
-(`@dash/adapter-redshift`).
+(`@dash/adapter-redshift`). Stripe ships as `packages/stripe-adapter`
+(`@dash/adapter-stripe`).
 
 ## Shipping
 
@@ -21,6 +22,7 @@ Each warehouse adapter is its own package under `packages/` and implements
 | `@dash/adapter-bigquery` | `packages/bigquery-adapter` | `bigquery` | MVP |
 | `@dash/adapter-databricks` | `packages/databricks-adapter` | `databricks` | MVP |
 | `@dash/adapter-redshift` | `packages/redshift-adapter` | `redshift` | MVP |
+| `@dash/adapter-stripe` | `packages/stripe-adapter` | `stripe` | MVP |
 | — | — | `clickhouse` | Planned |
 
 The web app also ships a built-in `demo` adapter so the product is usable
@@ -28,7 +30,7 @@ without an external warehouse. The demo adapter stays in-process.
 
 ## Testing
 
-Postgres, MySQL, MongoDB, BigQuery, Databricks SQL, and Redshift adapter tests run against the local clusters in `docker-compose.test.yml`.
+Postgres, MySQL, MongoDB, BigQuery, Databricks SQL, Redshift, and Stripe adapter tests run against the local clusters in `docker-compose.test.yml`.
 
 ```bash
 pnpm test:services:start
@@ -42,7 +44,8 @@ MongoDB listens on `127.0.0.1:27029` (`dash` / `dash`, database `dash`, auth
 database `admin`). Databricks SQL listens on `http://127.0.0.1:14439` (token
 `dash`, warehouse `dash`, catalog `dash`, schema `analytics`). The Redshift
 stand-in listens on `127.0.0.1:54399`
-(`redshift://dash:dash@127.0.0.1:54399/dash`). The root README lists the
+(`redshift://dash:dash@127.0.0.1:54399/dash`). Stripe listens on
+`http://127.0.0.1:12119`. The root README lists the
 environment overrides. When an
 engine can run locally, add it to that Compose file and point the package
 tests at it.

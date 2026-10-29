@@ -96,6 +96,19 @@ export interface RedshiftConnectionConfig {
   ssl?: boolean;
 }
 
+export interface StripeConnectionConfig {
+  kind: "stripe";
+  connectionString?: string;
+  /** Secret or restricted key. Sent only to the Stripe API origin. */
+  apiKey?: string;
+  /**
+   * API origin. Cloud accounts use `https://api.stripe.com`.
+   * The local fixture is `http://127.0.0.1:12119`.
+   * `http` is accepted only for a loopback host.
+   */
+  apiEndpoint?: string;
+}
+
 export interface BigQueryConnectionConfig {
   kind: "bigquery";
   projectId: string;
@@ -126,4 +139,5 @@ export type ConnectionConfig =
   | MongoConnectionConfig
   | BigQueryConnectionConfig
   | DatabricksConnectionConfig
-  | RedshiftConnectionConfig;
+  | RedshiftConnectionConfig
+  | StripeConnectionConfig;

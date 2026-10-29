@@ -79,6 +79,12 @@ const patchSchema = z.object({
         apiEndpoint: z.string().optional(),
       }),
       z.object({
+        kind: z.literal("stripe"),
+        connectionString: z.string().optional(),
+        apiKey: z.string().optional(),
+        apiEndpoint: z.string().optional(),
+      }),
+      z.object({
         kind: z.literal("bigquery"),
         projectId: z.string().min(1),
         dataset: z.string().optional(),

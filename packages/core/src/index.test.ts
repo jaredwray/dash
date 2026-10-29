@@ -20,6 +20,7 @@ describe("data source kinds", () => {
     expect(DATA_SOURCE_KINDS).toContain("bigquery");
     expect(DATA_SOURCE_KINDS).toContain("databricks");
     expect(DATA_SOURCE_KINDS).toContain("redshift");
+    expect(DATA_SOURCE_KINDS).toContain("stripe");
     expect(isDataSourceKind("postgres")).toBe(true);
     expect(isDataSourceKind("oracle")).toBe(false);
   });

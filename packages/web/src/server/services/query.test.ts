@@ -74,4 +74,17 @@ describe("testConnectionConfig", () => {
     expect(result.message).not.toMatch(/options/i);
     expect(result.message).not.toContain("super-secret");
   });
+
+  it("rejects a Stripe URI that names another host without echoing the key", async () => {
+    const result = await testConnectionConfig({
+      kind: "stripe",
+      connectionString: "stripe://sk_test_supersecret@evil.example?debug=1",
+    });
+    expect(result.ok).toBe(false);
+    expect(result.latencyMs).toBe(0);
+    expect(result.message).toMatch(/unsupported stripe connection parameter/i);
+    expect(result.message).not.toContain("sk_test_supersecret");
+    expect(result.message).not.toMatch(/debug/i);
+    expect(result.message).not.toContain("evil.example");
+  });
 });

@@ -49,7 +49,8 @@ type SourceKind =
   | "mongodb"
   | "bigquery"
   | "databricks"
-  | "redshift";
+  | "redshift"
+  | "stripe";
 
 const URI_PLACEHOLDER: Record<SourceKind, string> = {
   postgres: "postgres://user:password@localhost:5432/analytics",
@@ -60,6 +61,7 @@ const URI_PLACEHOLDER: Record<SourceKind, string> = {
   bigquery: "bigquery://project/dataset?location=US&endpoint=http://127.0.0.1:9059",
   databricks:
     "databricks://token:dapi000@adb-000.0.azuredatabricks.net/sql/1.0/warehouses/abc?catalog=main&schema=default",
+  stripe: "stripe://sk_test_000@api.stripe.com",
 };
 
 function sslFromRedshiftUri(value: string): boolean | undefined {
@@ -158,6 +160,7 @@ const emptyForm = {
   httpPath: "",
   token: "",
   catalog: "",
+  apiKey: "",
 };
 
 function DataSourcesPage() {
@@ -282,6 +285,17 @@ function DataSourcesPage() {
                           schema: form.schema.trim() || undefined,
                           apiEndpoint: form.apiEndpoint.trim() || undefined,
                         }
+                    : form.kind === "stripe"
+                      ? form.useConnectionString
+                        ? {
+                            kind: "stripe" as const,
+                            connectionString: form.connectionString.trim(),
+                          }
+                        : {
+                            kind: "stripe" as const,
+                            apiKey: form.apiKey,
+                            apiEndpoint: form.apiEndpoint.trim() || undefined,
+                          }
                 : form.useConnectionString
                   ? {
                       kind: "postgres" as const,
@@ -350,7 +364,7 @@ function DataSourcesPage() {
           <p className="mt-2 max-w-2xl text-sm text-mist">
             Add a warehouse for dashboards and MCP, or remove one that is no longer needed.
             Paste a connection URI, or enter the fields. Postgres, MySQL, Snowflake, MongoDB,
-            BigQuery, Databricks SQL, and Redshift are tested on save.
+            BigQuery, Databricks SQL, Redshift, and Stripe are tested on save.
           </p>
         </div>
         {isAdmin ? (
@@ -474,6 +488,7 @@ function DataSourcesPage() {
                           : form.schema,
                     host: enteringDatabricks && form.host.trim() === "localhost" ? "" : form.host,
                     apiEndpoint: kind === form.kind ? form.apiEndpoint : "",
+                    apiKey: kind === form.kind ? form.apiKey : "",
                     authSource: form.authSource || "admin",
                     useConnectionString: true,
                   });
@@ -486,6 +501,7 @@ function DataSourcesPage() {
                 <option value="mongodb">MongoDB</option>
                 <option value="bigquery">Google BigQuery</option>
                 <option value="databricks">Databricks SQL</option>
+                <option value="stripe">Stripe</option>
               </Select>
             </Field>
             {form.kind === "postgres" || form.kind === "mysql" || form.kind === "redshift" ? (
@@ -857,6 +873,43 @@ function DataSourcesPage() {
                         required
                         autoComplete="off"
                       />
+                    </Field>
+                  </>
+                )}
+                <ConnectionModeToggle
+                  usingUri={form.useConnectionString}
+                  onChange={(useConnectionString) => setForm({ ...form, useConnectionString })}
+                />
+              </>
+            ) : form.kind === "stripe" ? (
+              <>
+                {form.useConnectionString ? (
+                  <ConnectionUriField
+                    kind="stripe"
+                    value={form.connectionString}
+                    onChange={(connectionString) => setForm({ ...form, connectionString })}
+                  />
+                ) : (
+                  <>
+                    <Field label="Secret key">
+                      <TextInput
+                        type="password"
+                        value={form.apiKey}
+                        onChange={(event) => setForm({ ...form, apiKey: event.target.value })}
+                        required
+                        autoComplete="off"
+                      />
+                    </Field>
+                    <Field label="API endpoint">
+                      <TextInput
+                        value={form.apiEndpoint}
+                        onChange={(event) => setForm({ ...form, apiEndpoint: event.target.value })}
+                        placeholder="http://127.0.0.1:12119 for the local fixture"
+                      />
+                      <p className="text-xs text-mist">
+                        Leave this empty to call https://api.stripe.com. For the local fixture, use
+                        http://127.0.0.1:12119.
+                      </p>
                     </Field>
                   </>
                 )}
