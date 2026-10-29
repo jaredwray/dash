@@ -35,6 +35,26 @@ function customer(id: string): Record<string, unknown> {
 }
 
 describe("Stripe paging", () => {
+  it("sends an email equality filter on the Search request", async () => {
+    const fetchMock = vi.fn(async () =>
+      json({
+        object: "list",
+        data: [customer("cus_ada")],
+        has_more: false,
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const adapter = StripeAdapter.fromConfig(session);
+    await adapter.query({
+      resource: "customers",
+      filters: [{ column: "email", op: "eq", value: "ada@example.com" }],
+    });
+    const href = String(fetchMock.mock.calls[0]?.[0]);
+    expect(decodeURIComponent(href)).toContain("/v1/customers/search");
+    expect(decodeURIComponent(href)).toContain('email:"ada@example.com"');
+    await adapter.close();
+  });
+
   it("sorts across later pages instead of the first page only", async () => {
     const fetchMock = vi.fn(async (url: URL) => {
       const href = String(url);

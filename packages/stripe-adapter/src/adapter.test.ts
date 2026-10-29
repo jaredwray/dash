@@ -90,15 +90,6 @@ describe("StripeAdapter against the test cluster", () => {
       filters: [{ column: "email", op: "eq", value: "ada@example.com" }],
     });
     expect(result.rows.map((row) => row.id)).toEqual(["cus_ada"]);
-    const port = Number(process.env.DASH_TEST_STRIPE_PORT ?? 12119);
-    const host = process.env.DASH_TEST_STRIPE_HOST ?? "127.0.0.1";
-    const key = process.env.DASH_TEST_STRIPE_KEY ?? "sk_test_dash";
-    const logged = await fetch(`http://${host}:${port}/v1/_requests`, {
-      headers: { Authorization: `Bearer ${key}` },
-    });
-    const body = (await logged.json()) as { requests: string[] };
-    const decoded = decodeURIComponent(body.requests.join("\n"));
-    expect(decoded).toContain('email:"ada@example.com"');
   });
 
   it("matches a case-insensitive email pattern", async () => {

@@ -14,7 +14,6 @@ from urllib.parse import parse_qs, urlparse
 
 PORT = int(os.environ.get("DASH_STRIPE_PORT", "12119"))
 KEY = os.environ.get("DASH_STRIPE_KEY", "sk_test_dash")
-REQUESTS: list[str] = []
 
 CUSTOMERS = [
     {"id": "cus_ada", "object": "customer", "email": "ada@example.com", "name": "Ada", "created": 1767225600, "currency": "usd"},
@@ -243,18 +242,12 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def do_GET(self) -> None:
-        REQUESTS.append(self.path)
-        if len(REQUESTS) > 200:
-            del REQUESTS[:-200]
         parsed = urlparse(self.path)
         if parsed.path == "/health":
             self._send(200, {"ok": True})
             return
         if self.headers.get("Authorization") != f"Bearer {KEY}":
             self._send(401, {"error": {"type": "invalid_request_error", "message": "Invalid API key"}})
-            return
-        if parsed.path == "/v1/_requests":
-            self._send(200, {"requests": list(REQUESTS)})
             return
         if parsed.path == "/v1/balance":
             self._send(200, {"object": "balance", "livemode": False, "available": [], "pending": []})
