@@ -132,6 +132,32 @@ services:
       start_period: 15s
       start_interval: 2s
 
+  redshift:
+    image: postgres:17-alpine
+    container_name: dash-test-redshift
+    environment:
+      POSTGRES_USER: dash
+      POSTGRES_PASSWORD: dash
+      POSTGRES_DB: dash
+    ports:
+      - "127.0.0.1:${DASH_TEST_REDSHIFT_PORT:-54399}:5432"
+    volumes:
+      - dash-test-redshift:/var/lib/postgresql/data
+      - ./docker/redshift/init:/docker-entrypoint-initdb.d:ro
+    # Amazon Redshift has no local image. This service speaks the PostgreSQL
+    # wire protocol on the Redshift default port mapping. pg_isready is true
+    # during the entrypoint's temporary server, before fixture SQL runs.
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U dash -d dash && psql -U dash -d dash -v ON_ERROR_STOP=1 -c 'SELECT 1 FROM public.paid_orders LIMIT 1'",
+        ]
+      interval: 2s
+      timeout: 5s
+      retries: 40
+      start_period: 10s
+
   databricks:
     build:
       context: ./docker/databricks
@@ -159,3 +185,4 @@ volumes:
   dash-test-postgres:
   dash-test-mysql:
   dash-test-mongodb:
+  dash-test-redshift:

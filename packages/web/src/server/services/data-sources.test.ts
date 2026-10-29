@@ -297,6 +297,46 @@ describe("data source records", () => {
     expect(google.summary.endpoint).toBe("bigquery.googleapis.com");
   });
 
+  it("summarizes a Redshift source without the password", async () => {
+    const admin = await createUser({
+      email: "redshift-admin@example.com",
+      name: "Admin",
+      password: "password123",
+      role: "admin",
+    });
+    const created = createDataSource({
+      name: "Warehouse",
+      description: "Redshift",
+      config: {
+        kind: "redshift",
+        connectionString:
+          "redshift://reader:super-secret@example.redshift.amazonaws.com:5439/analytics?sslmode=require",
+      },
+      createdBy: admin.id,
+    });
+    expect(created.kind).toBe("redshift");
+    expect(created.summary).toEqual({
+      host: "example.redshift.amazonaws.com",
+      port: 5439,
+      database: "analytics",
+      user: "reader",
+      ssl: true,
+    });
+    expect(JSON.stringify(created.summary)).not.toContain("super-secret");
+
+    const rejected = createDataSource({
+      name: "Broken",
+      description: "Redshift",
+      config: {
+        kind: "redshift",
+        connectionString: "redshift://reader:super-secret@example.redshift.amazonaws.com/analytics?options=-c",
+      },
+      createdBy: admin.id,
+    });
+    expect(JSON.stringify(rejected.summary)).not.toContain("super-secret");
+    expect(rejected.summary.password).toBeUndefined();
+  });
+
   it("summarizes a Databricks SQL source without the token", async () => {
     const admin = await createUser({
       email: "databricks-admin@example.com",

@@ -46,6 +46,7 @@ export type {
   MongoConnectionConfig,
   MysqlConnectionConfig,
   PostgresConnectionConfig,
+  RedshiftConnectionConfig,
   SnowflakeConnectionConfig,
 } from "./datasource.ts";
 

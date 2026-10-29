@@ -275,6 +275,28 @@ importers:
         specifier: ^5.0.1
         version: 5.0.1(@types/node@24.13.6)(vite@8.3.4(@types/node@24.13.6)(esbuild@0.28.2)(jiti@2.7.0))
 
+  packages/redshift-adapter:
+    dependencies:
+      '@dash/core':
+        specifier: workspace:*
+        version: link:../core
+      pg:
+        specifier: ^8.16.3
+        version: 8.23.0
+    devDependencies:
+      '@types/node':
+        specifier: ^24.13.6
+        version: 24.13.6
+      '@types/pg':
+        specifier: ^8.15.6
+        version: 8.23.1
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+      vitest:
+        specifier: ^5.0.1
+        version: 5.0.1(@types/node@24.13.6)(vite@8.3.4(@types/node@24.13.6)(esbuild@0.28.2)(jiti@2.7.0))
+
   packages/snowflake-adapter:
     dependencies:
       '@dash/core':
@@ -308,6 +330,9 @@ importers:
       '@dash/adapter-postgres':
         specifier: workspace:*
         version: link:../postgres-adapter
+      '@dash/adapter-redshift':
+        specifier: workspace:*
+        version: link:../redshift-adapter
       '@dash/adapter-snowflake':
         specifier: workspace:*
         version: link:../snowflake-adapter

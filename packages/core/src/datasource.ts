@@ -84,6 +84,18 @@ export interface DatabricksConnectionConfig {
   apiEndpoint?: string;
 }
 
+export interface RedshiftConnectionConfig {
+  kind: "redshift";
+  connectionString?: string;
+  host?: string;
+  port?: number;
+  database?: string;
+  user?: string;
+  password?: string;
+  /** Encrypt the session and verify the server certificate. */
+  ssl?: boolean;
+}
+
 export interface BigQueryConnectionConfig {
   kind: "bigquery";
   projectId: string;
@@ -113,4 +125,5 @@ export type ConnectionConfig =
   | SnowflakeConnectionConfig
   | MongoConnectionConfig
   | BigQueryConnectionConfig
-  | DatabricksConnectionConfig;
+  | DatabricksConnectionConfig
+  | RedshiftConnectionConfig;
