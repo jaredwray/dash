@@ -12,6 +12,10 @@
     "test": "pnpm -r --if-present test",
     "test:services:start": "bash ./scripts/test-services.sh start",
     "test:services:stop": "bash ./scripts/test-services.sh stop",
-    "typecheck": "pnpm -r --if-present typecheck"
+    "typecheck": "pnpm -r --if-present typecheck",
+    "deploy:dev": "wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "4.152.0"
   }
 }

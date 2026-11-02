@@ -103,6 +103,7 @@ Keep this list in sync as PRs land. Checked items are in the tree today.
 - [x] Data adapter interface (`DataAdapter`)
 - [x] Postgres adapter (`@dash/adapter-postgres`)
 - [x] Local Docker Compose clusters for adapter tests (`pnpm test:services:start` / `test:services:stop`)
+- [x] Dev deploy to `dev.dash.io` (Cloudflare Worker + container, GitHub Actions)
 - [x] MySQL adapter (`@dash/adapter-mysql`)
 - [x] MongoDB adapter (`@dash/adapter-mongodb`)
 - [x] Google BigQuery adapter (`@dash/adapter-bigquery`)
@@ -169,6 +170,7 @@ Issue a token with the `mcp` scope, then point a client at `/mcp`. Tools include
 | `pnpm test` | Run package tests. Postgres, MySQL, MongoDB, BigQuery, Databricks SQL, Redshift, and Stripe adapter tests use the clusters |
 | `pnpm typecheck` | TypeScript across workspaces |
 | `pnpm build` | Production build |
+| `pnpm deploy:dev` | `wrangler deploy` of the dev Worker and container (`dev.dash.io`) |
 
 ## Adapter test clusters
 
@@ -203,6 +205,24 @@ Override the Postgres endpoint with `DASH_TEST_POSTGRES_HOST`, `DASH_TEST_POSTGR
 - [ADR 0003](docs/adr/0003-api-tokens.md) — sessions, tokens, encryption
 - [ADR 0004](docs/adr/0004-tanstack-charts.md) — TanStack Charts + `ChartSpec`
 - [ADR 0005](docs/adr/0005-adapter-test-clusters.md) — adapter tests use local clusters
+- [ADR 0006](docs/adr/0006-dev-workers-container.md) — dev.dash.io Worker and container
+
+## Dev deploy
+
+Pushes to `main` run `.github/workflows/deploy-dev.yml`. Wrangler builds `Dockerfile`, pushes the image, and attaches the Worker to `https://dev.dash.io`. `workers.dev` is off.
+
+The container runs `node .output/server/index.mjs` from `@dash/web`. One instance named `dev` serves the host. Its disk is ephemeral: an hour without traffic, or the next deploy, drops the SQLite file. Register again after that. The first account is the admin, and registration is open on an empty database, so the first visitor after a reset becomes admin. Put Cloudflare Access in front of the hostname if that should not be public. The demo user is not seeded.
+
+GitHub Actions secrets:
+
+| Secret | |
+| --- | --- |
+| `CLOUDFLARE_API_TOKEN` | Workers Scripts edit, Containers edit, and DNS edit on the `dash.io` zone |
+| `CLOUDFLARE_ACCOUNT_ID` | Account that owns the Worker |
+
+The workflow deploys the `dash-development` Worker without `DASH_SECRET`. After that first deploy, set the secret on that Worker with `pnpm exec wrangler secret put DASH_SECRET`. Until it is set, requests to `dev.dash.io` return 500. Later deploys leave the secret in place. It encrypts saved data-source credentials and must not be `change-me-in-production`.
+
+`pnpm deploy:dev` runs `wrangler deploy` locally. `pnpm deploy` is pnpm's own command and does not run this script. Docker has to be running.
 
 ## License
 
