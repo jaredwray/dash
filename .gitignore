@@ -157,3 +157,6 @@ packages/web/data/*
 .nitro
 .tanstack
 packages/web/.output/
+
+# Wrangler local state
+.wrangler/

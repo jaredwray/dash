@@ -19,7 +19,7 @@ Profile: website/app · public
 - [x] `packageManager: pnpm@11.3+` pinned in `package.json` — PR #11
 - [x] 7-day cooldown: `minimumReleaseAge: 10080`, `minimumReleaseAgeStrict: true`, `minimumReleaseAgeIgnoreMissingTime: false`. One version exception, approved 2026-10-06: `@tanstack/charts@1.0.0` — PR #12
 - [x] `trustPolicy: no-downgrade`; no first-party `trustPolicyExclude` — PR #13
-- [x] Lifecycle scripts blocked: `strictDepBuilds: true`, `dangerouslyAllowAllBuilds: false`, `allowBuilds: {}` baseline — PR #14
+- [x] Lifecycle scripts blocked: `strictDepBuilds: true`, `dangerouslyAllowAllBuilds: false`. `allowBuilds` permits `esbuild` and `workerd` (Wrangler's runtime binary copy) — PR #14
 - [x] `blockExoticSubdeps: true` — PR #15
 - [x] Lockfile committed; CI installs with `pnpm install --frozen-lockfile` — verified 2026-09-15
 - [x] No `.github/dependabot.yml`; other dependency-update tools (if any) open PRs only — never auto-merge — verified 2026-09-15
@@ -33,8 +33,8 @@ Profile: website/app · public
 - [x] Workflow `name:` and job `name:` contain no spaces (kebab-case) so they can be set as required status checks — PR #20
 - [x] `persist-credentials: false` on checkouts that don't push — PR #21
 - [x] No `pull_request_target` on workflows that run untrusted PR code — verified 2026-09-15
-- [x] Artifact-publishing workflows disable `actions/setup-node` default caching (`package-manager-cache: false`) to prevent cache poisoning — verified 2026-09-15 (no artifact-publishing workflows)
-- [x] No npm tokens (or other registry credentials) in Actions secrets — verified 2026-09-15 (PR #23)
+- [x] Artifact-publishing workflows disable `actions/setup-node` default caching (`package-manager-cache: false`) to prevent cache poisoning. `deploy-dev` publishes the Worker and container image and sets `package-manager-cache: false`
+- [x] No npm tokens in Actions secrets. `deploy-dev` uses Cloudflare account credentials (`CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`) and `DASH_SECRET` for the dev host; those are not npm registry tokens — PR #23
 
 ## 6. Security tooling
 - [x] Aikido runs on every build — verified 2026-09-15 (PR #24)
