@@ -13,11 +13,11 @@ Cloudflare Workers cannot run this Node server directly. Workers Containers can:
 ## Decision
 
 - `wrangler` is a root dev dependency. `pnpm deploy:dev` and the `deploy-dev` workflow both run `wrangler deploy`. `pnpm deploy` is reserved by pnpm and does not run the script.
-- `wrangler.jsonc` attaches the Worker to the custom domain `dev.dash.io` and turns `workers.dev` off.
+- The Worker is named `dash-development`. `wrangler.jsonc` attaches it to the custom domain `dev.dash.io` and turns `workers.dev` off.
 - One container class, `DashContainer`, runs the production image. `max_instances` is 1 and every request uses the instance named `dev`, so a single SQLite file serves the host while that instance is awake.
 - The instance type is `basic` (1 GiB memory). The container listens on port 3000.
 - `DASH_SECRET` is a Worker secret, copied into the container environment when the instance starts. It is not baked into the image and it is not an Actions secret. `DASH_SEED_DEMO` defaults to false so the public host does not boot with the demo admin password.
-- GitHub Actions workflow `deploy-dev` runs on pushes to `main` and on `workflow_dispatch`. It installs through Socket Firewall and deploys with the pinned Wrangler. Required Actions secrets are `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`. The first deploy creates the Worker without `DASH_SECRET`. The secret is added afterward with `wrangler secret put`. Wrangler does not delete an existing secret on later deploys.
+- GitHub Actions workflow `deploy-dev` runs on pushes to `main` and on `workflow_dispatch`. It installs through Socket Firewall and deploys with the pinned Wrangler. Required Actions secrets are `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`. The first deploy creates the `dash-development` Worker without `DASH_SECRET`. The secret is added afterward with `wrangler secret put`. Wrangler does not delete an existing secret on later deploys.
 
 ## Consequences
 

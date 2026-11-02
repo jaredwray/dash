@@ -31,7 +31,7 @@ describe("dev.dash.io deploy config", () => {
       compatibility_date: string;
     };
 
-    expect(config.name).toBe("dash-dev");
+    expect(config.name).toBe("dash-development");
     expect(config.main).toBe("packages/container-worker/src/index.ts");
     expect(config.workers_dev).toBe(false);
     expect(config.routes).toEqual([{ pattern: "dev.dash.io", custom_domain: true }]);

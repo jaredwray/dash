@@ -1,6 +1,6 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
-  "name": "dash-dev",
+  "name": "dash-development",
   "main": "packages/container-worker/src/index.ts",
   "compatibility_date": "2026-10-19",
   "workers_dev": false,

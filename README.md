@@ -220,7 +220,7 @@ GitHub Actions secrets:
 | `CLOUDFLARE_API_TOKEN` | Workers Scripts edit, Containers edit, and DNS edit on the `dash.io` zone |
 | `CLOUDFLARE_ACCOUNT_ID` | Account that owns the Worker |
 
-The workflow deploys the Worker without `DASH_SECRET`. After that first deploy, set the Worker secret with `pnpm exec wrangler secret put DASH_SECRET`. Until it is set, requests to `dev.dash.io` return 500. Later deploys leave the secret in place. It encrypts saved data-source credentials and must not be `change-me-in-production`.
+The workflow deploys the `dash-development` Worker without `DASH_SECRET`. After that first deploy, set the secret on that Worker with `pnpm exec wrangler secret put DASH_SECRET`. Until it is set, requests to `dev.dash.io` return 500. Later deploys leave the secret in place. It encrypts saved data-source credentials and must not be `change-me-in-production`.
 
 `pnpm deploy:dev` runs `wrangler deploy` locally. `pnpm deploy` is pnpm's own command and does not run this script. Docker has to be running.
 
