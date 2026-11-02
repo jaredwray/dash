@@ -170,7 +170,7 @@ Issue a token with the `mcp` scope, then point a client at `/mcp`. Tools include
 | `pnpm test` | Run package tests. Postgres, MySQL, MongoDB, BigQuery, Databricks SQL, Redshift, and Stripe adapter tests use the clusters |
 | `pnpm typecheck` | TypeScript across workspaces |
 | `pnpm build` | Production build |
-| `pnpm deploy` | `wrangler deploy` of the dev Worker and container (`dev.dash.io`) |
+| `pnpm deploy:dev` | `wrangler deploy` of the dev Worker and container (`dev.dash.io`) |
 
 ## Adapter test clusters
 
@@ -211,7 +211,7 @@ Override the Postgres endpoint with `DASH_TEST_POSTGRES_HOST`, `DASH_TEST_POSTGR
 
 Pushes to `main` run `.github/workflows/deploy-dev.yml`. Wrangler builds `Dockerfile`, pushes the image, and attaches the Worker to `https://dev.dash.io`. `workers.dev` is off.
 
-The container runs `node .output/server/index.mjs` from `@dash/web`. One instance named `dev` serves the host. Its disk is ephemeral: an hour without traffic, or the next deploy, drops the SQLite file. Register again after that. The first account is the admin. The demo user is not seeded.
+The container runs `node .output/server/index.mjs` from `@dash/web`. One instance named `dev` serves the host. Its disk is ephemeral: an hour without traffic, or the next deploy, drops the SQLite file. Register again after that. The first account is the admin, and registration is open on an empty database, so the first visitor after a reset becomes admin. Put Cloudflare Access in front of the hostname if that should not be public. The demo user is not seeded.
 
 GitHub Actions secrets:
 
@@ -221,7 +221,7 @@ GitHub Actions secrets:
 | `CLOUDFLARE_ACCOUNT_ID` | Account that owns the Worker |
 | `DASH_SECRET` | Session signing secret. Not `change-me-in-production` |
 
-`pnpm deploy` runs `wrangler deploy` locally. Docker has to be running, and `DASH_SECRET` has to already be a Worker secret (the GitHub Actions workflow uploads it with `--secrets-file` on each deploy).
+`pnpm deploy:dev` runs `wrangler deploy` locally. `pnpm deploy` is pnpm's own command and does not run this script. Docker has to be running, and `DASH_SECRET` has to already be a Worker secret (the GitHub Actions workflow uploads it with `--secrets-file` on each deploy).
 
 ## License
 

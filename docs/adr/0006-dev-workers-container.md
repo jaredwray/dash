@@ -12,7 +12,7 @@ Cloudflare Workers cannot run this Node server directly. Workers Containers can:
 
 ## Decision
 
-- `wrangler` is a root dev dependency. `pnpm deploy` and the `deploy-dev` workflow both run `wrangler deploy`.
+- `wrangler` is a root dev dependency. `pnpm deploy:dev` and the `deploy-dev` workflow both run `wrangler deploy`. `pnpm deploy` is reserved by pnpm and does not run the script.
 - `wrangler.jsonc` attaches the Worker to the custom domain `dev.dash.io` and turns `workers.dev` off.
 - One container class, `DashContainer`, runs the production image. `max_instances` is 1 and every request uses the instance named `dev`, so a single SQLite file serves the host while that instance is awake.
 - The instance type is `basic` (1 GiB memory). The container listens on port 3000.
@@ -21,4 +21,4 @@ Cloudflare Workers cannot run this Node server directly. Workers Containers can:
 
 ## Consequences
 
-Container disk is ephemeral. After the instance sleeps (one hour without a request) or a new image rolls out, SQLite state is gone and the next visitor registers again. The first registered user is the admin. Outbound network stays enabled so connected warehouses can be queried. Moving app state into Durable Object storage would be a separate change.
+Container disk is ephemeral. After the instance sleeps (one hour without a request) or a new image rolls out, SQLite state is gone and the next visitor registers again. The first registered user is the admin. Registration stays open while the database is empty, so each reset is a window where anyone who can reach `dev.dash.io` becomes admin and can store warehouse credentials. Outbound network stays enabled so those warehouses can be queried. Cloudflare Access on the hostname is the control for that window; this change does not add an application login gate. Moving app state into Durable Object storage would be a separate change.

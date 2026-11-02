@@ -2,7 +2,10 @@
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "dash-dev",
   "main": "packages/container-worker/src/index.ts",
-  "compatibility_date": "2026-10-22",
+  "compatibility_date": "2026-10-19",
+  "secrets": {
+    "required": ["DASH_SECRET"]
+  },
   "workers_dev": false,
   "upload_source_maps": true,
   "vars": {

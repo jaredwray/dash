@@ -1,9 +1,15 @@
 import { Container, getContainer } from "@cloudflare/containers";
-import { CONTAINER_PORT, DEV_INSTANCE, containerEnv, secretConfigured } from "./container-env.ts";
+import {
+  CONTAINER_PORT,
+  DEV_INSTANCE,
+  containerEnv,
+  forwardToContainer,
+  secretConfigured,
+} from "./container-env.ts";
 
 export interface Env {
   DASH_CONTAINER: DurableObjectNamespace<DashContainer>;
-  DASH_SECRET: string;
+  DASH_SECRET?: string;
   DASH_SEED_DEMO?: string;
 }
 
@@ -22,6 +28,6 @@ export default {
     if (!secretConfigured(env.DASH_SECRET)) {
       return new Response("DASH_SECRET is not configured", { status: 500 });
     }
-    return getContainer(env.DASH_CONTAINER, DEV_INSTANCE).fetch(request);
+    return getContainer(env.DASH_CONTAINER, DEV_INSTANCE).fetch(forwardToContainer(request));
   },
 };

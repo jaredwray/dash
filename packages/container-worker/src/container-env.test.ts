@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CONTAINER_PORT, containerEnv, secretConfigured } from "./container-env.ts";
+import { CONTAINER_PORT, containerEnv, forwardToContainer, secretConfigured } from "./container-env.ts";
 
 describe("containerEnv", () => {
   it("points the server at the container port and a writable database path", () => {
@@ -27,6 +27,17 @@ describe("containerEnv", () => {
     expect(containerEnv({ DASH_SECRET: "secret", DASH_SEED_DEMO: "1" }).DASH_SEED_DEMO).toBe(
       "false",
     );
+  });
+});
+
+describe("forwardToContainer", () => {
+  it("overwrites a client-supplied container port", () => {
+    const request = new Request("https://dev.dash.io/api/auth/me", {
+      headers: { "cf-container-target-port": "22" },
+    });
+    const forwarded = forwardToContainer(request);
+    expect(forwarded.headers.get("cf-container-target-port")).toBe(String(CONTAINER_PORT));
+    expect(new URL(forwarded.url).pathname).toBe("/api/auth/me");
   });
 });
 

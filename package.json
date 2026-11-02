@@ -13,7 +13,7 @@
     "test:services:start": "bash ./scripts/test-services.sh start",
     "test:services:stop": "bash ./scripts/test-services.sh stop",
     "typecheck": "pnpm -r --if-present typecheck",
-    "deploy": "wrangler deploy"
+    "deploy:dev": "wrangler deploy"
   },
   "devDependencies": {
     "wrangler": "4.152.0"

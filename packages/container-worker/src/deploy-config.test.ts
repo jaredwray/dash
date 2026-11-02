@@ -9,9 +9,16 @@ function readRepo(path: string): string {
   return readFileSync(resolve(repoRoot, path), "utf8");
 }
 
+/** wrangler.jsonc is JSON plus comments. Strings in this file do not contain comment markers. */
+function parseJsonc(text: string): unknown {
+  const withoutBlocks = text.replace(/\/\*[\s\S]*?\*\//g, "");
+  const withoutLines = withoutBlocks.replace(/^\s*\/\/.*$/gm, "");
+  return JSON.parse(withoutLines);
+}
+
 describe("dev.dash.io deploy config", () => {
   it("routes the Worker at dev.dash.io to one container", () => {
-    const config = JSON.parse(readRepo("wrangler.jsonc")) as {
+    const config = parseJsonc(readRepo("wrangler.jsonc")) as {
       name: string;
       main: string;
       workers_dev: boolean;
@@ -20,6 +27,8 @@ describe("dev.dash.io deploy config", () => {
       durable_objects: { bindings: Array<{ name: string; class_name: string }> };
       exports: Record<string, { type: string; storage: string }>;
       vars: { DASH_SEED_DEMO: string };
+      secrets: { required: string[] };
+      compatibility_date: string;
     };
 
     expect(config.name).toBe("dash-dev");
@@ -43,6 +52,8 @@ describe("dev.dash.io deploy config", () => {
       storage: "sqlite",
     });
     expect(config.vars.DASH_SEED_DEMO).toBe("false");
+    expect(config.secrets.required).toEqual(["DASH_SECRET"]);
+    expect(config.compatibility_date).toBe("2026-10-19");
   });
 
   it("builds the web server into a container that listens on port 3000", () => {
@@ -60,6 +71,8 @@ describe("dev.dash.io deploy config", () => {
     expect(workflow).toContain("pnpm exec wrangler deploy --secrets-file");
     expect(workflow).not.toContain("pull_request");
     expect(workflow).toContain("package-manager-cache: false");
+    expect(workflow).toContain("group: deploy-dev");
+    expect(workflow).toContain("cancel-in-progress: false");
     expect(workflow).toContain("persist-credentials: false");
     expect(workflow).toContain("sfw pnpm install --frozen-lockfile");
   });

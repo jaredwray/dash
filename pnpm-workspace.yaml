@@ -3,10 +3,11 @@ packages:
 
 allowBuilds:
   esbuild: true
-  # wrangler depends on workerd. Its postinstall copies the platform binary
-  # (@cloudflare/workerd-*) into the package. Without that script, deploy cannot
-  # start the Workers runtime.
-  workerd: true
+  # workerd's postinstall copies the platform binary and executes it. Wrangler
+  # resolves the binary from @cloudflare/workerd-linux-64 directly, so the
+  # script stays off. The key has to be present: omitting it fails
+  # strictDepBuilds with "Ignored build scripts: workerd".
+  workerd: false
 
 strictDepBuilds: true
 dangerouslyAllowAllBuilds: false
