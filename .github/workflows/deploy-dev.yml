@@ -36,14 +36,8 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          DASH_SECRET: ${{ secrets.DASH_SECRET }}
         run: |
           set -euo pipefail
-          umask 077
           test -n "${CLOUDFLARE_API_TOKEN}" || { echo "CLOUDFLARE_API_TOKEN is not set" >&2; exit 1; }
           test -n "${CLOUDFLARE_ACCOUNT_ID}" || { echo "CLOUDFLARE_ACCOUNT_ID is not set" >&2; exit 1; }
-          test -n "${DASH_SECRET}" || { echo "DASH_SECRET is not set" >&2; exit 1; }
-          secrets_file=$(mktemp)
-          trap 'rm -f "$secrets_file"' EXIT
-          node --input-type=module -e 'import { writeFileSync } from "node:fs"; writeFileSync(process.argv[1], JSON.stringify({ DASH_SECRET: process.env.DASH_SECRET }));' "$secrets_file"
-          pnpm exec wrangler deploy --secrets-file "$secrets_file"
+          pnpm exec wrangler deploy

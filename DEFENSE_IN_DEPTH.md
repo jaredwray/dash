@@ -34,7 +34,7 @@ Profile: website/app · public
 - [x] `persist-credentials: false` on checkouts that don't push — PR #21
 - [x] No `pull_request_target` on workflows that run untrusted PR code — verified 2026-09-15
 - [x] Artifact-publishing workflows disable `actions/setup-node` default caching (`package-manager-cache: false`) to prevent cache poisoning. `deploy-dev` publishes the Worker and container image and sets `package-manager-cache: false`. The image build runs `pnpm install --frozen-lockfile` inside Docker, not under Socket Firewall; it installs the same lockfile the workflow already installed with `sfw pnpm install`
-- [x] No npm tokens in Actions secrets. `deploy-dev` uses Cloudflare account credentials (`CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`) and `DASH_SECRET` for the dev host; those are not npm registry tokens — PR #23
+- [x] No npm tokens in Actions secrets. `deploy-dev` uses Cloudflare account credentials (`CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`) for the dev host; those are not npm registry tokens. `DASH_SECRET` is a Worker secret set after the Worker exists — PR #23
 
 ## 6. Security tooling
 - [x] Aikido runs on every build — verified 2026-09-15 (PR #24)

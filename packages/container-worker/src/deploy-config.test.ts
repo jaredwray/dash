@@ -27,7 +27,7 @@ describe("dev.dash.io deploy config", () => {
       durable_objects: { bindings: Array<{ name: string; class_name: string }> };
       exports: Record<string, { type: string; storage: string }>;
       vars: { DASH_SEED_DEMO: string };
-      secrets: { required: string[] };
+      secrets?: { required: string[] };
       compatibility_date: string;
     };
 
@@ -52,7 +52,7 @@ describe("dev.dash.io deploy config", () => {
       storage: "sqlite",
     });
     expect(config.vars.DASH_SEED_DEMO).toBe("false");
-    expect(config.secrets.required).toEqual(["DASH_SECRET"]);
+    expect(config.secrets).toBeUndefined();
     expect(config.compatibility_date).toBe("2026-10-19");
   });
 
@@ -68,7 +68,9 @@ describe("dev.dash.io deploy config", () => {
   it("deploys with the repo's wrangler on pushes to main", () => {
     const workflow = readRepo(".github/workflows/deploy-dev.yml");
     expect(workflow).toContain("name: deploy-dev");
-    expect(workflow).toContain("pnpm exec wrangler deploy --secrets-file");
+    expect(workflow).toContain("pnpm exec wrangler deploy");
+    expect(workflow).not.toContain("DASH_SECRET");
+    expect(workflow).not.toContain("--secrets-file");
     expect(workflow).not.toContain("pull_request");
     expect(workflow).toContain("package-manager-cache: false");
     expect(workflow).toContain("group: deploy-dev");
