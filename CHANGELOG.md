@@ -10,6 +10,7 @@ All notable changes to Dash are documented here.
 
 ### Added
 
+- Public `GET /healthz` and `GET /ping` endpoints. Both run a MongoDB `ping` against the app database and return 503 when it is unreachable. A failed probe drops the cached client so the next check can reconnect.
 - Dev deploy to [dev.dash.io](https://dev.dash.io). A Cloudflare Worker proxies every request to one container running the `@dash/web` Node server. `wrangler` is a root dev dependency. GitHub Actions workflow `deploy-dev` runs `wrangler deploy` on pushes to `main`. The deploy does not require `DASH_SECRET`; that Worker secret is added after the Worker exists. The demo user is not seeded. Container disk resets when the instance sleeps or a new image rolls out.
 - `@dash/adapter-stripe` (`packages/stripe-adapter`) implementing `DataAdapter`. Structured queries read Stripe customers, charges, invoices, and subscriptions. Filters Stripe Search can express are sent as a search query. Sorts other than newest-first read every matching row before paging, and a query that is still incomplete after 10,000 rows fails. The connection test accepts a restricted key that can list any supported object. Summaries record live versus test for restricted keys. The secret key is omitted from connection summaries. `http` is allowed only for a loopback host, and redirects are not followed. The local test cluster is the `stripe` service in `docker-compose.test.yml` at `http://127.0.0.1:12119`.
 
