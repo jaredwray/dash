@@ -77,7 +77,7 @@ export const Route = createFileRoute("/api/dashboards/")({
         if (isResponse(auth)) {
           return auth;
         }
-        return json({ dashboards: listDashboards() });
+        return json({ dashboards: await listDashboards() });
       },
       POST: async ({ request }) => {
         const auth = await requireUser(request, "write");
@@ -88,7 +88,7 @@ export const Route = createFileRoute("/api/dashboards/")({
         if (!parsed.success) {
           return error(400, "Invalid dashboard payload", "invalid_body");
         }
-        const dashboard = createDashboard({
+        const dashboard = await createDashboard({
           name: parsed.data.name,
           description: parsed.data.description ?? "",
           widgets: parsed.data.widgets ?? [],

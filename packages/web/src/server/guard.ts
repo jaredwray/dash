@@ -13,7 +13,7 @@ export async function requireUser(
   scope: ApiTokenScope = "read",
 ): Promise<AuthContext | Response> {
   await ensureSeeded();
-  const auth = resolveAuth(request);
+  const auth = await resolveAuth(request);
   if (!auth) {
     return error(401, "Authentication required", "unauthenticated");
   }

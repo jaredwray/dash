@@ -1,24 +1,15 @@
-import { mkdtempSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createUser } from "../auth.ts";
-import { closeDb } from "../db.ts";
+import { destroyAppDatabase, useFreshAppDatabase } from "../test-db.ts";
 import { createDataSource, deleteDataSource, listDataSources } from "./data-sources.ts";
 
 describe("data source records", () => {
-  beforeEach(() => {
-    process.env.DASH_SECRET = "unit-test-secret";
-    process.env.DASH_SEED_DEMO = "false";
-    process.env.DASH_DATABASE_PATH = join(
-      mkdtempSync(join(tmpdir(), "dash-ds-")),
-      "test.sqlite",
-    );
-    closeDb();
+  beforeEach(async () => {
+    await useFreshAppDatabase();
   });
 
-  afterEach(() => {
-    closeDb();
+  afterEach(async () => {
+    await destroyAppDatabase();
   });
 
   it("adds and removes a data source", async () => {
@@ -28,17 +19,17 @@ describe("data source records", () => {
       password: "password123",
       role: "admin",
     });
-    const created = createDataSource({
+    const created = await createDataSource({
       name: "Finance warehouse",
       description: "Quarterly metrics",
       config: { kind: "demo" },
       createdBy: admin.id,
     });
     expect(created.name).toBe("Finance warehouse");
-    expect(listDataSources().map((source) => source.id)).toContain(created.id);
-    expect(deleteDataSource(created.id)).toBe(true);
-    expect(listDataSources()).toEqual([]);
-    expect(deleteDataSource(created.id)).toBe(false);
+    expect((await listDataSources()).map((source) => source.id)).toContain(created.id);
+    expect(await deleteDataSource(created.id)).toBe(true);
+    expect(await listDataSources()).toEqual([]);
+    expect(await deleteDataSource(created.id)).toBe(false);
   });
 
   it("summarizes a Snowflake source without exposing the password", async () => {
@@ -48,7 +39,7 @@ describe("data source records", () => {
       password: "password123",
       role: "admin",
     });
-    const created = createDataSource({
+    const created = await createDataSource({
       name: "Snowflake analytics",
       description: "Warehouse",
       config: {
@@ -79,7 +70,7 @@ describe("data source records", () => {
       password: "password123",
       role: "admin",
     });
-    const created = createDataSource({
+    const created = await createDataSource({
       name: "MySQL analytics",
       description: "Warehouse",
       config: {
@@ -103,7 +94,7 @@ describe("data source records", () => {
     });
     expect(JSON.stringify(created.summary)).not.toContain("super-secret");
 
-    const fromUri = createDataSource({
+    const fromUri = await createDataSource({
       name: "MySQL URI",
       description: "URI",
       config: {
@@ -121,7 +112,7 @@ describe("data source records", () => {
     });
     expect(JSON.stringify(fromUri.summary)).not.toContain("super-secret");
 
-    const malformed = createDataSource({
+    const malformed = await createDataSource({
       name: "MySQL malformed",
       description: "Malformed URI",
       config: {
@@ -146,7 +137,7 @@ describe("data source records", () => {
       password: "password123",
       role: "admin",
     });
-    const created = createDataSource({
+    const created = await createDataSource({
       name: "Events",
       description: "App events",
       config: {
@@ -171,7 +162,7 @@ describe("data source records", () => {
     });
     expect(JSON.stringify(created.summary)).not.toContain("super-secret");
 
-    const fromUri = createDataSource({
+    const fromUri = await createDataSource({
       name: "Events URI",
       description: "URI",
       config: {
@@ -189,7 +180,7 @@ describe("data source records", () => {
     });
     expect(JSON.stringify(fromUri.summary)).not.toContain("super-secret");
 
-    const malformed = createDataSource({
+    const malformed = await createDataSource({
       name: "Events malformed",
       description: "Malformed URI",
       config: {
@@ -201,7 +192,7 @@ describe("data source records", () => {
     expect(malformed.summary.database).toBe("");
     expect(JSON.stringify(malformed.summary)).not.toContain("secret");
 
-    const srv = createDataSource({
+    const srv = await createDataSource({
       name: "Events SRV",
       description: "SRV",
       config: {
@@ -216,7 +207,7 @@ describe("data source records", () => {
     });
     expect(JSON.stringify(srv.summary)).not.toContain("super-secret");
 
-    const replica = createDataSource({
+    const replica = await createDataSource({
       name: "Events replica",
       description: "Replica set",
       config: {
@@ -238,7 +229,7 @@ describe("data source records", () => {
       password: "password123",
       role: "admin",
     });
-    const created = createDataSource({
+    const created = await createDataSource({
       name: "Warehouse",
       description: "BigQuery",
       config: {
@@ -264,7 +255,7 @@ describe("data source records", () => {
     expect(JSON.stringify(created.summary)).not.toContain("secret-key-material");
     expect(JSON.stringify(created.summary)).not.toContain("PRIVATE KEY");
 
-    const emulator = createDataSource({
+    const emulator = await createDataSource({
       name: "Local BigQuery",
       description: "Emulator",
       config: {
@@ -283,7 +274,7 @@ describe("data source records", () => {
       auth: "anonymous",
     });
 
-    const google = createDataSource({
+    const google = await createDataSource({
       name: "Google BigQuery",
       description: "ADC",
       config: {
@@ -304,7 +295,7 @@ describe("data source records", () => {
       password: "password123",
       role: "admin",
     });
-    const created = createDataSource({
+    const created = await createDataSource({
       name: "Warehouse",
       description: "Redshift",
       config: {
@@ -324,7 +315,7 @@ describe("data source records", () => {
     });
     expect(JSON.stringify(created.summary)).not.toContain("super-secret");
 
-    const rejected = createDataSource({
+    const rejected = await createDataSource({
       name: "Broken",
       description: "Redshift",
       config: {
@@ -344,7 +335,7 @@ describe("data source records", () => {
       password: "password123",
       role: "admin",
     });
-    const created = createDataSource({
+    const created = await createDataSource({
       name: "Lakehouse",
       description: "Databricks SQL",
       config: {
@@ -367,7 +358,7 @@ describe("data source records", () => {
     });
     expect(JSON.stringify(created.summary)).not.toContain("dapi-secret-value");
 
-    const malformed = createDataSource({
+    const malformed = await createDataSource({
       name: "Broken warehouse",
       description: "Bad URI",
       config: {
@@ -393,7 +384,7 @@ describe("data source records", () => {
       password: "password123",
       role: "admin",
     });
-    const created = createDataSource({
+    const created = await createDataSource({
       name: "Billing",
       description: "Stripe",
       config: {
@@ -411,7 +402,7 @@ describe("data source records", () => {
     });
     expect(JSON.stringify(created.summary)).not.toContain("sk_test_supersecret");
 
-    const malformed = createDataSource({
+    const malformed = await createDataSource({
       name: "Broken billing",
       description: "Bad URI",
       config: {

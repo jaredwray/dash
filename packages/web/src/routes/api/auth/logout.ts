@@ -15,7 +15,7 @@ export const Route = createFileRoute("/api/auth/logout")({
         const cookies = parseCookies(request.headers.get("cookie"));
         const token = cookies[SESSION_COOKIE];
         if (token) {
-          deleteSessionByToken(token);
+          await deleteSessionByToken(token);
         }
         return json(
           { ok: true },

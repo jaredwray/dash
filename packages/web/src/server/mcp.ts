@@ -8,7 +8,7 @@ import {
   createDashboard,
   getDashboard,
   listDashboards,
-  updateDashboard,
+  appendDashboardWidget,
 } from "./services/dashboards.ts";
 import { listDataSources } from "./services/data-sources.ts";
 import { queryDataSource, schemaForDataSource } from "./services/query.ts";
@@ -36,7 +36,7 @@ function buildServer(auth: AuthContext): McpServer {
       content: [
         {
           type: "text",
-          text: JSON.stringify(listDataSources(), null, 2),
+          text: JSON.stringify(await listDataSources(), null, 2),
         },
       ],
     }),
@@ -103,7 +103,7 @@ function buildServer(auth: AuthContext): McpServer {
       description: "List dashboard pages in this Dash workspace.",
     },
     async () => ({
-      content: [{ type: "text", text: JSON.stringify(listDashboards(), null, 2) }],
+      content: [{ type: "text", text: JSON.stringify(await listDashboards(), null, 2) }],
     }),
   );
 
@@ -114,7 +114,7 @@ function buildServer(auth: AuthContext): McpServer {
       inputSchema: z.object({ dashboardId: z.string() }),
     },
     async ({ dashboardId }) => {
-      const dashboard = getDashboard(dashboardId);
+      const dashboard = await getDashboard(dashboardId);
       if (!dashboard) {
         return { content: [{ type: "text", text: "Dashboard not found" }], isError: true };
       }
@@ -133,7 +133,7 @@ function buildServer(auth: AuthContext): McpServer {
         }),
       },
       async ({ name, description }) => {
-        const dashboard = createDashboard({
+        const dashboard = await createDashboard({
           name,
           description: description ?? "",
           widgets: [],
@@ -170,7 +170,7 @@ function buildServer(auth: AuthContext): McpServer {
             isError: true,
           };
         }
-        const dashboard = getDashboard(input.dashboardId);
+        const dashboard = await getDashboard(input.dashboardId);
         if (!dashboard) {
           return { content: [{ type: "text", text: "Dashboard not found" }], isError: true };
         }
@@ -201,9 +201,7 @@ function buildServer(auth: AuthContext): McpServer {
             smooth: input.smooth,
           },
         };
-        const updated = updateDashboard(input.dashboardId, {
-          widgets: [...dashboard.widgets, widget],
-        });
+        const updated = await appendDashboardWidget(input.dashboardId, widget);
         return { content: [{ type: "text", text: JSON.stringify(updated, null, 2) }] };
       },
     );
@@ -213,21 +211,21 @@ function buildServer(auth: AuthContext): McpServer {
 }
 
 export const mcpHandler = createMcpHandler(
-  ({ authInfo }) => {
+  async ({ authInfo }) => {
     if (!authInfo?.clientId) {
       throw new Error("MCP requires authentication");
     }
-    const row = findUserById(authInfo.clientId);
+    const row = await findUserById(authInfo.clientId);
     if (!row) {
       throw new Error("Unknown MCP user");
     }
     const auth: AuthContext = {
       user: {
-        id: row.id,
+        id: row._id,
         email: row.email,
         name: row.name,
         role: row.role,
-        createdAt: row.created_at,
+        createdAt: row.createdAt,
       },
       scopes: (authInfo.scopes ?? ["read", "mcp"]) as ApiTokenScope[],
       via: "token",

@@ -9,20 +9,9 @@ import {
   type DataSourceKind,
   type DataSourceRecord,
 } from "@dash/core";
+import { assertUserExists, getSecret } from "../auth.ts";
 import { decryptJson, encryptJson, randomId } from "../crypto.ts";
-import { all, get, nowIso, run } from "../db.ts";
-import { getSecret } from "../auth.ts";
-
-interface DataSourceRow {
-  id: string;
-  name: string;
-  kind: DataSourceKind;
-  description: string;
-  config_encrypted: string;
-  created_by: string;
-  created_at: string;
-  updated_at: string;
-}
+import { dataSources, nowIso, type DataSourceDoc } from "../db.ts";
 
 function databaseFromMongoUri(uri: string): string {
   try {
@@ -135,94 +124,96 @@ function summarize(config: ConnectionConfig): DataSourceRecord["summary"] {
   };
 }
 
-function toRecord(row: DataSourceRow): DataSourceRecord {
-  const config = decryptJson<ConnectionConfig>(row.config_encrypted, getSecret());
+function toRecord(row: DataSourceDoc): DataSourceRecord {
+  const config = decryptJson<ConnectionConfig>(row.configEncrypted, getSecret());
   return {
-    id: row.id,
+    id: row._id,
     name: row.name,
-    kind: row.kind,
+    kind: row.kind as DataSourceKind,
     description: row.description,
     summary: summarize(config),
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-    createdBy: row.created_by,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+    createdBy: row.createdBy,
   };
 }
 
-export function listDataSources(): DataSourceRecord[] {
-  return all<DataSourceRow>(
-    "SELECT * FROM data_sources ORDER BY created_at DESC",
-  ).map(toRecord);
+export async function listDataSources(): Promise<DataSourceRecord[]> {
+  const rows = await (await dataSources()).find({}).sort({ createdAt: -1 }).toArray();
+  return rows.map(toRecord);
 }
 
-export function getDataSource(id: string): DataSourceRecord | undefined {
-  const row = get<DataSourceRow>("SELECT * FROM data_sources WHERE id = ?", [id]);
+export async function getDataSource(id: string): Promise<DataSourceRecord | undefined> {
+  const row = await (await dataSources()).findOne({ _id: id });
   return row ? toRecord(row) : undefined;
 }
 
-export function getDataSourceConfig(id: string): ConnectionConfig | undefined {
-  const row = get<DataSourceRow>("SELECT * FROM data_sources WHERE id = ?", [id]);
+export async function getDataSourceConfig(id: string): Promise<ConnectionConfig | undefined> {
+  const row = await (await dataSources()).findOne({ _id: id });
   if (!row) {
     return undefined;
   }
-  return decryptJson<ConnectionConfig>(row.config_encrypted, getSecret());
+  return decryptJson<ConnectionConfig>(row.configEncrypted, getSecret());
 }
 
-export function createDataSource(input: {
+export async function createDataSource(input: {
   name: string;
   description: string;
   config: ConnectionConfig;
   createdBy: string;
-}): DataSourceRecord {
+}): Promise<DataSourceRecord> {
+  await assertUserExists(input.createdBy);
   const id = randomId();
   const createdAt = nowIso();
-  run(
-    `INSERT INTO data_sources (id, name, kind, description, config_encrypted, created_by, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    [
-      id,
-      input.name,
-      input.config.kind,
-      input.description,
-      encryptJson(input.config, getSecret()),
-      input.createdBy,
-      createdAt,
-      createdAt,
-    ],
-  );
-  return getDataSource(id)!;
+  await (
+    await dataSources()
+  ).insertOne({
+    _id: id,
+    name: input.name,
+    kind: input.config.kind,
+    description: input.description,
+    configEncrypted: encryptJson(input.config, getSecret()),
+    createdBy: input.createdBy,
+    createdAt,
+    updatedAt: createdAt,
+  });
+  return (await getDataSource(id))!;
 }
 
-export function updateDataSource(
+export async function updateDataSource(
   id: string,
   patch: {
     name?: string;
     description?: string;
     config?: ConnectionConfig;
   },
-): DataSourceRecord | undefined {
-  const row = get<DataSourceRow>("SELECT * FROM data_sources WHERE id = ?", [id]);
+): Promise<DataSourceRecord | undefined> {
+  const row = await (await dataSources()).findOne({ _id: id });
   if (!row) {
     return undefined;
   }
-  const config = patch.config ?? decryptJson<ConnectionConfig>(row.config_encrypted, getSecret());
+  const config = patch.config ?? decryptJson<ConnectionConfig>(row.configEncrypted, getSecret());
   const name = patch.name ?? row.name;
   const description = patch.description ?? row.description;
   const updatedAt = nowIso();
-  run(
-    `UPDATE data_sources
-     SET name = ?, kind = ?, description = ?, config_encrypted = ?, updated_at = ?
-     WHERE id = ?`,
-    [name, config.kind, description, encryptJson(config, getSecret()), updatedAt, id],
+  await (
+    await dataSources()
+  ).updateOne(
+    { _id: id },
+    {
+      $set: {
+        name,
+        kind: config.kind,
+        description,
+        configEncrypted: encryptJson(config, getSecret()),
+        updatedAt,
+      },
+    },
   );
   return getDataSource(id);
 }
 
-export function deleteDataSource(id: string): boolean {
-  const row = get<DataSourceRow>("SELECT id FROM data_sources WHERE id = ?", [id]);
-  if (!row) {
-    return false;
-  }
-  run("DELETE FROM data_sources WHERE id = ?", [id]);
-  return true;
+export async function deleteDataSource(id: string): Promise<boolean> {
+  const result = await (await dataSources()).deleteOne({ _id: id });
+  return result.deletedCount === 1;
 }

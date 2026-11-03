@@ -1,11 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import {
-  authenticatePassword,
+  EmailTakenError,
   countUsers,
   createSession,
   createUser,
   findUserByEmail,
+  grantInitialAdmin,
 } from "~/server/auth";
 import { getEnv } from "~/server/env";
 import { error, json, readJson, sessionCookie } from "~/server/http";
@@ -27,22 +28,33 @@ export const Route = createFileRoute("/api/auth/register")({
         if (!parsed.success) {
           return error(400, "Invalid registration payload", "invalid_body");
         }
-        const settings = getSettings();
+        const settings = await getSettings();
         const email = parsed.data.email.trim().toLowerCase();
-        if (countUsers() > 0 && !settings.allowRegistration) {
+        const userCount = await countUsers();
+        if (userCount > 0 && !settings.allowRegistration) {
           return error(403, "Registration is closed", "registration_closed");
         }
-        if (findUserByEmail(email)) {
+        if (await findUserByEmail(email)) {
           return error(409, "Email already registered", "email_taken");
         }
-        const role = countUsers() === 0 ? "admin" : "member";
-        const user = await createUser({
-          email,
-          name: parsed.data.name.trim(),
-          password: parsed.data.password,
-          role,
-        });
-        const token = createSession(user.id);
+        let user;
+        try {
+          user = await createUser({
+            email,
+            name: parsed.data.name.trim(),
+            password: parsed.data.password,
+            role: "member",
+          });
+        } catch (cause) {
+          if (cause instanceof EmailTakenError) {
+            return error(409, "Email already registered", "email_taken");
+          }
+          throw cause;
+        }
+        if (userCount === 0 && (await grantInitialAdmin(user.id))) {
+          user = { ...user, role: "admin" };
+        }
+        const token = await createSession(user.id);
         return json(
           { user },
           {

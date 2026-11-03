@@ -1,10 +1,7 @@
-import { mkdtempSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createUser } from "./auth.ts";
-import { closeDb } from "./db.ts";
 import { mcpHandler } from "./mcp.ts";
+import { destroyAppDatabase, useFreshAppDatabase } from "./test-db.ts";
 
 function mcpRequest(body: string): Request {
   return new Request("http://localhost/mcp", {
@@ -18,15 +15,12 @@ function mcpRequest(body: string): Request {
 }
 
 describe("mcp handler", () => {
-  beforeEach(() => {
-    process.env.DASH_SECRET = "unit-test-secret";
-    process.env.DASH_SEED_DEMO = "false";
-    process.env.DASH_DATABASE_PATH = join(mkdtempSync(join(tmpdir(), "dash-mcp-")), "test.sqlite");
-    closeDb();
+  beforeEach(async () => {
+    await useFreshAppDatabase();
   });
 
-  afterEach(() => {
-    closeDb();
+  afterEach(async () => {
+    await destroyAppDatabase();
   });
 
   it("rejects a body over 1 MiB", async () => {

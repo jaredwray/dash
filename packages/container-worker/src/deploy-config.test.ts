@@ -70,6 +70,7 @@ describe("dev.dash.io deploy config", () => {
     expect(workflow).toContain("name: deploy-dev");
     expect(workflow).toContain("pnpm exec wrangler deploy");
     expect(workflow).not.toContain("DASH_SECRET");
+    expect(workflow).not.toContain("MONGODB_URI");
     expect(workflow).not.toContain("--secrets-file");
     expect(workflow).not.toContain("pull_request");
     expect(workflow).toContain("package-manager-cache: false");

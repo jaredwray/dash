@@ -14,7 +14,7 @@ export const Route = createFileRoute("/api/tokens/$id")({
         if (auth.via === "token") {
           return error(403, "Session authentication required to manage tokens", "forbidden");
         }
-        if (!revokeApiToken(auth.user.id, params.id)) {
+        if (!(await revokeApiToken(auth.user.id, params.id))) {
           return error(404, "Token not found", "not_found");
         }
         return json({ ok: true });

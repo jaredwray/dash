@@ -12,7 +12,7 @@ export const Route = createFileRoute("/api/data-sources/$id/schema")({
         if (isResponse(auth)) {
           return auth;
         }
-        if (!getDataSource(params.id)) {
+        if (!(await getDataSource(params.id))) {
           return error(404, "Data source not found", "not_found");
         }
         return json({ schema: await schemaForDataSource(params.id) });
