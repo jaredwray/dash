@@ -90,7 +90,7 @@ Open [http://localhost:3000](http://localhost:3000). With `DASH_SEED_DEMO=true` 
 | Email | `admin@dash.dev` |
 | Password | `dashadmin` |
 
-Set `MONGODB_URI` to a MongoDB database before starting the app. Change `DASH_SECRET` before exposing it.
+Set `MONGODB_URI` in `.env` or the environment before starting the app. `pnpm dev` reads the repo `.env`; a variable already set in the environment wins. The path is the database name (`/dash`). Dash creates that database the first time it connects. A username without `authSource` authenticates against `admin`, where Atlas stores SCRAM users, and that user needs the `readWrite` role on the database. Change `DASH_SECRET` before exposing the app.
 
 ## First account
 
@@ -242,7 +242,7 @@ pnpm exec wrangler secret put DASH_SECRET
 pnpm exec wrangler secret put MONGODB_URI
 ```
 
-Until either is set, requests to `dev.dash.io` return 500. Later deploys leave the secrets in place. `DASH_SECRET` encrypts saved data-source credentials and must not be `change-me-in-production`. `MONGODB_URI` is the MongoDB connection string for app state and must name a database (`mongodb://…/dash` or `mongodb+srv://…/dash`).
+Until either is set, requests to `dev.dash.io` return 500. Later deploys leave the secrets in place. `DASH_SECRET` encrypts saved data-source credentials and must not be `change-me-in-production`. `MONGODB_URI` is the MongoDB connection string for app state and must name a database (`mongodb://…/dash` or `mongodb+srv://…/dash`). Atlas SCRAM users live in `admin`; omit `authSource` and Dash authenticates there. Grant that user `readWrite` on the named database.
 
 `pnpm deploy:dev` runs `wrangler deploy` locally. `pnpm deploy` is pnpm's own command and does not run this script. Docker has to be running.
 

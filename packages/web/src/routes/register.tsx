@@ -19,9 +19,10 @@ function RegisterPage() {
     return <p className="grid min-h-screen place-items-center text-sm text-mist">Loading…</p>;
   }
   if (bootstrap.isError || !bootstrap.data) {
+    const detail = bootstrap.error instanceof Error ? bootstrap.error.message : null;
     return (
-      <p className="grid min-h-screen place-items-center text-sm text-rose-300">
-        Could not load registration.
+      <p className="mx-auto grid min-h-screen max-w-lg place-items-center px-6 text-center text-sm text-rose-300">
+        {detail ?? "Could not load registration."}
       </p>
     );
   }
