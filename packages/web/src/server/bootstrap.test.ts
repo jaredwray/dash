@@ -1,32 +1,20 @@
-import { mkdtempSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { createUser } from "./auth.ts";
 import { getAuthBootstrap } from "./bootstrap.ts";
-import { closeDb } from "./db.ts";
-import { DEMO_LOGIN } from "./seed.ts";
+import { DEMO_LOGIN, resetSeedForTests } from "./seed.ts";
 import { updateSettings } from "./services/settings.ts";
-
-function useDatabase(): void {
-  process.env.DASH_SECRET = "unit-test-secret";
-  process.env.DASH_DATABASE_PATH = join(
-    mkdtempSync(join(tmpdir(), "dash-bootstrap-")),
-    "test.sqlite",
-  );
-  closeDb();
-}
+import { destroyAppDatabase, useFreshAppDatabase } from "./test-db.ts";
 
 describe("auth bootstrap", () => {
-  afterEach(() => {
-    closeDb();
+  afterEach(async () => {
+    await destroyAppDatabase();
     delete process.env.DASH_SEED_DEMO;
   });
 
   it("hides the demo login and opens first-account registration when seeding is off", async () => {
-    useDatabase();
+    await useFreshAppDatabase();
     process.env.DASH_SEED_DEMO = "false";
-    updateSettings({ allowRegistration: false });
+    await updateSettings({ allowRegistration: false });
 
     const empty = await getAuthBootstrap();
     expect(empty).toEqual({
@@ -42,7 +30,7 @@ describe("auth bootstrap", () => {
       password: "password123",
       role: "admin",
     });
-    updateSettings({ allowRegistration: false });
+    await updateSettings({ allowRegistration: false });
 
     const closed = await getAuthBootstrap();
     expect(closed.needsSetup).toBe(false);
@@ -52,8 +40,9 @@ describe("auth bootstrap", () => {
   });
 
   it("returns the demo login only after the sample admin exists", async () => {
-    useDatabase();
+    await useFreshAppDatabase();
     process.env.DASH_SEED_DEMO = "true";
+    resetSeedForTests();
 
     const seeded = await getAuthBootstrap();
     expect(seeded.seedDemo).toBe(true);
@@ -64,8 +53,8 @@ describe("auth bootstrap", () => {
       password: DEMO_LOGIN.password,
     });
 
-    useDatabase();
-    process.env.DASH_SEED_DEMO = "false";
+    await destroyAppDatabase();
+    await useFreshAppDatabase();
     await createUser({
       email: "ada@example.com",
       name: "Ada",
@@ -73,6 +62,7 @@ describe("auth bootstrap", () => {
       role: "member",
     });
     process.env.DASH_SEED_DEMO = "true";
+    resetSeedForTests();
 
     const existing = await getAuthBootstrap();
     expect(existing.needsSetup).toBe(false);

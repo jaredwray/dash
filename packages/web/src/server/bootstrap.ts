@@ -6,13 +6,14 @@ import { getSettings } from "./services/settings.ts";
 
 export async function getAuthBootstrap(): Promise<AuthBootstrap> {
   await ensureSeeded();
-  const needsSetup = countUsers() === 0;
+  const needsSetup = (await countUsers()) === 0;
   const { seedDemo } = getEnv();
-  const demoAccount = seedDemo && findUserByEmail(DEMO_LOGIN.email) ? DEMO_LOGIN : null;
+  const settings = await getSettings();
+  const demoAccount = seedDemo && (await findUserByEmail(DEMO_LOGIN.email)) ? DEMO_LOGIN : null;
   return {
     seedDemo,
     needsSetup,
-    allowRegistration: needsSetup || getSettings().allowRegistration,
+    allowRegistration: needsSetup || settings.allowRegistration,
     demoLogin: demoAccount ? { email: demoAccount.email, password: demoAccount.password } : null,
   };
 }

@@ -1,5 +1,5 @@
 import type { DashboardWidget } from "@dash/core";
-import { countUsers, createUser } from "./auth.ts";
+import { EmailTakenError, countUsers, createUser, findUserByEmail, grantInitialAdmin } from "./auth.ts";
 import { getDb } from "./db.ts";
 import { getEnv } from "./env.ts";
 import { createDashboard, listDashboards } from "./services/dashboards.ts";
@@ -129,45 +129,67 @@ function demoWidgets(dataSourceId: string): DashboardWidget[] {
   ];
 }
 
-let seededKey: string | undefined;
+let seedTask: Promise<void> | undefined;
 
-export async function ensureSeeded(): Promise<void> {
-  const env = getEnv();
-  const key = `${env.databasePath}:${env.seedDemo}`;
-  if (seededKey === key) {
+export function resetSeedForTests(): void {
+  seedTask = undefined;
+}
+
+async function seedOnce(): Promise<void> {
+  await getDb();
+  await getSettings();
+  const { seedDemo } = getEnv();
+  if (!seedDemo) {
     return;
   }
-  getDb();
-  getSettings();
-  if (!env.seedDemo) {
-    seededKey = key;
-    return;
-  }
-  if (countUsers() === 0) {
-    const admin = await createUser({
-      email: DEMO_LOGIN.email,
-      name: "Dash Admin",
-      password: DEMO_LOGIN.password,
-      role: "admin",
-    });
-    updateSettings({ name: "Dash", allowRegistration: true });
-    if (listDataSources().length === 0) {
-      const source = createDataSource({
+  if ((await countUsers()) === 0) {
+    let adminId: string;
+    try {
+      const admin = await createUser({
+        email: DEMO_LOGIN.email,
+        name: "Dash Admin",
+        password: DEMO_LOGIN.password,
+        role: "member",
+      });
+      adminId = admin.id;
+    } catch (error) {
+      if (!(error instanceof EmailTakenError)) {
+        throw error;
+      }
+      const existing = await findUserByEmail(DEMO_LOGIN.email);
+      if (!existing) {
+        throw error;
+      }
+      adminId = existing._id;
+    }
+    await grantInitialAdmin(adminId);
+    await updateSettings({ name: "Dash", allowRegistration: true });
+    if ((await listDataSources()).length === 0) {
+      const source = await createDataSource({
         name: "Sample warehouse",
         description: "Built-in product analytics for trying Dash without a database.",
         config: { kind: "demo" },
-        createdBy: admin.id,
+        createdBy: adminId,
       });
-      if (listDashboards().length === 0) {
-        createDashboard({
+      if ((await listDashboards()).length === 0) {
+        await createDashboard({
           name: "Growth overview",
           description:
             "Revenue, acquisition, and product mix from the sample warehouse. Duplicate it or ask Dash MCP to add charts.",
           widgets: demoWidgets(source.id),
-          createdBy: admin.id,
+          createdBy: adminId,
         });
       }
     }
   }
-  seededKey = key;
+}
+
+export function ensureSeeded(): Promise<void> {
+  if (!seedTask) {
+    seedTask = seedOnce().catch((error: unknown) => {
+      seedTask = undefined;
+      throw error;
+    });
+  }
+  return seedTask;
 }

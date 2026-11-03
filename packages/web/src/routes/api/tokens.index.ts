@@ -22,7 +22,7 @@ export const Route = createFileRoute("/api/tokens/")({
         if (auth.via === "token") {
           return error(403, "Session authentication required to manage tokens", "forbidden");
         }
-        return json({ tokens: listTokens(auth.user.id) });
+        return json({ tokens: await listTokens(auth.user.id) });
       },
       POST: async ({ request }) => {
         const auth = await requireUser(request, "write");
@@ -39,7 +39,7 @@ export const Route = createFileRoute("/api/tokens/")({
         const expiresAt = parsed.data.expiresInDays
           ? new Date(Date.now() + parsed.data.expiresInDays * 86_400_000).toISOString()
           : null;
-        const issued = issueApiToken({
+        const issued = await issueApiToken({
           userId: auth.user.id,
           name: parsed.data.name,
           scopes: parsed.data.scopes as ApiTokenScope[],

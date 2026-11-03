@@ -81,7 +81,7 @@ export const Route = createFileRoute("/api/dashboards/$id")({
         if (isResponse(auth)) {
           return auth;
         }
-        const dashboard = getDashboard(params.id);
+        const dashboard = await getDashboard(params.id);
         if (!dashboard) {
           return error(404, "Dashboard not found", "not_found");
         }
@@ -96,7 +96,7 @@ export const Route = createFileRoute("/api/dashboards/$id")({
         if (!parsed.success) {
           return error(400, "Invalid dashboard payload", "invalid_body");
         }
-        const dashboard = updateDashboard(params.id, parsed.data);
+        const dashboard = await updateDashboard(params.id, parsed.data);
         if (!dashboard) {
           return error(404, "Dashboard not found", "not_found");
         }
@@ -107,7 +107,7 @@ export const Route = createFileRoute("/api/dashboards/$id")({
         if (isResponse(auth)) {
           return auth;
         }
-        if (!deleteDashboard(params.id)) {
+        if (!(await deleteDashboard(params.id))) {
           return error(404, "Dashboard not found", "not_found");
         }
         return json({ ok: true });

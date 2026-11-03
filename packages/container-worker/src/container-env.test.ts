@@ -1,15 +1,26 @@
 import { describe, expect, it } from "vitest";
-import { CONTAINER_PORT, containerEnv, forwardToContainer, secretConfigured } from "./container-env.ts";
+import {
+  CONTAINER_PORT,
+  containerBlockedReason,
+  containerEnv,
+  forwardToContainer,
+  mongoUriConfigured,
+  secretConfigured,
+} from "./container-env.ts";
 
 describe("containerEnv", () => {
-  it("points the server at the container port and a writable database path", () => {
-    const env = containerEnv({ DASH_SECRET: "a-real-secret" });
+  it("points the server at the container port and forwards the MongoDB URI", () => {
+    const env = containerEnv({
+      DASH_SECRET: "a-real-secret",
+      MONGODB_URI: " mongodb://user:pass@db.example.net/dash ",
+    });
     expect(env.PORT).toBe(String(CONTAINER_PORT));
     expect(env.NITRO_PORT).toBe(String(CONTAINER_PORT));
     expect(env.HOST).toBe("0.0.0.0");
     expect(env.NITRO_HOST).toBe("0.0.0.0");
     expect(env.NODE_ENV).toBe("production");
-    expect(env.DASH_DATABASE_PATH).toBe("/data/dash.sqlite");
+    expect(env.DASH_DATABASE_PATH).toBeUndefined();
+    expect(env.MONGODB_URI).toBe("mongodb://user:pass@db.example.net/dash");
     expect(env.DASH_SECRET).toBe("a-real-secret");
     expect(env.DASH_SEED_DEMO).toBe("false");
   });
@@ -38,6 +49,31 @@ describe("forwardToContainer", () => {
     const forwarded = forwardToContainer(request);
     expect(forwarded.headers.get("cf-container-target-port")).toBe(String(CONTAINER_PORT));
     expect(new URL(forwarded.url).pathname).toBe("/api/auth/me");
+  });
+});
+
+describe("mongoUriConfigured", () => {
+  it("accepts only a mongodb connection string", () => {
+    expect(mongoUriConfigured(undefined)).toBe(false);
+    expect(mongoUriConfigured("")).toBe(false);
+    expect(mongoUriConfigured("  ")).toBe(false);
+    expect(mongoUriConfigured("postgres://localhost/dash")).toBe(false);
+    expect(mongoUriConfigured("mongodb://127.0.0.1:27017/dash")).toBe(true);
+    expect(mongoUriConfigured("mongodb+srv://user:pass@cluster.example.net/dash")).toBe(true);
+  });
+});
+
+describe("containerBlockedReason", () => {
+  const uri = "mongodb://127.0.0.1:27017/dash";
+
+  it("names the missing Worker secret", () => {
+    expect(containerBlockedReason({})).toBe("DASH_SECRET is not configured");
+    expect(containerBlockedReason({ DASH_SECRET: "a-real-secret" })).toBe(
+      "MONGODB_URI is not configured",
+    );
+    expect(containerBlockedReason({ DASH_SECRET: "a-real-secret", MONGODB_URI: uri })).toBe(
+      undefined,
+    );
   });
 });
 
