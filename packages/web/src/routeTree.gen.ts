@@ -11,8 +11,10 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthedRouteImport } from './routes/_authed'
+import { Route as HealthzRouteImport } from './routes/healthz'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as McpRouteImport } from './routes/mcp'
+import { Route as PingRouteImport } from './routes/ping'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as AuthedDataSourcesRouteImport } from './routes/_authed/data-sources'
 import { Route as AuthedProfileRouteImport } from './routes/_authed/profile'
@@ -46,6 +48,11 @@ const AuthedRoute = AuthedRouteImport.update({
   id: '/_authed',
   getParentRoute: () => rootRouteImport,
 } as any)
+const HealthzRoute = HealthzRouteImport.update({
+  id: '/healthz',
+  path: '/healthz',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
@@ -54,6 +61,11 @@ const LoginRoute = LoginRouteImport.update({
 const McpRoute = McpRouteImport.update({
   id: '/mcp',
   path: '/mcp',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PingRoute = PingRouteImport.update({
+  id: '/ping',
+  path: '/ping',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RegisterRoute = RegisterRouteImport.update({
@@ -175,8 +187,10 @@ const ApiDataSourcesIdSchemaRoute = ApiDataSourcesIdSchemaRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/healthz': typeof HealthzRoute
   '/login': typeof LoginRoute
   '/mcp': typeof McpRoute
+  '/ping': typeof PingRoute
   '/register': typeof RegisterRoute
   '/data-sources': typeof AuthedDataSourcesRoute
   '/profile': typeof AuthedProfileRoute
@@ -203,8 +217,10 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/healthz': typeof HealthzRoute
   '/login': typeof LoginRoute
   '/mcp': typeof McpRoute
+  '/ping': typeof PingRoute
   '/register': typeof RegisterRoute
   '/data-sources': typeof AuthedDataSourcesRoute
   '/profile': typeof AuthedProfileRoute
@@ -233,8 +249,10 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authed': typeof AuthedRouteWithChildren
+  '/healthz': typeof HealthzRoute
   '/login': typeof LoginRoute
   '/mcp': typeof McpRoute
+  '/ping': typeof PingRoute
   '/register': typeof RegisterRoute
   '/_authed/data-sources': typeof AuthedDataSourcesRoute
   '/_authed/profile': typeof AuthedProfileRoute
@@ -263,8 +281,10 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/healthz'
     | '/login'
     | '/mcp'
+    | '/ping'
     | '/register'
     | '/data-sources'
     | '/profile'
@@ -291,8 +311,10 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/healthz'
     | '/login'
     | '/mcp'
+    | '/ping'
     | '/register'
     | '/data-sources'
     | '/profile'
@@ -320,8 +342,10 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/_authed'
+    | '/healthz'
     | '/login'
     | '/mcp'
+    | '/ping'
     | '/register'
     | '/_authed/data-sources'
     | '/_authed/profile'
@@ -350,8 +374,10 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthedRoute: typeof AuthedRouteWithChildren
+  HealthzRoute: typeof HealthzRoute
   LoginRoute: typeof LoginRoute
   McpRoute: typeof McpRoute
+  PingRoute: typeof PingRoute
   RegisterRoute: typeof RegisterRoute
   ApiSettingsRoute: typeof ApiSettingsRoute
   ApiAuthBootstrapRoute: typeof ApiAuthBootstrapRoute
@@ -384,6 +410,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/healthz': {
+      id: '/healthz'
+      path: '/healthz'
+      fullPath: '/healthz'
+      preLoaderRoute: typeof HealthzRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
@@ -396,6 +429,13 @@ declare module '@tanstack/react-router' {
       path: '/mcp'
       fullPath: '/mcp'
       preLoaderRoute: typeof McpRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ping': {
+      id: '/ping'
+      path: '/ping'
+      fullPath: '/ping'
+      preLoaderRoute: typeof PingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/register': {
@@ -601,8 +641,10 @@ const ApiDataSourcesIdRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthedRoute: AuthedRouteWithChildren,
+  HealthzRoute: HealthzRoute,
   LoginRoute: LoginRoute,
   McpRoute: McpRoute,
+  PingRoute: PingRoute,
   RegisterRoute: RegisterRoute,
   ApiSettingsRoute: ApiSettingsRoute,
   ApiAuthBootstrapRoute: ApiAuthBootstrapRoute,

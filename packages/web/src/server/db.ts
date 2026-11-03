@@ -178,6 +178,31 @@ export async function closeDb(): Promise<void> {
   await current?.close();
 }
 
+export type DatabaseCheck =
+  | { ok: true }
+  | { ok: false; message: string };
+
+/** Confirm the cached app database accepts commands. Drops a failed client so the next check reconnects. */
+export async function checkDatabase(): Promise<DatabaseCheck> {
+  try {
+    const db = await getDb();
+    const result = await db.command({ ping: 1 });
+    if (result.ok !== 1) {
+      await closeDb();
+      return {
+        ok: false,
+        message: "Database probe returned an unexpected result",
+      };
+    }
+    return { ok: true };
+  } catch (error) {
+    await closeDb().catch(() => undefined);
+    const message =
+      error instanceof Error ? error.message : "Database unavailable";
+    return { ok: false, message };
+  }
+}
+
 export function nowIso(): string {
   return new Date().toISOString();
 }

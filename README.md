@@ -144,14 +144,17 @@ Keep this list in sync as PRs land. Checked items are in the tree today.
 - [x] Session authentication (httpOnly cookie)
 - [x] API tokens (hashed, scoped, expiring, revocable)
 - [x] MCP server (`POST /mcp`) for charts and dashboards
+- [x] Public health checks (`GET /healthz`, `GET /ping`) that verify the app database
 - [ ] OAuth for MCP clients
 
 ## REST surface
 
-All routes except bootstrap, register, and login require a session cookie or `Authorization: Bearer dash_live_…`.
+All routes except bootstrap, register, login, healthz, and ping require a session cookie or `Authorization: Bearer dash_live_…`.
 
 | Method | Path | Notes |
 | --- | --- | --- |
+| GET | `/healthz` | Public. Confirms the app MongoDB is connected |
+| GET | `/ping` | Public. Confirms the app MongoDB is connected |
 | GET | `/api/auth/bootstrap` | Public. Demo login, first-account setup, registration |
 | POST | `/api/auth/register` | First user becomes admin. Closed when users exist and registration is off |
 | POST | `/api/auth/login` | Sets `dash_session` |
