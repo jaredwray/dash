@@ -6,6 +6,11 @@ import { createDashboard, listDashboards } from "./services/dashboards.ts";
 import { createDataSource, listDataSources } from "./services/data-sources.ts";
 import { getSettings, updateSettings } from "./services/settings.ts";
 
+export const DEMO_LOGIN = {
+  email: "admin@dash.dev",
+  password: "dashadmin",
+} as const;
+
 function demoWidgets(dataSourceId: string): DashboardWidget[] {
   return [
     {
@@ -141,9 +146,9 @@ async function seedOnce(): Promise<void> {
     let adminId: string;
     try {
       const admin = await createUser({
-        email: "admin@dash.dev",
+        email: DEMO_LOGIN.email,
         name: "Dash Admin",
-        password: "dashadmin",
+        password: DEMO_LOGIN.password,
         role: "member",
       });
       adminId = admin.id;
@@ -151,7 +156,7 @@ async function seedOnce(): Promise<void> {
       if (!(error instanceof EmailTakenError)) {
         throw error;
       }
-      const existing = await findUserByEmail("admin@dash.dev");
+      const existing = await findUserByEmail(DEMO_LOGIN.email);
       if (!existing) {
         throw error;
       }

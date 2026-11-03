@@ -1,6 +1,8 @@
+import { randomBytes } from "node:crypto";
 import type { DashboardWidget, PublicUser } from "@dash/core";
 import { MongoClient, type Collection, type Db } from "mongodb";
 import { getEnv } from "./env.ts";
+import { explainDatabaseError } from "./mongo-error.ts";
 
 export interface UserDoc {
   _id: string;
@@ -81,17 +83,48 @@ async function ensureIndexes(db: Db): Promise<void> {
 
 let generation = 0;
 
+/** Indexes create the database. A write probe rejects roles such as dbAdmin that cannot insert. */
+async function assertWritable(db: Db): Promise<void> {
+  const users = db.collection<{
+    _id: string;
+    email: string;
+    name: string;
+    role: string;
+    passwordHash: string;
+    createdAt: string;
+  }>("users");
+  const id = `dash-probe-${randomBytes(8).toString("hex")}`;
+  let inserted = false;
+  try {
+    await users.insertOne({
+      _id: id,
+      email: `${id}@probe.invalid`,
+      name: "probe",
+      role: "member",
+      passwordHash: "probe",
+      createdAt: new Date().toISOString(),
+    });
+    inserted = true;
+  } finally {
+    if (inserted) {
+      await users.deleteOne({ _id: id }).catch(() => undefined);
+    }
+  }
+}
+
 async function open(gen: number): Promise<Db> {
-  const { mongoUri, databaseName } = getEnv();
+  const { mongoUri, databaseName, authSource } = getEnv();
   const next = new MongoClient(mongoUri, {
     serverSelectionTimeoutMS: 5_000,
     appName: "dash",
+    ...(authSource ? { authSource } : {}),
   });
   let published = false;
   try {
     await next.connect();
     const db = next.db(databaseName);
     await ensureIndexes(db);
+    await assertWritable(db);
     if (generation !== gen) {
       throw new Error("Database connection closed");
     }
@@ -108,7 +141,7 @@ async function open(gen: number): Promise<Db> {
     if (!published) {
       await next.close().catch(() => undefined);
     }
-    throw error;
+    throw explainDatabaseError(error, databaseName);
   }
 }
 

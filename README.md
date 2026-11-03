@@ -83,14 +83,26 @@ cp .env.example .env
 pnpm dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). The demo seed creates:
+Open [http://localhost:3000](http://localhost:3000). With `DASH_SEED_DEMO=true` (the default), the app seeds a demo admin and shows those credentials on the login page:
 
 | | |
 | --- | --- |
 | Email | `admin@dash.dev` |
 | Password | `dashadmin` |
 
-Set `MONGODB_URI` to a MongoDB database before starting the app. Change `DASH_SECRET` before exposing it. Set `DASH_SEED_DEMO=false` to skip the demo user and sample warehouse.
+Set `MONGODB_URI` in `.env` or the environment before starting the app. `pnpm dev` reads the repo `.env`; a variable already set in the environment wins. The path is the database name (`/dash`). Dash creates that database the first time it connects. A username without `authSource` authenticates against `admin`, where Atlas stores SCRAM users, and that user needs the `readWrite` role on the database. Change `DASH_SECRET` before exposing the app.
+
+## First account
+
+Set `DASH_SEED_DEMO=false` to start with no users and no sample warehouse. The login page does not show the demo admin in that mode.
+
+There is no separate user-admin CLI. Accounts are created in the product:
+
+1. Open the app. With no users, sign-in points at `/register`. The first account becomes the administrator.
+2. Later people use the same registration form while **Settings → Allow new account registration** is on.
+3. An administrator turns that setting off to keep the workspace closed. Registration stays available while there are no users, so a fresh database can always create its first admin.
+
+`GET /api/auth/bootstrap` is public and reports whether the demo login should be shown, whether the workspace still needs that first account, and whether registration is open.
 
 ## Feature checklist
 
@@ -137,13 +149,14 @@ Keep this list in sync as PRs land. Checked items are in the tree today.
 
 ## REST surface
 
-All routes except register, login, healthz, and ping require a session cookie or `Authorization: Bearer dash_live_…`.
+All routes except bootstrap, register, login, healthz, and ping require a session cookie or `Authorization: Bearer dash_live_…`.
 
 | Method | Path | Notes |
 | --- | --- | --- |
 | GET | `/healthz` | Public. Confirms the app MongoDB is connected |
 | GET | `/ping` | Public. Confirms the app MongoDB is connected |
-| POST | `/api/auth/register` | First user becomes admin |
+| GET | `/api/auth/bootstrap` | Public. Demo login, first-account setup, registration |
+| POST | `/api/auth/register` | First user becomes admin. Closed when users exist and registration is off |
 | POST | `/api/auth/login` | Sets `dash_session` |
 | POST | `/api/auth/logout` | |
 | GET | `/api/auth/me` | |
@@ -232,7 +245,7 @@ pnpm exec wrangler secret put DASH_SECRET
 pnpm exec wrangler secret put MONGODB_URI
 ```
 
-Until either is set, requests to `dev.dash.io` return 500. Later deploys leave the secrets in place. `DASH_SECRET` encrypts saved data-source credentials and must not be `change-me-in-production`. `MONGODB_URI` is the MongoDB connection string for app state and must name a database (`mongodb://…/dash` or `mongodb+srv://…/dash`).
+Until either is set, requests to `dev.dash.io` return 500. Later deploys leave the secrets in place. `DASH_SECRET` encrypts saved data-source credentials and must not be `change-me-in-production`. `MONGODB_URI` is the MongoDB connection string for app state and must name a database (`mongodb://…/dash` or `mongodb+srv://…/dash`). Atlas SCRAM users live in `admin`; omit `authSource` and Dash authenticates there. Grant that user `readWrite` on the named database.
 
 `pnpm deploy:dev` runs `wrangler deploy` locally. `pnpm deploy` is pnpm's own command and does not run this script. Docker has to be running.
 

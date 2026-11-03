@@ -6,6 +6,8 @@ All notable changes to Dash are documented here.
 
 ### Fixed
 
+- App MongoDB connections authenticate a URI user against `admin` when `authSource` is omitted, which is where Atlas stores SCRAM users. The database named in the URI is created on that first connection. A `dbAdmin` role still cannot store accounts; sign-in reports that the user needs `readWrite` on that database. MongoDB data-source connection strings follow the same `authSource` default.
+- `pnpm dev` reads `MONGODB_URI`, `DASH_SECRET`, and `DASH_SEED_DEMO` from the repo `.env`. Vite does not copy those unprefixed variables into the server process. Values already set in the environment win, and production ignores `.env`.
 - Databricks SQL sends integers outside the 32-bit range as `BIGINT`, keeps `DECIMAL` values and integers that do not fit a safe JavaScript number as strings, and inlines `LIMIT` and `OFFSET`. Query pages request one extra row so an exact page is not marked truncated. External result links are refused even when some rows arrived inline, repeated chunks are rejected, and closing the client or timing out cancels the warehouse statement. `http` is allowed only for loopback. Introspection normalizes DuckDB and Spark type names, skips unnamed columns, and stops after 10,000 columns unless a schema is set. The test cluster receives `DASH_TEST_DATABRICKS_TOKEN`, `DASH_TEST_DATABRICKS_WAREHOUSE`, `DASH_TEST_DATABRICKS_CATALOG`, and `DASH_TEST_DATABRICKS_SCHEMA`.
 
 ### Added
@@ -29,6 +31,7 @@ All notable changes to Dash are documented here.
 
 ### Changed
 
+- The login page shows `admin@dash.dev` only when `DASH_SEED_DEMO` is enabled. With seeding off, the first account is created at `/register` and becomes the administrator.
 - App state (users, sessions, API tokens, settings, data sources, and dashboards) is stored in MongoDB. `MONGODB_URI` is required and must name a database. `dev.dash.io` reads it from a Worker secret (`wrangler secret put MONGODB_URI`); requests return 500 until `DASH_SECRET` and `MONGODB_URI` are both set. `DASH_DATABASE_PATH` is gone.
 - The data-source form can add an Amazon Redshift connection. Choosing Redshift starts with encryption on and clears a URI left over from another kind. Pasting a Redshift URI updates the SSL checkbox from `ssl` and `sslmode`. An explicit SSL flag overrides the URI. Explicit host, port, database, user, and password fields override the same parts of a URI.
 - MySQL executes queries with server-side prepared statements, keeping filter values and pagination parameters separate from SQL text.

@@ -104,23 +104,31 @@ export function AuthCard({
   title: string;
   subtitle: string;
   children: ReactNode;
-  onSubmit: (event: FormEvent) => void;
-  footer: ReactNode;
+  onSubmit?: (event: FormEvent) => void;
+  footer?: ReactNode;
 }) {
+  const className =
+    "w-full max-w-md rounded-3xl border border-line bg-panel p-8 shadow-[0_30px_80px_rgb(0_0_0_/0.35)]";
+  const body = (
+    <>
+      <div className="mb-6">
+        <div className="text-xs uppercase tracking-[0.2em] text-accent">Dash</div>
+        <h1 className="mt-2 text-2xl font-semibold">{title}</h1>
+        <p className="mt-2 text-sm text-mist">{subtitle}</p>
+      </div>
+      <div className="space-y-4">{children}</div>
+      {footer ? <div className="mt-6 text-sm text-mist">{footer}</div> : null}
+    </>
+  );
   return (
     <div className="grid min-h-screen place-items-center px-4">
-      <form
-        onSubmit={onSubmit}
-        className="w-full max-w-md rounded-3xl border border-line bg-panel p-8 shadow-[0_30px_80px_rgb(0_0_0_/0.35)]"
-      >
-        <div className="mb-6">
-          <div className="text-xs uppercase tracking-[0.2em] text-accent">Dash</div>
-          <h1 className="mt-2 text-2xl font-semibold">{title}</h1>
-          <p className="mt-2 text-sm text-mist">{subtitle}</p>
-        </div>
-        <div className="space-y-4">{children}</div>
-        <div className="mt-6 text-sm text-mist">{footer}</div>
-      </form>
+      {onSubmit ? (
+        <form onSubmit={onSubmit} className={className}>
+          {body}
+        </form>
+      ) : (
+        <div className={className}>{body}</div>
+      )}
     </div>
   );
 }

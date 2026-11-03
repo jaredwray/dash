@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import type { AuthBootstrap, DemoLogin } from "~/lib/bootstrap";
 import { api } from "~/lib/api";
 import { AuthCard, Field, PrimaryButton, TextInput } from "~/components/ui";
 
@@ -9,10 +10,60 @@ export const Route = createFileRoute("/login")({
 });
 
 function LoginPage() {
+  const bootstrap = useQuery({
+    queryKey: ["auth-bootstrap"],
+    queryFn: () => api<AuthBootstrap>("/api/auth/bootstrap"),
+  });
+
+  if (bootstrap.isPending) {
+    return <p className="grid min-h-screen place-items-center text-sm text-mist">Loading…</p>;
+  }
+  if (bootstrap.isError || !bootstrap.data) {
+    const detail = bootstrap.error instanceof Error ? bootstrap.error.message : null;
+    return (
+      <p className="mx-auto grid min-h-screen max-w-lg place-items-center px-6 text-center text-sm text-rose-300">
+        {detail ?? "Could not load sign-in."}
+      </p>
+    );
+  }
+  if (bootstrap.data.needsSetup) {
+    return <SetupPrompt />;
+  }
+  return (
+    <LoginForm
+      demoLogin={bootstrap.data.demoLogin}
+      allowRegistration={bootstrap.data.allowRegistration}
+    />
+  );
+}
+
+function SetupPrompt() {
+  return (
+    <AuthCard
+      title="Create the first account"
+      subtitle="This workspace has no users yet. The first account is the administrator. Additional people register after that, until an admin turns registration off in Settings."
+    >
+      <Link
+        to="/register"
+        className="inline-flex w-full justify-center rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-ink"
+      >
+        Create administrator
+      </Link>
+    </AuthCard>
+  );
+}
+
+function LoginForm({
+  demoLogin,
+  allowRegistration,
+}: {
+  demoLogin: DemoLogin | null;
+  allowRegistration: boolean;
+}) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [email, setEmail] = useState("admin@dash.dev");
-  const [password, setPassword] = useState("dashadmin");
+  const [email, setEmail] = useState(demoLogin?.email ?? "");
+  const [password, setPassword] = useState(demoLogin?.password ?? "");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
@@ -37,15 +88,23 @@ function LoginPage() {
   return (
     <AuthCard
       title="Welcome back"
-      subtitle="Local demo: admin@dash.dev / dashadmin"
+      subtitle={
+        demoLogin
+          ? `Local demo: ${demoLogin.email} / ${demoLogin.password}`
+          : "Sign in with your workspace account."
+      }
       onSubmit={(event) => void onSubmit(event)}
       footer={
-        <>
-          New here?{" "}
-          <Link to="/register" className="text-accent">
-            Create an account
-          </Link>
-        </>
+        allowRegistration ? (
+          <>
+            New here?{" "}
+            <Link to="/register" className="text-accent">
+              Create an account
+            </Link>
+          </>
+        ) : (
+          <>Ask an administrator if you need an account.</>
+        )
       }
     >
       <Field label="Email">

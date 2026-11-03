@@ -37,6 +37,8 @@ describe("resolveMongoTarget", () => {
     });
     expect(srv.database).toBe("events");
     expect(srv.uri.startsWith("mongodb+srv://")).toBe(true);
+    expect(srv.options.authSource).toBe("admin");
+    expect(srv.options.auth).toBeUndefined();
 
     expect(() =>
       resolveMongoTarget({
@@ -72,6 +74,19 @@ describe("resolveMongoTarget", () => {
     });
     expect(replica.database).toBe("analytics");
     expect(replica.uri).toContain("h1:27017,h2:27017");
+    expect(replica.options.authSource).toBe("admin");
+
+    const explicit = resolveMongoTarget({
+      kind: "mongodb",
+      connectionString: "mongodb://dash:s3cret@127.0.0.1:27029/events?authSource=dash",
+    });
+    expect(explicit.options.authSource).toBeUndefined();
+
+    const anonymous = resolveMongoTarget({
+      kind: "mongodb",
+      connectionString: "mongodb://127.0.0.1:27029/events",
+    });
+    expect(anonymous.options.authSource).toBeUndefined();
 
     const fromField = resolveMongoTarget({
       kind: "mongodb",

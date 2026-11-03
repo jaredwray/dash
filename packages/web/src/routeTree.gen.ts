@@ -23,6 +23,7 @@ import { Route as AuthedTokensRouteImport } from './routes/_authed/tokens'
 import { Route as ApiSettingsRouteImport } from './routes/api/settings'
 import { Route as AuthedDashboardsIndexRouteImport } from './routes/_authed/dashboards.index'
 import { Route as AuthedDashboardsDashboardIdRouteImport } from './routes/_authed/dashboards.$dashboardId'
+import { Route as ApiAuthBootstrapRouteImport } from './routes/api/auth/bootstrap'
 import { Route as ApiAuthLoginRouteImport } from './routes/api/auth/login'
 import { Route as ApiAuthLogoutRouteImport } from './routes/api/auth/logout'
 import { Route as ApiAuthMeRouteImport } from './routes/api/auth/me'
@@ -108,6 +109,11 @@ const AuthedDashboardsDashboardIdRoute =
     path: '/dashboards/$dashboardId',
     getParentRoute: () => AuthedRoute,
   } as any)
+const ApiAuthBootstrapRoute = ApiAuthBootstrapRouteImport.update({
+  id: '/api/auth/bootstrap',
+  path: '/api/auth/bootstrap',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAuthLoginRoute = ApiAuthLoginRouteImport.update({
   id: '/api/auth/login',
   path: '/api/auth/login',
@@ -192,6 +198,7 @@ export interface FileRoutesByFullPath {
   '/tokens': typeof AuthedTokensRoute
   '/api/settings': typeof ApiSettingsRoute
   '/dashboards/$dashboardId': typeof AuthedDashboardsDashboardIdRoute
+  '/api/auth/bootstrap': typeof ApiAuthBootstrapRoute
   '/api/auth/login': typeof ApiAuthLoginRoute
   '/api/auth/logout': typeof ApiAuthLogoutRoute
   '/api/auth/me': typeof ApiAuthMeRoute
@@ -221,6 +228,7 @@ export interface FileRoutesByTo {
   '/tokens': typeof AuthedTokensRoute
   '/api/settings': typeof ApiSettingsRoute
   '/dashboards/$dashboardId': typeof AuthedDashboardsDashboardIdRoute
+  '/api/auth/bootstrap': typeof ApiAuthBootstrapRoute
   '/api/auth/login': typeof ApiAuthLoginRoute
   '/api/auth/logout': typeof ApiAuthLogoutRoute
   '/api/auth/me': typeof ApiAuthMeRoute
@@ -252,6 +260,7 @@ export interface FileRoutesById {
   '/_authed/tokens': typeof AuthedTokensRoute
   '/api/settings': typeof ApiSettingsRoute
   '/_authed/dashboards/$dashboardId': typeof AuthedDashboardsDashboardIdRoute
+  '/api/auth/bootstrap': typeof ApiAuthBootstrapRoute
   '/api/auth/login': typeof ApiAuthLoginRoute
   '/api/auth/logout': typeof ApiAuthLogoutRoute
   '/api/auth/me': typeof ApiAuthMeRoute
@@ -283,6 +292,7 @@ export interface FileRouteTypes {
     | '/tokens'
     | '/api/settings'
     | '/dashboards/$dashboardId'
+    | '/api/auth/bootstrap'
     | '/api/auth/login'
     | '/api/auth/logout'
     | '/api/auth/me'
@@ -312,6 +322,7 @@ export interface FileRouteTypes {
     | '/tokens'
     | '/api/settings'
     | '/dashboards/$dashboardId'
+    | '/api/auth/bootstrap'
     | '/api/auth/login'
     | '/api/auth/logout'
     | '/api/auth/me'
@@ -342,6 +353,7 @@ export interface FileRouteTypes {
     | '/_authed/tokens'
     | '/api/settings'
     | '/_authed/dashboards/$dashboardId'
+    | '/api/auth/bootstrap'
     | '/api/auth/login'
     | '/api/auth/logout'
     | '/api/auth/me'
@@ -368,6 +380,7 @@ export interface RootRouteChildren {
   PingRoute: typeof PingRoute
   RegisterRoute: typeof RegisterRoute
   ApiSettingsRoute: typeof ApiSettingsRoute
+  ApiAuthBootstrapRoute: typeof ApiAuthBootstrapRoute
   ApiAuthLoginRoute: typeof ApiAuthLoginRoute
   ApiAuthLogoutRoute: typeof ApiAuthLogoutRoute
   ApiAuthMeRoute: typeof ApiAuthMeRoute
@@ -480,6 +493,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/dashboards/$dashboardId'
       preLoaderRoute: typeof AuthedDashboardsDashboardIdRouteImport
       parentRoute: typeof AuthedRoute
+    }
+    '/api/auth/bootstrap': {
+      id: '/api/auth/bootstrap'
+      path: '/api/auth/bootstrap'
+      fullPath: '/api/auth/bootstrap'
+      preLoaderRoute: typeof ApiAuthBootstrapRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/auth/login': {
       id: '/api/auth/login'
@@ -627,6 +647,7 @@ const rootRouteChildren: RootRouteChildren = {
   PingRoute: PingRoute,
   RegisterRoute: RegisterRoute,
   ApiSettingsRoute: ApiSettingsRoute,
+  ApiAuthBootstrapRoute: ApiAuthBootstrapRoute,
   ApiAuthLoginRoute: ApiAuthLoginRoute,
   ApiAuthLogoutRoute: ApiAuthLogoutRoute,
   ApiAuthMeRoute: ApiAuthMeRoute,

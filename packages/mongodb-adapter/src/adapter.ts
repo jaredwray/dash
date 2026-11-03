@@ -65,6 +65,9 @@ interface ParsedMongoUri {
   tls?: boolean;
   srv: boolean;
   password?: string;
+  username?: string;
+  /** Set only when the URI itself includes `authSource`. */
+  authSource?: string;
 }
 
 function readMongoUri(connectionString: string): ParsedMongoUri {
@@ -120,11 +123,21 @@ function readMongoUri(connectionString: string): ParsedMongoUri {
       // Keep the password text the parser returned.
     }
   }
+  let username = url.username;
+  if (username) {
+    try {
+      username = decodeURIComponent(username);
+    } catch {
+      // Keep the username text the parser returned.
+    }
+  }
   return {
     database,
     tls: tlsValues.length > 0 ? tlsValues[0] : undefined,
     srv: url.isSRV,
     password: password || undefined,
+    username: username || undefined,
+    authSource: url.searchParams.get("authSource") || undefined,
   };
 }
 
@@ -195,6 +208,10 @@ export function resolveMongoTarget(config: MongoConnectionConfig): MongoTarget {
     }
     if (config.authSource) {
       options.authSource = assertDatabase(config.authSource);
+    } else if (parsed.username && !parsed.authSource) {
+      // Atlas SCRAM users live in admin. The path database is the data
+      // database, and authenticating against it fails before any write.
+      options.authSource = "admin";
     }
     return { uri: config.connectionString, database, options };
   }
