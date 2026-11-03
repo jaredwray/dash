@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import type { AuthBootstrap } from "~/lib/bootstrap";
 import { api } from "~/lib/api";
 import { AuthCard, Field, PrimaryButton, TextInput } from "~/components/ui";
 
@@ -9,6 +10,41 @@ export const Route = createFileRoute("/register")({
 });
 
 function RegisterPage() {
+  const bootstrap = useQuery({
+    queryKey: ["auth-bootstrap"],
+    queryFn: () => api<AuthBootstrap>("/api/auth/bootstrap"),
+  });
+
+  if (bootstrap.isPending) {
+    return <p className="grid min-h-screen place-items-center text-sm text-mist">Loading…</p>;
+  }
+  if (bootstrap.isError || !bootstrap.data) {
+    return (
+      <p className="grid min-h-screen place-items-center text-sm text-rose-300">
+        Could not load registration.
+      </p>
+    );
+  }
+  if (!bootstrap.data.allowRegistration) {
+    return (
+      <AuthCard
+        title="Registration is closed"
+        subtitle="An administrator has turned off new accounts."
+        footer={
+          <Link to="/login" className="text-accent">
+            Log in
+          </Link>
+        }
+      >
+        <p className="text-sm text-mist">Ask an administrator if you need access to this workspace.</p>
+      </AuthCard>
+    );
+  }
+
+  return <RegisterForm needsSetup={bootstrap.data.needsSetup} />;
+}
+
+function RegisterForm({ needsSetup }: { needsSetup: boolean }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [name, setName] = useState("");
@@ -27,6 +63,7 @@ function RegisterPage() {
         body: JSON.stringify({ name, email, password }),
       });
       await queryClient.invalidateQueries({ queryKey: ["me"] });
+      await queryClient.invalidateQueries({ queryKey: ["auth-bootstrap"] });
       await navigate({ to: "/dashboards" });
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Registration failed");
@@ -37,8 +74,12 @@ function RegisterPage() {
 
   return (
     <AuthCard
-      title="Create your workspace"
-      subtitle="The first account becomes the administrator."
+      title={needsSetup ? "Create the administrator" : "Create your account"}
+      subtitle={
+        needsSetup
+          ? "The first account becomes the administrator. You can invite others later, or turn registration off in Settings."
+          : "Join this workspace. An administrator can close registration at any time."
+      }
       onSubmit={(event) => void onSubmit(event)}
       footer={
         <>
@@ -73,7 +114,7 @@ function RegisterPage() {
       </Field>
       {error ? <p className="text-sm text-rose-300">{error}</p> : null}
       <PrimaryButton type="submit" disabled={pending} className="w-full">
-        {pending ? "Creating…" : "Create account"}
+        {pending ? "Creating…" : needsSetup ? "Create administrator" : "Create account"}
       </PrimaryButton>
     </AuthCard>
   );
