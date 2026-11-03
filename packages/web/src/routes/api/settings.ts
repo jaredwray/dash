@@ -17,7 +17,7 @@ export const Route = createFileRoute("/api/settings")({
         if (isResponse(auth)) {
           return auth;
         }
-        return json({ settings: getSettings() });
+        return json({ settings: await getSettings() });
       },
       PATCH: async ({ request }) => {
         const auth = await requireUser(request, "write");
@@ -31,7 +31,7 @@ export const Route = createFileRoute("/api/settings")({
         if (!parsed.success) {
           return error(400, "Invalid settings payload", "invalid_body");
         }
-        return json({ settings: updateSettings(parsed.data) });
+        return json({ settings: await updateSettings(parsed.data) });
       },
     },
   },

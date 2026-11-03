@@ -5,7 +5,8 @@ import {
   publicTokenPrefix,
 } from "@dash/core";
 import { getEnv } from "./env.ts";
-import { all, get, nowIso, run } from "./db.ts";
+import { MongoServerError } from "mongodb";
+import { apiTokens, getDb, nowIso, sessions, users, type ApiTokenDoc, type UserDoc } from "./db.ts";
 import {
   generateApiToken,
   generateSessionToken,
@@ -23,48 +24,25 @@ import {
   parseCookies,
 } from "./http.ts";
 
-interface UserRow {
-  id: string;
-  email: string;
-  name: string;
-  role: PublicUser["role"];
-  password_hash: string;
-  created_at: string;
+export class EmailTakenError extends Error {
+  constructor() {
+    super("Email already registered");
+    this.name = "EmailTakenError";
+  }
 }
 
-interface SessionRow {
-  id: string;
-  user_id: string;
-  token_hash: string;
-  expires_at: string;
-}
-
-interface TokenRow {
-  id: string;
-  user_id: string;
-  name: string;
-  token_hash: string;
-  prefix: string;
-  scopes: string;
-  expires_at: string | null;
-  last_used_at: string | null;
-  revoked_at: string | null;
-  created_at: string;
-}
-
-function toPublicUser(row: UserRow): PublicUser {
+function toPublicUser(row: UserDoc): PublicUser {
   return {
-    id: row.id,
+    id: row._id,
     email: row.email,
     name: row.name,
     role: row.role,
-    createdAt: row.created_at,
+    createdAt: row.createdAt,
   };
 }
 
-export function countUsers(): number {
-  const row = get<{ count: number }>("SELECT COUNT(*) AS count FROM users");
-  return Number(row?.count ?? 0);
+export function countUsers(): Promise<number> {
+  return users().then((collection) => collection.countDocuments());
 }
 
 export async function createUser(input: {
@@ -76,10 +54,23 @@ export async function createUser(input: {
   const id = randomId();
   const createdAt = nowIso();
   const passwordHash = await hashPassword(input.password);
-  run(
-    "INSERT INTO users (id, email, name, role, password_hash, created_at) VALUES (?, ?, ?, ?, ?, ?)",
-    [id, input.email, input.name, input.role, passwordHash, createdAt],
-  );
+  try {
+    await (
+      await users()
+    ).insertOne({
+      _id: id,
+      email: input.email,
+      name: input.name,
+      role: input.role,
+      passwordHash,
+      createdAt,
+    });
+  } catch (error) {
+    if (error instanceof MongoServerError && error.code === 11000) {
+      throw new EmailTakenError();
+    }
+    throw error;
+  }
   return {
     id,
     email: input.email,
@@ -89,159 +80,186 @@ export async function createUser(input: {
   };
 }
 
-export function findUserByEmail(email: string): UserRow | undefined {
-  return get<UserRow>("SELECT * FROM users WHERE email = ?", [email]);
+export async function findUserByEmail(email: string): Promise<UserDoc | undefined> {
+  const row = await (await users()).findOne({ email });
+  return row ?? undefined;
 }
 
-export function findUserById(id: string): UserRow | undefined {
-  return get<UserRow>("SELECT * FROM users WHERE id = ?", [id]);
+export async function findUserById(id: string): Promise<UserDoc | undefined> {
+  const row = await (await users()).findOne({ _id: id });
+  return row ?? undefined;
+}
+
+/**
+ * The first successful claim on an empty app database becomes admin.
+ * Later callers are not promoted.
+ */
+export async function grantInitialAdmin(userId: string): Promise<boolean> {
+  const settings = (await getDb()).collection<{ _id: string; adminUserId?: string }>("settings");
+  let adminUserId: string | undefined;
+  try {
+    const doc = await settings.findOneAndUpdate(
+      { _id: "bootstrap" },
+      { $setOnInsert: { adminUserId: userId } },
+      { upsert: true, returnDocument: "after" },
+    );
+    adminUserId = doc?.adminUserId;
+  } catch (error) {
+    if (!(error instanceof MongoServerError) || error.code !== 11000) {
+      throw error;
+    }
+    adminUserId = (await settings.findOne({ _id: "bootstrap" }))?.adminUserId;
+  }
+  if (adminUserId !== userId) {
+    return false;
+  }
+  await (await users()).updateOne({ _id: userId }, { $set: { role: "admin" } });
+  return true;
+}
+
+export async function assertUserExists(userId: string): Promise<void> {
+  const user = await findUserById(userId);
+  if (!user) {
+    throw new Error("User not found");
+  }
 }
 
 export async function authenticatePassword(
   email: string,
   password: string,
 ): Promise<PublicUser | undefined> {
-  const user = findUserByEmail(email);
+  const user = await findUserByEmail(email);
   if (!user) {
     return undefined;
   }
-  const ok = await verifyPassword(password, user.password_hash);
+  const ok = await verifyPassword(password, user.passwordHash);
   if (!ok) {
     return undefined;
   }
   return toPublicUser(user);
 }
 
-export function createSession(userId: string): string {
+export async function createSession(userId: string): Promise<string> {
+  await assertUserExists(userId);
   const token = generateSessionToken();
   const expires = new Date(Date.now() + SESSION_TTL_MS).toISOString();
-  run(
-    "INSERT INTO sessions (id, user_id, token_hash, expires_at, created_at) VALUES (?, ?, ?, ?, ?)",
-    [randomId(), userId, hashSecret(token), expires, nowIso()],
-  );
+  await (
+    await sessions()
+  ).insertOne({
+    _id: randomId(),
+    userId,
+    tokenHash: hashSecret(token),
+    expiresAt: expires,
+    createdAt: nowIso(),
+  });
   return token;
 }
 
-export function deleteSessionByToken(token: string): void {
-  run("DELETE FROM sessions WHERE token_hash = ?", [hashSecret(token)]);
+export async function deleteSessionByToken(token: string): Promise<void> {
+  await (await sessions()).deleteOne({ tokenHash: hashSecret(token) });
 }
 
-function sessionUser(token: string): PublicUser | undefined {
-  const hash = hashSecret(token);
-  const session = get<SessionRow>(
-    "SELECT * FROM sessions WHERE token_hash = ?",
-    [hash],
-  );
+async function sessionUser(token: string): Promise<PublicUser | undefined> {
+  const collection = await sessions();
+  const session = await collection.findOne({ tokenHash: hashSecret(token) });
   if (!session) {
     return undefined;
   }
-  if (new Date(session.expires_at).getTime() <= Date.now()) {
-    run("DELETE FROM sessions WHERE id = ?", [session.id]);
+  if (new Date(session.expiresAt).getTime() <= Date.now()) {
+    await collection.deleteOne({ _id: session._id });
     return undefined;
   }
-  const user = findUserById(session.user_id);
+  const user = await findUserById(session.userId);
   return user ? toPublicUser(user) : undefined;
 }
 
-export function listTokens(userId: string) {
-  const rows = all<TokenRow>(
-    "SELECT * FROM api_tokens WHERE user_id = ? AND revoked_at IS NULL ORDER BY created_at DESC",
-    [userId],
-  );
-  return rows.map((row) => ({
-    id: row.id,
+function toPublicToken(row: ApiTokenDoc) {
+  return {
+    id: row._id,
     name: row.name,
     prefix: row.prefix,
-    scopes: JSON.parse(row.scopes) as ApiTokenScope[],
-    createdAt: row.created_at,
-    lastUsedAt: row.last_used_at,
-    expiresAt: row.expires_at,
-  }));
+    scopes: row.scopes as ApiTokenScope[],
+    createdAt: row.createdAt,
+    lastUsedAt: row.lastUsedAt,
+    expiresAt: row.expiresAt,
+  };
 }
 
-export function issueApiToken(input: {
+export async function listTokens(userId: string) {
+  const rows = await (await apiTokens())
+    .find({ userId, revokedAt: null })
+    .sort({ createdAt: -1 })
+    .toArray();
+  return rows.map(toPublicToken);
+}
+
+export async function issueApiToken(input: {
   userId: string;
   name: string;
   scopes: ApiTokenScope[];
   expiresAt: string | null;
-}): { token: string; record: ReturnType<typeof listTokens>[number] } {
+}): Promise<{ token: string; record: Awaited<ReturnType<typeof listTokens>>[number] }> {
+  await assertUserExists(input.userId);
   const token = generateApiToken();
   const id = randomId();
   const createdAt = nowIso();
   const prefix = publicTokenPrefix(token);
-  run(
-    `INSERT INTO api_tokens (id, user_id, name, token_hash, prefix, scopes, expires_at, last_used_at, revoked_at, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?)`,
-    [
-      id,
-      input.userId,
-      input.name,
-      hashSecret(token),
-      prefix,
-      JSON.stringify(input.scopes),
-      input.expiresAt,
-      createdAt,
-    ],
-  );
-  return {
-    token,
-    record: {
-      id,
-      name: input.name,
-      prefix,
-      scopes: input.scopes,
-      createdAt,
-      lastUsedAt: null,
-      expiresAt: input.expiresAt,
-    },
+  const record = {
+    _id: id,
+    userId: input.userId,
+    name: input.name,
+    tokenHash: hashSecret(token),
+    prefix,
+    scopes: input.scopes,
+    expiresAt: input.expiresAt,
+    lastUsedAt: null,
+    revokedAt: null,
+    createdAt,
   };
+  await (await apiTokens()).insertOne(record);
+  return { token, record: toPublicToken(record) };
 }
 
-export function revokeApiToken(userId: string, tokenId: string): boolean {
-  const row = get<TokenRow>(
-    "SELECT * FROM api_tokens WHERE id = ? AND user_id = ? AND revoked_at IS NULL",
-    [tokenId, userId],
+export async function revokeApiToken(userId: string, tokenId: string): Promise<boolean> {
+  const result = await (
+    await apiTokens()
+  ).updateOne(
+    { _id: tokenId, userId, revokedAt: null },
+    { $set: { revokedAt: nowIso() } },
   );
-  if (!row) {
-    return false;
-  }
-  run("UPDATE api_tokens SET revoked_at = ? WHERE id = ?", [nowIso(), tokenId]);
-  return true;
+  return result.matchedCount === 1;
 }
 
-function tokenAuth(token: string): AuthContext | undefined {
+async function tokenAuth(token: string): Promise<AuthContext | undefined> {
   if (!isApiTokenFormat(token)) {
     return undefined;
   }
-  const hash = hashSecret(token);
-  const row = get<TokenRow>(
-    "SELECT * FROM api_tokens WHERE token_hash = ? AND revoked_at IS NULL",
-    [hash],
-  );
+  const collection = await apiTokens();
+  const row = await collection.findOne({ tokenHash: hashSecret(token), revokedAt: null });
   if (!row) {
     return undefined;
   }
-  if (row.expires_at && new Date(row.expires_at).getTime() <= Date.now()) {
+  if (row.expiresAt && new Date(row.expiresAt).getTime() <= Date.now()) {
     return undefined;
   }
   const presented = hashSecret(token);
-  if (!safeEqualHex(presented, row.token_hash)) {
+  if (!safeEqualHex(presented, row.tokenHash)) {
     return undefined;
   }
-  const user = findUserById(row.user_id);
+  const user = await findUserById(row.userId);
   if (!user) {
     return undefined;
   }
-  run("UPDATE api_tokens SET last_used_at = ? WHERE id = ?", [nowIso(), row.id]);
+  await collection.updateOne({ _id: row._id }, { $set: { lastUsedAt: nowIso() } });
   return {
     user: toPublicUser(user),
-    scopes: JSON.parse(row.scopes) as ApiTokenScope[],
+    scopes: row.scopes as ApiTokenScope[],
     via: "token",
-    tokenId: row.id,
+    tokenId: row._id,
   };
 }
 
-export function resolveAuth(request: Request): AuthContext | undefined {
+export async function resolveAuth(request: Request): Promise<AuthContext | undefined> {
   const token = bearerToken(request);
   if (token) {
     return tokenAuth(token);
@@ -251,7 +269,7 @@ export function resolveAuth(request: Request): AuthContext | undefined {
   if (!sessionToken) {
     return undefined;
   }
-  const user = sessionUser(sessionToken);
+  const user = await sessionUser(sessionToken);
   if (!user) {
     return undefined;
   }
@@ -266,20 +284,16 @@ export async function updateUser(
   userId: string,
   patch: { name?: string; password?: string },
 ): Promise<PublicUser> {
-  const user = findUserById(userId);
+  const user = await findUserById(userId);
   if (!user) {
     throw new Error("User not found");
   }
   const name = patch.name?.trim() || user.name;
-  let passwordHash = user.password_hash;
+  let passwordHash = user.passwordHash;
   if (patch.password) {
     passwordHash = await hashPassword(patch.password);
   }
-  run("UPDATE users SET name = ?, password_hash = ? WHERE id = ?", [
-    name,
-    passwordHash,
-    userId,
-  ]);
+  await (await users()).updateOne({ _id: userId }, { $set: { name, passwordHash } });
   return { ...toPublicUser(user), name };
 }
 

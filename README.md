@@ -56,6 +56,7 @@ The same product-revenue chart, drawn in the session after a Dash MCP query agai
 
 - [Node.js 24](https://nodejs.org/) (Active LTS)
 - [pnpm](https://pnpm.io/) 12 (pinned to 12.5.1 in `package.json`)
+- MongoDB. App state is the database named in `MONGODB_URI`.
 
 ## Monorepo
 
@@ -89,7 +90,7 @@ Open [http://localhost:3000](http://localhost:3000). The demo seed creates:
 | Email | `admin@dash.dev` |
 | Password | `dashadmin` |
 
-Change `DASH_SECRET` before exposing the app. Set `DASH_SEED_DEMO=false` to skip the demo user and sample warehouse.
+Set `MONGODB_URI` to a MongoDB database before starting the app. Change `DASH_SECRET` before exposing it. Set `DASH_SEED_DEMO=false` to skip the demo user and sample warehouse.
 
 ## Feature checklist
 
@@ -167,7 +168,7 @@ Issue a token with the `mcp` scope, then point a client at `/mcp`. Tools include
 | `pnpm dev` | Start `@dash/web` |
 | `pnpm test:services:start` | Start warehouse clusters (Docker Compose) |
 | `pnpm test:services:stop` | Stop clusters and delete their data |
-| `pnpm test` | Run package tests. Postgres, MySQL, MongoDB, BigQuery, Databricks SQL, Redshift, and Stripe adapter tests use the clusters |
+| `pnpm test` | Run package tests. Adapter tests and `@dash/web` app-database tests use the clusters |
 | `pnpm typecheck` | TypeScript across workspaces |
 | `pnpm build` | Production build |
 | `pnpm deploy:dev` | `wrangler deploy` of the dev Worker and container (`dev.dash.io`) |
@@ -206,12 +207,13 @@ Override the Postgres endpoint with `DASH_TEST_POSTGRES_HOST`, `DASH_TEST_POSTGR
 - [ADR 0004](docs/adr/0004-tanstack-charts.md) — TanStack Charts + `ChartSpec`
 - [ADR 0005](docs/adr/0005-adapter-test-clusters.md) — adapter tests use local clusters
 - [ADR 0006](docs/adr/0006-dev-workers-container.md) — dev.dash.io Worker and container
+- [ADR 0007](docs/adr/0007-mongodb-app-state.md) — app state in MongoDB
 
 ## Dev deploy
 
 Pushes to `main` run `.github/workflows/deploy-dev.yml`. Wrangler builds `Dockerfile`, pushes the image, and attaches the Worker to `https://dev.dash.io`. `workers.dev` is off.
 
-The container runs `node .output/server/index.mjs` from `@dash/web`. One instance named `dev` serves the host. Its disk is ephemeral: an hour without traffic, or the next deploy, drops the SQLite file. Register again after that. The first account is the admin, and registration is open on an empty database, so the first visitor after a reset becomes admin. Put Cloudflare Access in front of the hostname if that should not be public. The demo user is not seeded.
+The container runs `node .output/server/index.mjs` from `@dash/web`. One instance named `dev` serves the host. Users, sessions, and saved data sources are stored in the MongoDB database named by `MONGODB_URI`, so they survive container sleep and the next image. The demo user is not seeded. Put Cloudflare Access in front of the hostname if the dev host should not be public.
 
 GitHub Actions secrets:
 
@@ -220,7 +222,14 @@ GitHub Actions secrets:
 | `CLOUDFLARE_API_TOKEN` | Workers Scripts edit, Containers edit, and DNS edit on the `dash.io` zone |
 | `CLOUDFLARE_ACCOUNT_ID` | Account that owns the Worker |
 
-The workflow deploys the `dash-development` Worker without `DASH_SECRET`. After that first deploy, set the secret on that Worker with `pnpm exec wrangler secret put DASH_SECRET`. Until it is set, requests to `dev.dash.io` return 500. Later deploys leave the secret in place. It encrypts saved data-source credentials and must not be `change-me-in-production`.
+The workflow deploys the `dash-development` Worker without `DASH_SECRET` or `MONGODB_URI`. After that first deploy, set both on that Worker:
+
+```bash
+pnpm exec wrangler secret put DASH_SECRET
+pnpm exec wrangler secret put MONGODB_URI
+```
+
+Until either is set, requests to `dev.dash.io` return 500. Later deploys leave the secrets in place. `DASH_SECRET` encrypts saved data-source credentials and must not be `change-me-in-production`. `MONGODB_URI` is the MongoDB connection string for app state and must name a database (`mongodb://…/dash` or `mongodb+srv://…/dash`).
 
 `pnpm deploy:dev` runs `wrangler deploy` locally. `pnpm deploy` is pnpm's own command and does not run this script. Docker has to be running.
 

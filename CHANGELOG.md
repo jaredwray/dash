@@ -28,6 +28,7 @@ All notable changes to Dash are documented here.
 
 ### Changed
 
+- App state (users, sessions, API tokens, settings, data sources, and dashboards) is stored in MongoDB. `MONGODB_URI` is required and must name a database. `dev.dash.io` reads it from a Worker secret (`wrangler secret put MONGODB_URI`); requests return 500 until `DASH_SECRET` and `MONGODB_URI` are both set. `DASH_DATABASE_PATH` is gone.
 - The data-source form can add an Amazon Redshift connection. Choosing Redshift starts with encryption on and clears a URI left over from another kind. Pasting a Redshift URI updates the SSL checkbox from `ssl` and `sslmode`. An explicit SSL flag overrides the URI. Explicit host, port, database, user, and password fields override the same parts of a URI.
 - MySQL executes queries with server-side prepared statements, keeping filter values and pagination parameters separate from SQL text.
 - MySQL validates identifiers again at the SQL construction boundary and emits only fixed `ASC`/`DESC` sort keywords. Invalid names are rejected rather than cleaned; bound filter values retain their original text.

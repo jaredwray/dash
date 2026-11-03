@@ -1,84 +1,69 @@
-import { existsSync, mkdtempSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { getEnv, migrateLegacySqlite } from "./env.ts";
+import { databaseNameFromUri, getEnv } from "./env.ts";
 
-describe("migrateLegacySqlite", () => {
-  it("moves a legacy database and its sidecars when the new file is absent", () => {
-    const root = mkdtempSync(join(tmpdir(), "dash-env-"));
-    const legacy = join(root, "core/data/dash.sqlite");
-    const target = join(root, "packages/web/data/dash.sqlite");
-    mkdirSync(join(root, "core/data"), { recursive: true });
-    writeFileSync(legacy, "sqlite-bytes");
-    writeFileSync(`${legacy}-wal`, "wal");
-    writeFileSync(`${legacy}-shm`, "shm");
-
-    expect(migrateLegacySqlite(target, legacy)).toBe(true);
-    expect(readFileSync(target, "utf8")).toBe("sqlite-bytes");
-    expect(readFileSync(`${target}-wal`, "utf8")).toBe("wal");
-    expect(readFileSync(`${target}-shm`, "utf8")).toBe("shm");
-    expect(existsSync(legacy)).toBe(false);
-    expect(existsSync(`${legacy}-wal`)).toBe(false);
+describe("databaseNameFromUri", () => {
+  it("reads the database path", () => {
+    expect(databaseNameFromUri("mongodb://127.0.0.1:27017/dash")).toBe("dash");
+    expect(
+      databaseNameFromUri(
+        "mongodb+srv://user:pass@cluster.example.net/dash_app?retryWrites=true&w=majority",
+      ),
+    ).toBe("dash_app");
   });
 
-  it("leaves an existing database in place", () => {
-    const root = mkdtempSync(join(tmpdir(), "dash-env-"));
-    const legacy = join(root, "core/data/dash.sqlite");
-    const target = join(root, "packages/web/data/dash.sqlite");
-    mkdirSync(join(root, "core/data"), { recursive: true });
-    mkdirSync(join(root, "packages/web/data"), { recursive: true });
-    writeFileSync(legacy, "legacy");
-    writeFileSync(target, "current");
+  it("rejects a URI without a database name", () => {
+    expect(() => databaseNameFromUri("mongodb://127.0.0.1:27017")).toThrow(/database name/);
+    expect(() => databaseNameFromUri("mongodb://127.0.0.1:27017/")).toThrow(/database name/);
+  });
 
-    expect(migrateLegacySqlite(target, legacy)).toBe(false);
-    expect(readFileSync(target, "utf8")).toBe("current");
-    expect(readFileSync(legacy, "utf8")).toBe("legacy");
+  it("rejects a URI that turns off TLS verification", () => {
+    expect(() =>
+      databaseNameFromUri("mongodb://127.0.0.1:27017/dash?tlsAllowInvalidCertificates=true"),
+    ).toThrow(/TLS verification/);
+  });
+
+  it("rejects a non-mongodb scheme", () => {
+    expect(() => databaseNameFromUri("postgres://127.0.0.1:5432/dash")).toThrow(/mongodb/);
   });
 });
 
-describe("getEnv database path", () => {
-  const previousCwd = process.cwd();
-  const previousPath = process.env.DASH_DATABASE_PATH;
+describe("getEnv", () => {
+  const previousUri = process.env.MONGODB_URI;
+  const previousSecret = process.env.DASH_SECRET;
+  const previousNodeEnv = process.env.NODE_ENV;
 
   afterEach(() => {
-    process.chdir(previousCwd);
-    if (previousPath === undefined) delete process.env.DASH_DATABASE_PATH;
-    else process.env.DASH_DATABASE_PATH = previousPath;
+    if (previousUri === undefined) delete process.env.MONGODB_URI;
+    else process.env.MONGODB_URI = previousUri;
+    if (previousSecret === undefined) delete process.env.DASH_SECRET;
+    else process.env.DASH_SECRET = previousSecret;
+    if (previousNodeEnv === undefined) delete process.env.NODE_ENV;
+    else process.env.NODE_ENV = previousNodeEnv;
   });
 
-  it("moves core/data/dash.sqlite when the shipped relative path is in use", () => {
-    const root = mkdtempSync(join(tmpdir(), "dash-env-"));
-    const web = join(root, "packages/web");
-    mkdirSync(web, { recursive: true });
-    mkdirSync(join(root, "core/data"), { recursive: true });
-    writeFileSync(join(root, "pnpm-workspace.yaml"), "packages:\n  - packages/*\n");
-    writeFileSync(join(root, "core/data/dash.sqlite"), "legacy");
-    process.chdir(web);
-    process.env.DASH_DATABASE_PATH = "./data/dash.sqlite";
-
-    const env = getEnv();
-
-    expect(env.databasePath).toBe(join(web, "data/dash.sqlite"));
-    expect(readFileSync(env.databasePath, "utf8")).toBe("legacy");
-    expect(existsSync(join(root, "core/data/dash.sqlite"))).toBe(false);
+  it("requires MONGODB_URI", () => {
+    delete process.env.MONGODB_URI;
+    delete process.env.NODE_ENV;
+    expect(() => getEnv()).toThrow(/MONGODB_URI must be set/);
   });
 
-  it("does not import the legacy database into a custom path", () => {
-    const root = mkdtempSync(join(tmpdir(), "dash-env-"));
-    const web = join(root, "packages/web");
-    const custom = join(root, "custom/dash.sqlite");
-    mkdirSync(web, { recursive: true });
-    mkdirSync(join(root, "core/data"), { recursive: true });
-    writeFileSync(join(root, "pnpm-workspace.yaml"), "packages:\n  - packages/*\n");
-    writeFileSync(join(root, "core/data/dash.sqlite"), "legacy");
-    process.chdir(web);
-    process.env.DASH_DATABASE_PATH = custom;
+  it("returns the database named in MONGODB_URI", () => {
+    process.env.MONGODB_URI = "mongodb://dash:dash@127.0.0.1:27029/dash_app?authSource=admin";
+    delete process.env.NODE_ENV;
+    expect(getEnv().databaseName).toBe("dash_app");
+    expect(getEnv().mongoUri).toBe(process.env.MONGODB_URI);
+  });
 
-    const env = getEnv();
-
-    expect(env.databasePath).toBe(custom);
-    expect(existsSync(custom)).toBe(false);
-    expect(readFileSync(join(root, "core/data/dash.sqlite"), "utf8")).toBe("legacy");
+  it("requires TLS for a remote database in production", () => {
+    process.env.NODE_ENV = "production";
+    process.env.DASH_SECRET = "a-real-secret";
+    process.env.MONGODB_URI = "mongodb://127.0.0.1:27017/dash";
+    expect(getEnv().databaseName).toBe("dash");
+    process.env.MONGODB_URI = "mongodb://db.example.com:27017/dash?tls=true";
+    expect(getEnv().databaseName).toBe("dash");
+    process.env.MONGODB_URI = "mongodb+srv://user:pass@cluster.example.net/dash";
+    expect(getEnv().databaseName).toBe("dash");
+    process.env.MONGODB_URI = "mongodb://db.example.com:27017/dash";
+    expect(() => getEnv()).toThrow(/TLS/);
   });
 });

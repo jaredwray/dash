@@ -1,97 +1,174 @@
-import { DatabaseSync } from "node:sqlite";
+import type { DashboardWidget, PublicUser } from "@dash/core";
+import { MongoClient, type Collection, type Db } from "mongodb";
 import { getEnv } from "./env.ts";
 
-const SCHEMA = `
-PRAGMA journal_mode = WAL;
-PRAGMA foreign_keys = ON;
-
-CREATE TABLE IF NOT EXISTS users (
-  id TEXT PRIMARY KEY,
-  email TEXT NOT NULL UNIQUE,
-  name TEXT NOT NULL,
-  role TEXT NOT NULL,
-  password_hash TEXT NOT NULL,
-  created_at TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS sessions (
-  id TEXT PRIMARY KEY,
-  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  token_hash TEXT NOT NULL UNIQUE,
-  expires_at TEXT NOT NULL,
-  created_at TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS api_tokens (
-  id TEXT PRIMARY KEY,
-  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  name TEXT NOT NULL,
-  token_hash TEXT NOT NULL UNIQUE,
-  prefix TEXT NOT NULL,
-  scopes TEXT NOT NULL,
-  expires_at TEXT,
-  last_used_at TEXT,
-  revoked_at TEXT,
-  created_at TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS settings (
-  key TEXT PRIMARY KEY,
-  value TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS data_sources (
-  id TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
-  kind TEXT NOT NULL,
-  description TEXT NOT NULL,
-  config_encrypted TEXT NOT NULL,
-  created_by TEXT NOT NULL REFERENCES users(id),
-  created_at TEXT NOT NULL,
-  updated_at TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS dashboards (
-  id TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
-  description TEXT NOT NULL,
-  widgets_json TEXT NOT NULL,
-  created_by TEXT NOT NULL REFERENCES users(id),
-  created_at TEXT NOT NULL,
-  updated_at TEXT NOT NULL
-);
-`;
-
-let database: DatabaseSync | undefined;
-
-export function getDb(): DatabaseSync {
-  if (!database) {
-    const { databasePath } = getEnv();
-    database = new DatabaseSync(databasePath);
-    database.exec(SCHEMA);
-  }
-  return database;
+export interface UserDoc {
+  _id: string;
+  email: string;
+  name: string;
+  role: PublicUser["role"];
+  passwordHash: string;
+  createdAt: string;
 }
 
-export function closeDb(): void {
-  database?.close();
+export interface SessionDoc {
+  _id: string;
+  userId: string;
+  tokenHash: string;
+  expiresAt: string;
+  createdAt: string;
+}
+
+export interface ApiTokenDoc {
+  _id: string;
+  userId: string;
+  name: string;
+  tokenHash: string;
+  prefix: string;
+  scopes: string[];
+  expiresAt: string | null;
+  lastUsedAt: string | null;
+  revokedAt: string | null;
+  createdAt: string;
+}
+
+export interface SettingsDoc {
+  _id: "organization";
+  name: string;
+  allowRegistration: boolean;
+}
+
+export interface DataSourceDoc {
+  _id: string;
+  name: string;
+  kind: string;
+  description: string;
+  configEncrypted: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DashboardDoc {
+  _id: string;
+  name: string;
+  description: string;
+  widgets: DashboardWidget[];
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+let client: MongoClient | undefined;
+let database: Db | undefined;
+let connectTask: Promise<Db> | undefined;
+
+async function ensureIndexes(db: Db): Promise<void> {
+  await Promise.all([
+    db.collection("users").createIndex({ email: 1 }, { unique: true, name: "users_email" }),
+    db.collection("sessions").createIndex(
+      { tokenHash: 1 },
+      { unique: true, name: "sessions_token_hash" },
+    ),
+    db.collection("sessions").createIndex({ userId: 1 }, { name: "sessions_user" }),
+    db.collection("api_tokens").createIndex(
+      { tokenHash: 1 },
+      { unique: true, name: "api_tokens_token_hash" },
+    ),
+    db.collection("api_tokens").createIndex({ userId: 1 }, { name: "api_tokens_user" }),
+  ]);
+}
+
+let generation = 0;
+
+async function open(gen: number): Promise<Db> {
+  const { mongoUri, databaseName } = getEnv();
+  const next = new MongoClient(mongoUri, {
+    serverSelectionTimeoutMS: 5_000,
+    appName: "dash",
+  });
+  let published = false;
+  try {
+    await next.connect();
+    const db = next.db(databaseName);
+    await ensureIndexes(db);
+    if (generation !== gen) {
+      throw new Error("Database connection closed");
+    }
+    client = next;
+    database = db;
+    if (generation !== gen) {
+      client = undefined;
+      database = undefined;
+      throw new Error("Database connection closed");
+    }
+    published = true;
+    return db;
+  } catch (error) {
+    if (!published) {
+      await next.close().catch(() => undefined);
+    }
+    throw error;
+  }
+}
+
+export function getDb(): Promise<Db> {
+  if (database) {
+    return Promise.resolve(database);
+  }
+  if (!connectTask) {
+    const gen = generation;
+    connectTask = open(gen).catch((error: unknown) => {
+      if (generation === gen) {
+        connectTask = undefined;
+      }
+      throw error;
+    });
+  }
+  return connectTask;
+}
+
+/** Drop the current database. Used by tests so one cluster can host isolated app databases. */
+export async function dropDb(): Promise<void> {
+  if (!database) {
+    return;
+  }
+  await database.dropDatabase();
+}
+
+export async function closeDb(): Promise<void> {
+  generation += 1;
+  const current = client;
+  client = undefined;
   database = undefined;
+  connectTask = undefined;
+  await current?.close();
 }
 
 export function nowIso(): string {
   return new Date().toISOString();
 }
 
-export type SqlValue = string | number | null | bigint | Uint8Array;
-
-export function all<T>(sql: string, params: SqlValue[] = []): T[] {
-  return getDb().prepare(sql).all(...params) as T[];
+export async function users(): Promise<Collection<UserDoc>> {
+  return (await getDb()).collection<UserDoc>("users");
 }
 
-export function get<T>(sql: string, params: SqlValue[] = []): T | undefined {
-  return getDb().prepare(sql).get(...params) as T | undefined;
+export async function sessions(): Promise<Collection<SessionDoc>> {
+  return (await getDb()).collection<SessionDoc>("sessions");
 }
 
-export function run(sql: string, params: SqlValue[] = []): void {
-  getDb().prepare(sql).run(...params);
+export async function apiTokens(): Promise<Collection<ApiTokenDoc>> {
+  return (await getDb()).collection<ApiTokenDoc>("api_tokens");
+}
+
+export async function organizationSettings(): Promise<Collection<SettingsDoc>> {
+  return (await getDb()).collection<SettingsDoc>("settings");
+}
+
+export async function dataSources(): Promise<Collection<DataSourceDoc>> {
+  return (await getDb()).collection<DataSourceDoc>("data_sources");
+}
+
+export async function dashboards(): Promise<Collection<DashboardDoc>> {
+  return (await getDb()).collection<DashboardDoc>("dashboards");
 }

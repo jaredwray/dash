@@ -109,7 +109,7 @@ export const Route = createFileRoute("/api/data-sources/$id")({
         if (isResponse(auth)) {
           return auth;
         }
-        const dataSource = getDataSource(params.id);
+        const dataSource = await getDataSource(params.id);
         if (!dataSource) {
           return error(404, "Data source not found", "not_found");
         }
@@ -133,7 +133,7 @@ export const Route = createFileRoute("/api/data-sources/$id")({
             return error(400, test.message, "connection_failed");
           }
         }
-        const dataSource = updateDataSource(params.id, parsed.data);
+        const dataSource = await updateDataSource(params.id, parsed.data);
         if (!dataSource) {
           return error(404, "Data source not found", "not_found");
         }
@@ -147,7 +147,7 @@ export const Route = createFileRoute("/api/data-sources/$id")({
         if (!isAdmin(auth.user)) {
           return error(403, "Admin role required", "forbidden");
         }
-        if (!deleteDataSource(params.id)) {
+        if (!(await deleteDataSource(params.id))) {
           return error(404, "Data source not found", "not_found");
         }
         return json({ ok: true });

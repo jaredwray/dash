@@ -26,7 +26,7 @@ export const Route = createFileRoute("/api/auth/login")({
         if (!user) {
           return error(401, "Invalid email or password", "invalid_credentials");
         }
-        const token = createSession(user.id);
+        const token = await createSession(user.id);
         return json(
           { user },
           {

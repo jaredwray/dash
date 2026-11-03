@@ -37,7 +37,7 @@ export const Route = createFileRoute("/api/data-sources/$id/query")({
         if (isResponse(auth)) {
           return auth;
         }
-        if (!getDataSource(params.id)) {
+        if (!(await getDataSource(params.id))) {
           return error(404, "Data source not found", "not_found");
         }
         const parsed = querySchema.safeParse(await readJson(request));

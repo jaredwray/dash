@@ -21,10 +21,8 @@ ENV NODE_ENV=production \
     PORT=3000 \
     NITRO_HOST=0.0.0.0 \
     NITRO_PORT=3000 \
-    DASH_DATABASE_PATH=/data/dash.sqlite \
     DASH_SEED_DEMO=false
 
-RUN mkdir -p /data && chown node:node /data
 COPY --from=build --chown=node:node /app/packages/web/.output ./.output
 
 USER node
