@@ -1,5 +1,21 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { databaseNameFromUri, getEnv } from "./env.ts";
+import { databaseNameFromUri, getEnv, implicitAuthSource, parseEnvFile } from "./env.ts";
+
+describe("parseEnvFile", () => {
+  it("reads keys and keeps quoted values", () => {
+    expect(
+      parseEnvFile(`
+# comment
+export MONGODB_URI=mongodb://127.0.0.1:27017/dash
+DASH_SEED_DEMO="false"
+not a line
+`),
+    ).toEqual({
+      MONGODB_URI: "mongodb://127.0.0.1:27017/dash",
+      DASH_SEED_DEMO: "false",
+    });
+  });
+});
 
 describe("databaseNameFromUri", () => {
   it("reads the database path", () => {
@@ -24,6 +40,22 @@ describe("databaseNameFromUri", () => {
 
   it("rejects a non-mongodb scheme", () => {
     expect(() => databaseNameFromUri("postgres://127.0.0.1:5432/dash")).toThrow(/mongodb/);
+  });
+});
+
+describe("implicitAuthSource", () => {
+  it("uses admin for a user when the URI does not set authSource", () => {
+    expect(implicitAuthSource("mongodb+srv://dash:secret@cluster.example.net/dash")).toBe(
+      "admin",
+    );
+    expect(implicitAuthSource("mongodb://dash:dash@127.0.0.1:27029/dash")).toBe("admin");
+  });
+
+  it("leaves an explicit authSource and a URI without a user alone", () => {
+    expect(
+      implicitAuthSource("mongodb://dash:dash@127.0.0.1:27029/dash?authSource=admin"),
+    ).toBeUndefined();
+    expect(implicitAuthSource("mongodb://127.0.0.1:27017/dash")).toBeUndefined();
   });
 });
 
@@ -52,6 +84,14 @@ describe("getEnv", () => {
     delete process.env.NODE_ENV;
     expect(getEnv().databaseName).toBe("dash_app");
     expect(getEnv().mongoUri).toBe(process.env.MONGODB_URI);
+    expect(getEnv().authSource).toBeUndefined();
+  });
+
+  it("authenticates Atlas-style users against admin", () => {
+    process.env.MONGODB_URI = "mongodb+srv://dash:secret@cluster.example.net/dash";
+    delete process.env.NODE_ENV;
+    expect(getEnv().authSource).toBe("admin");
+    expect(getEnv().databaseName).toBe("dash");
   });
 
   it("requires TLS for a remote database in production", () => {

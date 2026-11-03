@@ -14,6 +14,7 @@ The hostname needs a database that survives the container. Warehouse adapters, i
 
 - App state is a MongoDB database named in `MONGODB_URI`. The variable is required in every environment, including local development.
 - The URI must use the `mongodb://` or `mongodb+srv://` scheme, must include a database name, and cannot disable TLS verification.
+- When the URI includes a username and omits `authSource`, the client authenticates against `admin`. Atlas stores SCRAM users there. The path is still the application database, and Dash creates it on the first successful authentication. The user needs the `readWrite` role on that database. `dbAdmin` can create the database and cannot insert accounts or dashboards.
 - Documents use string ids. Email, session token hash, and API token hash are unique indexes. Referential checks that SQLite foreign keys enforced (a session, token, data source, or dashboard must name an existing user) stay in the application.
 - `dev.dash.io` receives `MONGODB_URI` as a Worker secret, copied into the container environment on start, the same way as `DASH_SECRET`. It is not baked into the image, not a Wrangler var, and not a GitHub Actions secret. Requests return 500 until both secrets are set. Set it with `pnpm exec wrangler secret put MONGODB_URI` after the Worker exists.
 - The Durable Object behind the container keeps `storage: "sqlite"`. That is Cloudflare's storage backend for the container object, not the application database.

@@ -6,6 +6,8 @@ All notable changes to Dash are documented here.
 
 ### Fixed
 
+- App MongoDB connections authenticate a URI user against `admin` when `authSource` is omitted, which is where Atlas stores SCRAM users. The database named in the URI is created on that first connection. A `dbAdmin` role still cannot store accounts; sign-in reports that the user needs `readWrite` on that database. MongoDB data-source connection strings follow the same `authSource` default.
+- `pnpm dev` reads `MONGODB_URI`, `DASH_SECRET`, and `DASH_SEED_DEMO` from the repo `.env`. Vite does not copy those unprefixed variables into the server process. Values already set in the environment win, and production ignores `.env`.
 - Databricks SQL sends integers outside the 32-bit range as `BIGINT`, keeps `DECIMAL` values and integers that do not fit a safe JavaScript number as strings, and inlines `LIMIT` and `OFFSET`. Query pages request one extra row so an exact page is not marked truncated. External result links are refused even when some rows arrived inline, repeated chunks are rejected, and closing the client or timing out cancels the warehouse statement. `http` is allowed only for loopback. Introspection normalizes DuckDB and Spark type names, skips unnamed columns, and stops after 10,000 columns unless a schema is set. The test cluster receives `DASH_TEST_DATABRICKS_TOKEN`, `DASH_TEST_DATABRICKS_WAREHOUSE`, `DASH_TEST_DATABRICKS_CATALOG`, and `DASH_TEST_DATABRICKS_SCHEMA`.
 
 ### Added
