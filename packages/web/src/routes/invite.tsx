@@ -11,11 +11,18 @@ export const Route = createFileRoute("/invite")({
   component: InvitePage,
 });
 
-/** `undefined` until mounted: the fragment exists only in the browser, never in the SSR request. */
+/**
+ * `undefined` until mounted: the fragment exists only in the browser, never in
+ * the SSR request. Editing only the fragment does not reload the page, so a
+ * second invite link opened in the same tab arrives as a `hashchange`.
+ */
 function useInvitationToken(): string | null | undefined {
   const [token, setToken] = useState<string | null>();
   useEffect(() => {
-    setToken(invitationTokenFromHash(window.location.hash));
+    const update = () => setToken(invitationTokenFromHash(window.location.hash));
+    update();
+    window.addEventListener("hashchange", update);
+    return () => window.removeEventListener("hashchange", update);
   }, []);
   return token;
 }
@@ -41,7 +48,7 @@ function InvitePage() {
   if (!token || preview.isError || !preview.data) {
     return <InvitationUnavailable />;
   }
-  return <AcceptForm token={token} invitation={preview.data} />;
+  return <AcceptForm key={token} token={token} invitation={preview.data} />;
 }
 
 function InvitationUnavailable() {
