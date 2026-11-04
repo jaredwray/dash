@@ -61,7 +61,7 @@ Everyone in the workspace with their role. Administrators invite people with a s
 ## Requirements
 
 - [Node.js 24](https://nodejs.org/) (Active LTS)
-- [pnpm](https://pnpm.io/) 12 (pinned to 12.5.1 in `package.json`)
+- [pnpm](https://pnpm.io/) 12 (pinned to 12.16.1 in `package.json`)
 - MongoDB. App state is the database named in `MONGODB_URI`.
 
 ## Monorepo
