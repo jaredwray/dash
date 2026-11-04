@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthedRouteImport } from './routes/_authed'
 import { Route as HealthzRouteImport } from './routes/healthz'
+import { Route as InviteRouteImport } from './routes/invite'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as McpRouteImport } from './routes/mcp'
 import { Route as PingRouteImport } from './routes/ping'
@@ -19,11 +20,13 @@ import { Route as RegisterRouteImport } from './routes/register'
 import { Route as AuthedDataSourcesRouteImport } from './routes/_authed/data-sources'
 import { Route as AuthedProfileRouteImport } from './routes/_authed/profile'
 import { Route as AuthedSettingsRouteImport } from './routes/_authed/settings'
+import { Route as AuthedTeamRouteImport } from './routes/_authed/team'
 import { Route as AuthedTokensRouteImport } from './routes/_authed/tokens'
 import { Route as ApiSettingsRouteImport } from './routes/api/settings'
 import { Route as AuthedDashboardsIndexRouteImport } from './routes/_authed/dashboards.index'
 import { Route as AuthedDashboardsDashboardIdRouteImport } from './routes/_authed/dashboards.$dashboardId'
 import { Route as ApiAuthBootstrapRouteImport } from './routes/api/auth/bootstrap'
+import { Route as ApiAuthInvitationRouteImport } from './routes/api/auth/invitation'
 import { Route as ApiAuthLoginRouteImport } from './routes/api/auth/login'
 import { Route as ApiAuthLogoutRouteImport } from './routes/api/auth/logout'
 import { Route as ApiAuthMeRouteImport } from './routes/api/auth/me'
@@ -32,9 +35,14 @@ import { Route as ApiDashboardsIndexRouteImport } from './routes/api/dashboards.
 import { Route as ApiDashboardsIdRouteImport } from './routes/api/dashboards.$id'
 import { Route as ApiDataSourcesIndexRouteImport } from './routes/api/data-sources.index'
 import { Route as ApiDataSourcesIdRouteImport } from './routes/api/data-sources.$id'
+import { Route as ApiInvitationsIndexRouteImport } from './routes/api/invitations.index'
+import { Route as ApiInvitationsIdRouteImport } from './routes/api/invitations.$id'
+import { Route as ApiMembersIndexRouteImport } from './routes/api/members.index'
+import { Route as ApiMembersIdRouteImport } from './routes/api/members.$id'
 import { Route as ApiTokensIndexRouteImport } from './routes/api/tokens.index'
 import { Route as ApiTokensIdRouteImport } from './routes/api/tokens.$id'
 import { Route as ApiUsersMeRouteImport } from './routes/api/users/me'
+import { Route as ApiAuthInvitationAcceptRouteImport } from './routes/api/auth/invitation.accept'
 import { Route as ApiDataSourcesIdConnectRouteImport } from './routes/api/data-sources.$id.connect'
 import { Route as ApiDataSourcesIdQueryRouteImport } from './routes/api/data-sources.$id.query'
 import { Route as ApiDataSourcesIdSchemaRouteImport } from './routes/api/data-sources.$id.schema'
@@ -51,6 +59,11 @@ const AuthedRoute = AuthedRouteImport.update({
 const HealthzRoute = HealthzRouteImport.update({
   id: '/healthz',
   path: '/healthz',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InviteRoute = InviteRouteImport.update({
+  id: '/invite',
+  path: '/invite',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -88,6 +101,11 @@ const AuthedSettingsRoute = AuthedSettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => AuthedRoute,
 } as any)
+const AuthedTeamRoute = AuthedTeamRouteImport.update({
+  id: '/team',
+  path: '/team',
+  getParentRoute: () => AuthedRoute,
+} as any)
 const AuthedTokensRoute = AuthedTokensRouteImport.update({
   id: '/tokens',
   path: '/tokens',
@@ -112,6 +130,11 @@ const AuthedDashboardsDashboardIdRoute =
 const ApiAuthBootstrapRoute = ApiAuthBootstrapRouteImport.update({
   id: '/api/auth/bootstrap',
   path: '/api/auth/bootstrap',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAuthInvitationRoute = ApiAuthInvitationRouteImport.update({
+  id: '/api/auth/invitation',
+  path: '/api/auth/invitation',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAuthLoginRoute = ApiAuthLoginRouteImport.update({
@@ -154,6 +177,26 @@ const ApiDataSourcesIdRoute = ApiDataSourcesIdRouteImport.update({
   path: '/api/data-sources/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiInvitationsIndexRoute = ApiInvitationsIndexRouteImport.update({
+  id: '/api/invitations/',
+  path: '/api/invitations/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiInvitationsIdRoute = ApiInvitationsIdRouteImport.update({
+  id: '/api/invitations/$id',
+  path: '/api/invitations/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiMembersIndexRoute = ApiMembersIndexRouteImport.update({
+  id: '/api/members/',
+  path: '/api/members/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiMembersIdRoute = ApiMembersIdRouteImport.update({
+  id: '/api/members/$id',
+  path: '/api/members/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiTokensIndexRoute = ApiTokensIndexRouteImport.update({
   id: '/api/tokens/',
   path: '/api/tokens/',
@@ -168,6 +211,11 @@ const ApiUsersMeRoute = ApiUsersMeRouteImport.update({
   id: '/api/users/me',
   path: '/api/users/me',
   getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAuthInvitationAcceptRoute = ApiAuthInvitationAcceptRouteImport.update({
+  id: '/accept',
+  path: '/accept',
+  getParentRoute: () => ApiAuthInvitationRoute,
 } as any)
 const ApiDataSourcesIdConnectRoute = ApiDataSourcesIdConnectRouteImport.update({
   id: '/connect',
@@ -188,6 +236,7 @@ const ApiDataSourcesIdSchemaRoute = ApiDataSourcesIdSchemaRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/healthz': typeof HealthzRoute
+  '/invite': typeof InviteRoute
   '/login': typeof LoginRoute
   '/mcp': typeof McpRoute
   '/ping': typeof PingRoute
@@ -195,22 +244,29 @@ export interface FileRoutesByFullPath {
   '/data-sources': typeof AuthedDataSourcesRoute
   '/profile': typeof AuthedProfileRoute
   '/settings': typeof AuthedSettingsRoute
+  '/team': typeof AuthedTeamRoute
   '/tokens': typeof AuthedTokensRoute
   '/api/settings': typeof ApiSettingsRoute
   '/dashboards/$dashboardId': typeof AuthedDashboardsDashboardIdRoute
   '/api/auth/bootstrap': typeof ApiAuthBootstrapRoute
+  '/api/auth/invitation': typeof ApiAuthInvitationRouteWithChildren
   '/api/auth/login': typeof ApiAuthLoginRoute
   '/api/auth/logout': typeof ApiAuthLogoutRoute
   '/api/auth/me': typeof ApiAuthMeRoute
   '/api/auth/register': typeof ApiAuthRegisterRoute
   '/api/dashboards/$id': typeof ApiDashboardsIdRoute
   '/api/data-sources/$id': typeof ApiDataSourcesIdRouteWithChildren
+  '/api/invitations/$id': typeof ApiInvitationsIdRoute
+  '/api/members/$id': typeof ApiMembersIdRoute
   '/api/tokens/$id': typeof ApiTokensIdRoute
   '/api/users/me': typeof ApiUsersMeRoute
   '/dashboards/': typeof AuthedDashboardsIndexRoute
   '/api/dashboards/': typeof ApiDashboardsIndexRoute
   '/api/data-sources/': typeof ApiDataSourcesIndexRoute
+  '/api/invitations/': typeof ApiInvitationsIndexRoute
+  '/api/members/': typeof ApiMembersIndexRoute
   '/api/tokens/': typeof ApiTokensIndexRoute
+  '/api/auth/invitation/accept': typeof ApiAuthInvitationAcceptRoute
   '/api/data-sources/$id/connect': typeof ApiDataSourcesIdConnectRoute
   '/api/data-sources/$id/query': typeof ApiDataSourcesIdQueryRoute
   '/api/data-sources/$id/schema': typeof ApiDataSourcesIdSchemaRoute
@@ -218,6 +274,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/healthz': typeof HealthzRoute
+  '/invite': typeof InviteRoute
   '/login': typeof LoginRoute
   '/mcp': typeof McpRoute
   '/ping': typeof PingRoute
@@ -225,22 +282,29 @@ export interface FileRoutesByTo {
   '/data-sources': typeof AuthedDataSourcesRoute
   '/profile': typeof AuthedProfileRoute
   '/settings': typeof AuthedSettingsRoute
+  '/team': typeof AuthedTeamRoute
   '/tokens': typeof AuthedTokensRoute
   '/api/settings': typeof ApiSettingsRoute
   '/dashboards/$dashboardId': typeof AuthedDashboardsDashboardIdRoute
   '/api/auth/bootstrap': typeof ApiAuthBootstrapRoute
+  '/api/auth/invitation': typeof ApiAuthInvitationRouteWithChildren
   '/api/auth/login': typeof ApiAuthLoginRoute
   '/api/auth/logout': typeof ApiAuthLogoutRoute
   '/api/auth/me': typeof ApiAuthMeRoute
   '/api/auth/register': typeof ApiAuthRegisterRoute
   '/api/dashboards/$id': typeof ApiDashboardsIdRoute
   '/api/data-sources/$id': typeof ApiDataSourcesIdRouteWithChildren
+  '/api/invitations/$id': typeof ApiInvitationsIdRoute
+  '/api/members/$id': typeof ApiMembersIdRoute
   '/api/tokens/$id': typeof ApiTokensIdRoute
   '/api/users/me': typeof ApiUsersMeRoute
   '/dashboards': typeof AuthedDashboardsIndexRoute
   '/api/dashboards': typeof ApiDashboardsIndexRoute
   '/api/data-sources': typeof ApiDataSourcesIndexRoute
+  '/api/invitations': typeof ApiInvitationsIndexRoute
+  '/api/members': typeof ApiMembersIndexRoute
   '/api/tokens': typeof ApiTokensIndexRoute
+  '/api/auth/invitation/accept': typeof ApiAuthInvitationAcceptRoute
   '/api/data-sources/$id/connect': typeof ApiDataSourcesIdConnectRoute
   '/api/data-sources/$id/query': typeof ApiDataSourcesIdQueryRoute
   '/api/data-sources/$id/schema': typeof ApiDataSourcesIdSchemaRoute
@@ -250,6 +314,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authed': typeof AuthedRouteWithChildren
   '/healthz': typeof HealthzRoute
+  '/invite': typeof InviteRoute
   '/login': typeof LoginRoute
   '/mcp': typeof McpRoute
   '/ping': typeof PingRoute
@@ -257,22 +322,29 @@ export interface FileRoutesById {
   '/_authed/data-sources': typeof AuthedDataSourcesRoute
   '/_authed/profile': typeof AuthedProfileRoute
   '/_authed/settings': typeof AuthedSettingsRoute
+  '/_authed/team': typeof AuthedTeamRoute
   '/_authed/tokens': typeof AuthedTokensRoute
   '/api/settings': typeof ApiSettingsRoute
   '/_authed/dashboards/$dashboardId': typeof AuthedDashboardsDashboardIdRoute
   '/api/auth/bootstrap': typeof ApiAuthBootstrapRoute
+  '/api/auth/invitation': typeof ApiAuthInvitationRouteWithChildren
   '/api/auth/login': typeof ApiAuthLoginRoute
   '/api/auth/logout': typeof ApiAuthLogoutRoute
   '/api/auth/me': typeof ApiAuthMeRoute
   '/api/auth/register': typeof ApiAuthRegisterRoute
   '/api/dashboards/$id': typeof ApiDashboardsIdRoute
   '/api/data-sources/$id': typeof ApiDataSourcesIdRouteWithChildren
+  '/api/invitations/$id': typeof ApiInvitationsIdRoute
+  '/api/members/$id': typeof ApiMembersIdRoute
   '/api/tokens/$id': typeof ApiTokensIdRoute
   '/api/users/me': typeof ApiUsersMeRoute
   '/_authed/dashboards/': typeof AuthedDashboardsIndexRoute
   '/api/dashboards/': typeof ApiDashboardsIndexRoute
   '/api/data-sources/': typeof ApiDataSourcesIndexRoute
+  '/api/invitations/': typeof ApiInvitationsIndexRoute
+  '/api/members/': typeof ApiMembersIndexRoute
   '/api/tokens/': typeof ApiTokensIndexRoute
+  '/api/auth/invitation/accept': typeof ApiAuthInvitationAcceptRoute
   '/api/data-sources/$id/connect': typeof ApiDataSourcesIdConnectRoute
   '/api/data-sources/$id/query': typeof ApiDataSourcesIdQueryRoute
   '/api/data-sources/$id/schema': typeof ApiDataSourcesIdSchemaRoute
@@ -282,6 +354,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/healthz'
+    | '/invite'
     | '/login'
     | '/mcp'
     | '/ping'
@@ -289,22 +362,29 @@ export interface FileRouteTypes {
     | '/data-sources'
     | '/profile'
     | '/settings'
+    | '/team'
     | '/tokens'
     | '/api/settings'
     | '/dashboards/$dashboardId'
     | '/api/auth/bootstrap'
+    | '/api/auth/invitation'
     | '/api/auth/login'
     | '/api/auth/logout'
     | '/api/auth/me'
     | '/api/auth/register'
     | '/api/dashboards/$id'
     | '/api/data-sources/$id'
+    | '/api/invitations/$id'
+    | '/api/members/$id'
     | '/api/tokens/$id'
     | '/api/users/me'
     | '/dashboards/'
     | '/api/dashboards/'
     | '/api/data-sources/'
+    | '/api/invitations/'
+    | '/api/members/'
     | '/api/tokens/'
+    | '/api/auth/invitation/accept'
     | '/api/data-sources/$id/connect'
     | '/api/data-sources/$id/query'
     | '/api/data-sources/$id/schema'
@@ -312,6 +392,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/healthz'
+    | '/invite'
     | '/login'
     | '/mcp'
     | '/ping'
@@ -319,22 +400,29 @@ export interface FileRouteTypes {
     | '/data-sources'
     | '/profile'
     | '/settings'
+    | '/team'
     | '/tokens'
     | '/api/settings'
     | '/dashboards/$dashboardId'
     | '/api/auth/bootstrap'
+    | '/api/auth/invitation'
     | '/api/auth/login'
     | '/api/auth/logout'
     | '/api/auth/me'
     | '/api/auth/register'
     | '/api/dashboards/$id'
     | '/api/data-sources/$id'
+    | '/api/invitations/$id'
+    | '/api/members/$id'
     | '/api/tokens/$id'
     | '/api/users/me'
     | '/dashboards'
     | '/api/dashboards'
     | '/api/data-sources'
+    | '/api/invitations'
+    | '/api/members'
     | '/api/tokens'
+    | '/api/auth/invitation/accept'
     | '/api/data-sources/$id/connect'
     | '/api/data-sources/$id/query'
     | '/api/data-sources/$id/schema'
@@ -343,6 +431,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_authed'
     | '/healthz'
+    | '/invite'
     | '/login'
     | '/mcp'
     | '/ping'
@@ -350,22 +439,29 @@ export interface FileRouteTypes {
     | '/_authed/data-sources'
     | '/_authed/profile'
     | '/_authed/settings'
+    | '/_authed/team'
     | '/_authed/tokens'
     | '/api/settings'
     | '/_authed/dashboards/$dashboardId'
     | '/api/auth/bootstrap'
+    | '/api/auth/invitation'
     | '/api/auth/login'
     | '/api/auth/logout'
     | '/api/auth/me'
     | '/api/auth/register'
     | '/api/dashboards/$id'
     | '/api/data-sources/$id'
+    | '/api/invitations/$id'
+    | '/api/members/$id'
     | '/api/tokens/$id'
     | '/api/users/me'
     | '/_authed/dashboards/'
     | '/api/dashboards/'
     | '/api/data-sources/'
+    | '/api/invitations/'
+    | '/api/members/'
     | '/api/tokens/'
+    | '/api/auth/invitation/accept'
     | '/api/data-sources/$id/connect'
     | '/api/data-sources/$id/query'
     | '/api/data-sources/$id/schema'
@@ -375,22 +471,28 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthedRoute: typeof AuthedRouteWithChildren
   HealthzRoute: typeof HealthzRoute
+  InviteRoute: typeof InviteRoute
   LoginRoute: typeof LoginRoute
   McpRoute: typeof McpRoute
   PingRoute: typeof PingRoute
   RegisterRoute: typeof RegisterRoute
   ApiSettingsRoute: typeof ApiSettingsRoute
   ApiAuthBootstrapRoute: typeof ApiAuthBootstrapRoute
+  ApiAuthInvitationRoute: typeof ApiAuthInvitationRouteWithChildren
   ApiAuthLoginRoute: typeof ApiAuthLoginRoute
   ApiAuthLogoutRoute: typeof ApiAuthLogoutRoute
   ApiAuthMeRoute: typeof ApiAuthMeRoute
   ApiAuthRegisterRoute: typeof ApiAuthRegisterRoute
   ApiDashboardsIdRoute: typeof ApiDashboardsIdRoute
   ApiDataSourcesIdRoute: typeof ApiDataSourcesIdRouteWithChildren
+  ApiInvitationsIdRoute: typeof ApiInvitationsIdRoute
+  ApiMembersIdRoute: typeof ApiMembersIdRoute
   ApiTokensIdRoute: typeof ApiTokensIdRoute
   ApiUsersMeRoute: typeof ApiUsersMeRoute
   ApiDashboardsIndexRoute: typeof ApiDashboardsIndexRoute
   ApiDataSourcesIndexRoute: typeof ApiDataSourcesIndexRoute
+  ApiInvitationsIndexRoute: typeof ApiInvitationsIndexRoute
+  ApiMembersIndexRoute: typeof ApiMembersIndexRoute
   ApiTokensIndexRoute: typeof ApiTokensIndexRoute
 }
 
@@ -415,6 +517,13 @@ declare module '@tanstack/react-router' {
       path: '/healthz'
       fullPath: '/healthz'
       preLoaderRoute: typeof HealthzRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/invite': {
+      id: '/invite'
+      path: '/invite'
+      fullPath: '/invite'
+      preLoaderRoute: typeof InviteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -466,6 +575,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedSettingsRouteImport
       parentRoute: typeof AuthedRoute
     }
+    '/_authed/team': {
+      id: '/_authed/team'
+      path: '/team'
+      fullPath: '/team'
+      preLoaderRoute: typeof AuthedTeamRouteImport
+      parentRoute: typeof AuthedRoute
+    }
     '/_authed/tokens': {
       id: '/_authed/tokens'
       path: '/tokens'
@@ -499,6 +615,13 @@ declare module '@tanstack/react-router' {
       path: '/api/auth/bootstrap'
       fullPath: '/api/auth/bootstrap'
       preLoaderRoute: typeof ApiAuthBootstrapRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/auth/invitation': {
+      id: '/api/auth/invitation'
+      path: '/api/auth/invitation'
+      fullPath: '/api/auth/invitation'
+      preLoaderRoute: typeof ApiAuthInvitationRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/auth/login': {
@@ -557,6 +680,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiDataSourcesIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/invitations/': {
+      id: '/api/invitations/'
+      path: '/api/invitations'
+      fullPath: '/api/invitations/'
+      preLoaderRoute: typeof ApiInvitationsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/invitations/$id': {
+      id: '/api/invitations/$id'
+      path: '/api/invitations/$id'
+      fullPath: '/api/invitations/$id'
+      preLoaderRoute: typeof ApiInvitationsIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/members/': {
+      id: '/api/members/'
+      path: '/api/members'
+      fullPath: '/api/members/'
+      preLoaderRoute: typeof ApiMembersIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/members/$id': {
+      id: '/api/members/$id'
+      path: '/api/members/$id'
+      fullPath: '/api/members/$id'
+      preLoaderRoute: typeof ApiMembersIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/tokens/': {
       id: '/api/tokens/'
       path: '/api/tokens'
@@ -577,6 +728,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/users/me'
       preLoaderRoute: typeof ApiUsersMeRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/api/auth/invitation/accept': {
+      id: '/api/auth/invitation/accept'
+      path: '/accept'
+      fullPath: '/api/auth/invitation/accept'
+      preLoaderRoute: typeof ApiAuthInvitationAcceptRouteImport
+      parentRoute: typeof ApiAuthInvitationRoute
     }
     '/api/data-sources/$id/connect': {
       id: '/api/data-sources/$id/connect'
@@ -606,6 +764,7 @@ interface AuthedRouteChildren {
   AuthedDataSourcesRoute: typeof AuthedDataSourcesRoute
   AuthedProfileRoute: typeof AuthedProfileRoute
   AuthedSettingsRoute: typeof AuthedSettingsRoute
+  AuthedTeamRoute: typeof AuthedTeamRoute
   AuthedTokensRoute: typeof AuthedTokensRoute
   AuthedDashboardsDashboardIdRoute: typeof AuthedDashboardsDashboardIdRoute
   AuthedDashboardsIndexRoute: typeof AuthedDashboardsIndexRoute
@@ -615,6 +774,7 @@ const AuthedRouteChildren: AuthedRouteChildren = {
   AuthedDataSourcesRoute: AuthedDataSourcesRoute,
   AuthedProfileRoute: AuthedProfileRoute,
   AuthedSettingsRoute: AuthedSettingsRoute,
+  AuthedTeamRoute: AuthedTeamRoute,
   AuthedTokensRoute: AuthedTokensRoute,
   AuthedDashboardsDashboardIdRoute: AuthedDashboardsDashboardIdRoute,
   AuthedDashboardsIndexRoute: AuthedDashboardsIndexRoute,
@@ -622,6 +782,17 @@ const AuthedRouteChildren: AuthedRouteChildren = {
 
 const AuthedRouteWithChildren =
   AuthedRoute._addFileChildren(AuthedRouteChildren)
+
+interface ApiAuthInvitationRouteChildren {
+  ApiAuthInvitationAcceptRoute: typeof ApiAuthInvitationAcceptRoute
+}
+
+const ApiAuthInvitationRouteChildren: ApiAuthInvitationRouteChildren = {
+  ApiAuthInvitationAcceptRoute: ApiAuthInvitationAcceptRoute,
+}
+
+const ApiAuthInvitationRouteWithChildren =
+  ApiAuthInvitationRoute._addFileChildren(ApiAuthInvitationRouteChildren)
 
 interface ApiDataSourcesIdRouteChildren {
   ApiDataSourcesIdConnectRoute: typeof ApiDataSourcesIdConnectRoute
@@ -642,22 +813,28 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthedRoute: AuthedRouteWithChildren,
   HealthzRoute: HealthzRoute,
+  InviteRoute: InviteRoute,
   LoginRoute: LoginRoute,
   McpRoute: McpRoute,
   PingRoute: PingRoute,
   RegisterRoute: RegisterRoute,
   ApiSettingsRoute: ApiSettingsRoute,
   ApiAuthBootstrapRoute: ApiAuthBootstrapRoute,
+  ApiAuthInvitationRoute: ApiAuthInvitationRouteWithChildren,
   ApiAuthLoginRoute: ApiAuthLoginRoute,
   ApiAuthLogoutRoute: ApiAuthLogoutRoute,
   ApiAuthMeRoute: ApiAuthMeRoute,
   ApiAuthRegisterRoute: ApiAuthRegisterRoute,
   ApiDashboardsIdRoute: ApiDashboardsIdRoute,
   ApiDataSourcesIdRoute: ApiDataSourcesIdRouteWithChildren,
+  ApiInvitationsIdRoute: ApiInvitationsIdRoute,
+  ApiMembersIdRoute: ApiMembersIdRoute,
   ApiTokensIdRoute: ApiTokensIdRoute,
   ApiUsersMeRoute: ApiUsersMeRoute,
   ApiDashboardsIndexRoute: ApiDashboardsIndexRoute,
   ApiDataSourcesIndexRoute: ApiDataSourcesIndexRoute,
+  ApiInvitationsIndexRoute: ApiInvitationsIndexRoute,
+  ApiMembersIndexRoute: ApiMembersIndexRoute,
   ApiTokensIndexRoute: ApiTokensIndexRoute,
 }
 export const routeTree = rootRouteImport

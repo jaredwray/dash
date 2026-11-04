@@ -1,7 +1,7 @@
 import type { ApiTokenScope } from "@dash/core";
 import { resolveAuth } from "./auth.ts";
 import { ensureSeeded } from "./seed.ts";
-import { error, hasScope, type AuthContext } from "./http.ts";
+import { error, hasScope, isAdmin, type AuthContext } from "./http.ts";
 
 export async function withSeed<T>(fn: () => Promise<T> | T): Promise<T> {
   await ensureSeeded();
@@ -19,6 +19,24 @@ export async function requireUser(
   }
   if (!hasScope(auth, scope)) {
     return error(403, `Missing scope: ${scope}`, "forbidden");
+  }
+  return auth;
+}
+
+/**
+ * Team management mints accounts and changes roles, so it needs an admin's
+ * browser session. An API token, even an admin's, cannot invite or promote.
+ */
+export async function requireAdminSession(request: Request): Promise<AuthContext | Response> {
+  const auth = await requireUser(request, "write");
+  if (isResponse(auth)) {
+    return auth;
+  }
+  if (auth.via === "token") {
+    return error(403, "Session authentication required to manage the team", "forbidden");
+  }
+  if (!isAdmin(auth.user)) {
+    return error(403, "Admin role required", "forbidden");
   }
   return auth;
 }

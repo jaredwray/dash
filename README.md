@@ -44,6 +44,12 @@ The same product-revenue chart, drawn in the session after a Dash MCP query agai
 
 <img alt="API tokens page for issuing a scoped MCP client token" src="docs/screenshots/api-tokens.png" width="880">
 
+### Team
+
+Everyone in the workspace with their role. Administrators invite people with a single-use link and switch members between **User** and **Admin**.
+
+<img alt="Team page with members, roles, an invite form, and a pending invitation" src="docs/screenshots/team.png" width="880">
+
 ### Settings
 
 <img alt="Workspace settings and the Dash MCP endpoint note" src="docs/screenshots/settings.png" width="880">
@@ -101,6 +107,7 @@ There is no separate user-admin CLI. Accounts are created in the product:
 1. Open the app. With no users, sign-in points at `/register`. The first account becomes the administrator.
 2. Later people use the same registration form while **Settings → Allow new account registration** is on.
 3. An administrator turns that setting off to keep the workspace closed. Registration stays available while there are no users, so a fresh database can always create its first admin.
+4. With registration closed, an administrator adds people from **Team**: enter an email, pick **User** or **Admin**, and share the sign-up link. Dash does not send email. A link works once and expires after 7 days.
 
 `GET /api/auth/bootstrap` is public and reports whether the demo login should be shown, whether the workspace still needs that first account, and whether registration is open.
 
@@ -130,6 +137,7 @@ Keep this list in sync as PRs land. Checked items are in the tree today.
 
 - [x] Login and registration
 - [x] User profile
+- [x] Team members: member list, User / Admin roles, invitation links
 - [x] Settings
 - [x] Dynamic dashboard pages
 - [x] Chart widgets (TanStack Charts)
@@ -149,7 +157,7 @@ Keep this list in sync as PRs land. Checked items are in the tree today.
 
 ## REST surface
 
-All routes except bootstrap, register, login, healthz, and ping require a session cookie or `Authorization: Bearer dash_live_…`.
+All routes except bootstrap, register, login, invitation preview and accept, healthz, and ping require a session cookie or `Authorization: Bearer dash_live_…`.
 
 | Method | Path | Notes |
 | --- | --- | --- |
@@ -157,10 +165,16 @@ All routes except bootstrap, register, login, healthz, and ping require a sessio
 | GET | `/ping` | Public. Confirms the app MongoDB is connected |
 | GET | `/api/auth/bootstrap` | Public. Demo login, first-account setup, registration |
 | POST | `/api/auth/register` | First user becomes admin. Closed when users exist and registration is off |
+| POST | `/api/auth/invitation` | Public. Preview an invitation from its token |
+| POST | `/api/auth/invitation/accept` | Public. Create the invited account and set `dash_session`. Works while registration is off |
 | POST | `/api/auth/login` | Sets `dash_session` |
 | POST | `/api/auth/logout` | |
 | GET | `/api/auth/me` | |
 | PATCH | `/api/users/me` | Profile / password |
+| GET | `/api/members` | Everyone in the workspace |
+| PATCH | `/api/members/:id` | Change role. Admin session only. The last admin cannot be demoted |
+| GET/POST | `/api/invitations` | Admin session only. POST returns the link token once |
+| DELETE | `/api/invitations/:id` | Revoke. Admin session only |
 | GET/PATCH | `/api/settings` | PATCH is admin-only |
 | GET/POST | `/api/data-sources` | POST is admin-only |
 | GET/PATCH/DELETE | `/api/data-sources/:id` | |
@@ -224,6 +238,7 @@ Override the Postgres endpoint with `DASH_TEST_POSTGRES_HOST`, `DASH_TEST_POSTGR
 - [ADR 0005](docs/adr/0005-adapter-test-clusters.md) — adapter tests use local clusters
 - [ADR 0006](docs/adr/0006-dev-workers-container.md) — dev.dash.io Worker and container
 - [ADR 0007](docs/adr/0007-mongodb-app-state.md) — app state in MongoDB
+- [ADR 0008](docs/adr/0008-team-invitations.md) — team members and invitations
 
 ## Dev deploy
 

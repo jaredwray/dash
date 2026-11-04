@@ -71,6 +71,10 @@ export function generateSessionToken(): string {
   return randomBytes(32).toString("base64url");
 }
 
+export function generateInvitationToken(): string {
+  return randomBytes(32).toString("base64url");
+}
+
 export function generateApiToken(): string {
   return `${API_TOKEN_PREFIX}${randomBytes(32).toString("base64url")}`;
 }

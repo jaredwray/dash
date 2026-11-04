@@ -103,7 +103,7 @@ function LoginForm({
             </Link>
           </>
         ) : (
-          <>Ask an administrator if you need an account.</>
+          <>Need an account? Ask an administrator for an invite link.</>
         )
       }
     >
