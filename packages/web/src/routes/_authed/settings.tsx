@@ -5,6 +5,7 @@ import type { OrganizationSettings } from "@dash/core";
 import { api } from "~/lib/api";
 import { fetchMe } from "~/lib/session";
 import { Field, PrimaryButton, TextInput } from "~/components/ui";
+import { McpConnectionBanner } from "~/components/mcp-connection-banner";
 
 export const Route = createFileRoute("/_authed/settings")({
   component: SettingsPage,
@@ -74,14 +75,7 @@ function SettingsPage() {
       ) : (
         <p className="mt-8 text-mist">Loading settings…</p>
       )}
-      <section className="mt-8 rounded-2xl border border-line bg-panel p-6 text-sm text-mist">
-        <h2 className="text-base font-medium text-paper">Dash MCP</h2>
-        <p className="mt-2">
-          Point an MCP client at <code className="text-accent">/mcp</code> with a bearer API
-          token that includes the <code>mcp</code> scope. Agents can list sources, query data,
-          and add chart widgets to dashboard pages.
-        </p>
-      </section>
+      <McpConnectionBanner />
     </div>
   );
 }

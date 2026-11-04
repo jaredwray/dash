@@ -5,6 +5,7 @@ import type { ApiTokenScope, PublicApiToken } from "@dash/core";
 import { API_TOKEN_SCOPES } from "@dash/core";
 import { api } from "~/lib/api";
 import { Field, GhostButton, PrimaryButton, TextInput } from "~/components/ui";
+import { McpConnectionBanner } from "~/components/mcp-connection-banner";
 
 export const Route = createFileRoute("/_authed/tokens")({
   component: TokensPage,
@@ -50,6 +51,7 @@ function TokensPage() {
         Tokens are shown once at creation. Dash stores only a SHA-256 hash, with scopes and an
         expiry. Use a token as <code>Authorization: Bearer dash_live_…</code>.
       </p>
+      <McpConnectionBanner showTokenLink={false} />
       <form
         className="mt-8 space-y-4 rounded-2xl border border-line bg-panel p-6"
         onSubmit={(event) => {
