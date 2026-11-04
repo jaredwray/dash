@@ -262,6 +262,12 @@ pnpm exec wrangler secret put MONGODB_URI
 
 Until either is set, requests to `dev.dash.io` return 500. Later deploys leave the secrets in place. `DASH_SECRET` encrypts saved data-source credentials and must not be `change-me-in-production`. `MONGODB_URI` is the MongoDB connection string for app state and must name a database (`mongodb://…/dash` or `mongodb+srv://…/dash`). Atlas SCRAM users live in `admin`; omit `authSource` and Dash authenticates there. Grant that user `readWrite` on the named database.
 
+Cloudflare logging is on for the Worker and the container. The Worker sends Workers Logs: one invocation log per request (method, URL, status, and headers) and its own structured lines. Those are `request blocked` with the reason when a secret is missing, `container started`, and `container stopped` or `container crashed` with the exit code. The container sends whatever the Node server writes to stdout and stderr. In the Cloudflare dashboard, Worker logs are under Workers & Pages → `dash-development` → Logs. Container logs are under Containers → `dash-development-dashcontainer`. Stream the Worker's logs live with:
+
+```bash
+pnpm exec wrangler tail dash-development
+```
+
 `pnpm deploy:dev` runs `wrangler deploy` locally. `pnpm deploy` is pnpm's own command and does not run this script. Docker has to be running.
 
 ## License

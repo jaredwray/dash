@@ -23,7 +23,14 @@ describe("dev.dash.io deploy config", () => {
       main: string;
       workers_dev: boolean;
       routes: Array<{ pattern: string; custom_domain: boolean }>;
-      containers: Array<{ class_name: string; image: string; max_instances: number; instance_type: string }>;
+      containers: Array<{
+        class_name: string;
+        image: string;
+        max_instances: number;
+        instance_type: string;
+        observability?: unknown;
+      }>;
+      observability?: unknown;
       durable_objects: { bindings: Array<{ name: string; class_name: string }> };
       exports: Record<string, { type: string; storage: string }>;
       vars: { DASH_SEED_DEMO: string };
@@ -42,6 +49,7 @@ describe("dev.dash.io deploy config", () => {
         max_instances: 1,
         instance_type: "basic",
         rollout_step_percentage: 100,
+        observability: { logs: { enabled: true } },
       },
     ]);
     expect(config.durable_objects.bindings).toEqual([
@@ -54,6 +62,21 @@ describe("dev.dash.io deploy config", () => {
     expect(config.vars.DASH_SEED_DEMO).toBe("false");
     expect(config.secrets).toBeUndefined();
     expect(config.compatibility_date).toBe("2026-10-19");
+  });
+
+  it("turns on Workers Logs for the Worker and logs for the container", () => {
+    const config = parseJsonc(readRepo("wrangler.jsonc")) as {
+      observability?: unknown;
+      containers: Array<{ observability?: unknown }>;
+    };
+
+    expect(config.observability).toEqual({
+      enabled: true,
+      logs: { enabled: true, invocation_logs: true },
+    });
+    for (const container of config.containers) {
+      expect(container.observability).toEqual({ logs: { enabled: true } });
+    }
   });
 
   it("builds the web server into a container that listens on port 3000", () => {
