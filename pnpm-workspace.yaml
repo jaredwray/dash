@@ -25,5 +25,10 @@ trustPolicy: no-downgrade # fail if a later version has weaker trust evidence
 # semver@6.3.1 fails trustPolicy: no-downgrade (no provenance;
 # later versions of the same package have attestations). Pin to a version that
 # already meets the gate — do not exclude first-party packages.
+# miniflare 5.20261019.2-beta requires undici 7.29.1.
+# Wrangler 4.152.0 depends on that miniflare release.
+# undici 7.30.1 fixes CVE-2026-109829, CVE-2026-87018, CVE-2026-109869, and CVE-2026-109383.
+# npm published 7.30.1 on 2026-10-15. The 7-day cooldown covers that release.
 overrides:
   semver@6.3.1: 7.8.5
+  undici@7.29.1: 7.30.1
