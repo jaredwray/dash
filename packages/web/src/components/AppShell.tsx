@@ -8,6 +8,7 @@ import {
   LogOut,
   Settings,
   UserRound,
+  Users,
 } from "lucide-react";
 import { api } from "~/lib/api";
 import { fetchMe } from "~/lib/session";
@@ -16,6 +17,7 @@ import { cn } from "~/lib/cn";
 const NAV = [
   { to: "/dashboards", label: "Dashboards", icon: LayoutDashboard },
   { to: "/data-sources", label: "Data sources", icon: Database, admin: true },
+  { to: "/team", label: "Team", icon: Users },
   { to: "/tokens", label: "API tokens", icon: KeyRound },
   { to: "/settings", label: "Settings", icon: Settings },
   { to: "/profile", label: "Profile", icon: UserRound },

@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import type { DashboardWidget, PublicUser } from "@dash/core";
+import type { DashboardWidget, PublicUser, UserRole } from "@dash/core";
 import { MongoClient, type Collection, type Db } from "mongodb";
 import { getEnv } from "./env.ts";
 import { explainDatabaseError } from "./mongo-error.ts";
@@ -32,6 +32,21 @@ export interface ApiTokenDoc {
   lastUsedAt: string | null;
   revokedAt: string | null;
   createdAt: string;
+}
+
+export interface InvitationDoc {
+  _id: string;
+  email: string;
+  role: UserRole;
+  /** SHA-256 of the link token. The token itself is shown once and never stored. */
+  tokenHash: string;
+  status: "pending" | "accepted" | "revoked";
+  invitedBy: string;
+  createdAt: string;
+  expiresAt: string;
+  acceptedAt: string | null;
+  acceptedBy: string | null;
+  revokedAt: string | null;
 }
 
 export interface SettingsDoc {
@@ -78,6 +93,19 @@ async function ensureIndexes(db: Db): Promise<void> {
       { unique: true, name: "api_tokens_token_hash" },
     ),
     db.collection("api_tokens").createIndex({ userId: 1 }, { name: "api_tokens_user" }),
+    db.collection("invitations").createIndex(
+      { tokenHash: 1 },
+      { unique: true, name: "invitations_token_hash" },
+    ),
+    // One open invitation per email. Re-inviting replaces it instead of adding another link.
+    db.collection("invitations").createIndex(
+      { email: 1 },
+      {
+        unique: true,
+        name: "invitations_pending_email",
+        partialFilterExpression: { status: "pending" },
+      },
+    ),
   ]);
 }
 
@@ -217,6 +245,10 @@ export async function sessions(): Promise<Collection<SessionDoc>> {
 
 export async function apiTokens(): Promise<Collection<ApiTokenDoc>> {
   return (await getDb()).collection<ApiTokenDoc>("api_tokens");
+}
+
+export async function invitations(): Promise<Collection<InvitationDoc>> {
+  return (await getDb()).collection<InvitationDoc>("invitations");
 }
 
 export async function organizationSettings(): Promise<Collection<SettingsDoc>> {

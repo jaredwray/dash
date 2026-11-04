@@ -53,16 +53,20 @@ export type {
 
 export type {
   ApiTokenScope,
+  InvitationPreview,
   OrganizationSettings,
   PublicApiToken,
+  PublicInvitation,
   PublicUser,
   UserRole,
 } from "./auth.ts";
 export {
   API_TOKEN_PREFIX,
   API_TOKEN_SCOPES,
+  USER_ROLE_LABELS,
   USER_ROLES,
   isApiTokenScope,
+  isUserRole,
 } from "./auth.ts";
 
 export { isApiTokenFormat, publicTokenPrefix } from "./tokens.ts";

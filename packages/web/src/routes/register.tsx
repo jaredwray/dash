@@ -37,7 +37,7 @@ function RegisterPage() {
           </Link>
         }
       >
-        <p className="text-sm text-mist">Ask an administrator if you need access to this workspace.</p>
+        <p className="text-sm text-mist">Ask an administrator for an invite link if you need access to this workspace.</p>
       </AuthCard>
     );
   }

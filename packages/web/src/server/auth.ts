@@ -31,7 +31,7 @@ export class EmailTakenError extends Error {
   }
 }
 
-function toPublicUser(row: UserDoc): PublicUser {
+export function toPublicUser(row: UserDoc): PublicUser {
   return {
     id: row._id,
     email: row.email,

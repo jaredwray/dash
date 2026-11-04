@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { USER_ROLE_LABELS } from "@dash/core";
 import { api } from "~/lib/api";
 import { fetchMe } from "~/lib/session";
 import { Field, PrimaryButton, TextInput } from "~/components/ui";
@@ -49,7 +50,7 @@ function ProfilePage() {
           <TextInput value={me.data.email} disabled />
         </Field>
         <Field label="Role">
-          <TextInput value={me.data.role} disabled />
+          <TextInput value={USER_ROLE_LABELS[me.data.role]} disabled />
         </Field>
         <Field label="New password">
           <TextInput
