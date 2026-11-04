@@ -53,6 +53,42 @@ a {
   --ts-chart-tooltip-font: 500 0.75rem/1.35 Outfit, "IBM Plex Sans", sans-serif;
 }
 
+.sidebar-link {
+  position: relative;
+  transition: background-color 150ms ease, color 150ms ease;
+}
+
+.sidebar-link-selected {
+  background-color: rgb(96 165 250 / 0.12);
+  font-weight: 500;
+}
+
+.sidebar-link-selected::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 25%;
+  bottom: 25%;
+  width: 3px;
+  border-radius: 999px;
+  background-color: #60a5fa;
+}
+
+.sidebar-link-selected > svg {
+  color: #93c5fd;
+}
+
+.sidebar-link:focus-visible {
+  outline: 2px solid #60a5fa;
+  outline-offset: -2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar-link {
+    transition: none;
+  }
+}
+
 .dash-grid {
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));

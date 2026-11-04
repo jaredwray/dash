@@ -55,10 +55,11 @@ export function AppShell({ user }: { user: PublicUser }) {
                 <Link
                   key={item.to}
                   to={item.to}
+                  aria-current={active ? "page" : undefined}
                   className={cn(
-                    "flex items-center gap-3 rounded-xl px-3 py-2 text-sm whitespace-nowrap",
+                    "sidebar-link flex items-center gap-3 rounded-xl px-3 py-2 text-sm whitespace-nowrap",
                     active
-                      ? "bg-white/10 text-paper"
+                      ? "sidebar-link-selected text-paper"
                       : "text-mist hover:bg-white/5 hover:text-paper",
                   )}
                 >
