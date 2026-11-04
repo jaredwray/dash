@@ -4,6 +4,7 @@ import { Plus } from "lucide-react";
 import type { Dashboard } from "@dash/core";
 import { api } from "~/lib/api";
 import { GhostButton, PrimaryButton } from "~/components/ui";
+import { McpConnectionBanner } from "~/components/mcp-connection-banner";
 
 export const Route = createFileRoute("/_authed/dashboards/")({
   component: DashboardsPage,
@@ -49,6 +50,7 @@ function DashboardsPage() {
           </span>
         </PrimaryButton>
       </div>
+      <McpConnectionBanner />
       <div className="mt-8 grid gap-4 md:grid-cols-2">
         {(dashboards.data ?? []).map((dashboard) => (
           <Link
