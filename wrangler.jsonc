@@ -5,6 +5,14 @@
   "compatibility_date": "2026-10-19",
   "workers_dev": false,
   "upload_source_maps": true,
+  // Workers Logs: console output and one invocation log per request, kept in the dashboard.
+  "observability": {
+    "enabled": true,
+    "logs": {
+      "enabled": true,
+      "invocation_logs": true
+    }
+  },
   "vars": {
     "DASH_SEED_DEMO": "false"
   },
@@ -20,7 +28,13 @@
       "image": "./Dockerfile",
       "max_instances": 1,
       "instance_type": "basic",
-      "rollout_step_percentage": 100
+      "rollout_step_percentage": 100,
+      // Container stdout and stderr from the Node server.
+      "observability": {
+        "logs": {
+          "enabled": true
+        }
+      }
     }
   ],
   "durable_objects": {
