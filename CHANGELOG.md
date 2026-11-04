@@ -34,6 +34,7 @@ All notable changes to Dash are documented here.
 
 ### Changed
 
+- Security: the lockfile resolves `undici` 7.30.1 in place of 7.29.1. `miniflare` from `wrangler` 4.152.0 requires `undici` 7.29.1. `pnpm-workspace.yaml` overrides only that version. The release fixes CVE-2026-109829, CVE-2026-87018, CVE-2026-109869, and CVE-2026-109383. npm published 7.30.1 on 2026-10-15, so the 7-day cooldown applies. `trustPolicy: no-downgrade` accepts 7.30.1, and this change adds no exclude.
 - The login page shows `admin@dash.dev` only when `DASH_SEED_DEMO` is enabled. With seeding off, the first account is created at `/register` and becomes the administrator.
 - App state (users, sessions, API tokens, settings, data sources, and dashboards) is stored in MongoDB. `MONGODB_URI` is required and must name a database. `dev.dash.io` reads it from a Worker secret (`wrangler secret put MONGODB_URI`); requests return 500 until `DASH_SECRET` and `MONGODB_URI` are both set. `DASH_DATABASE_PATH` is gone.
 - The data-source form can add an Amazon Redshift connection. Choosing Redshift starts with encryption on and clears a URI left over from another kind. Pasting a Redshift URI updates the SSL checkbox from `ssl` and `sslmode`. An explicit SSL flag overrides the URI. Explicit host, port, database, user, and password fields override the same parts of a URI.
