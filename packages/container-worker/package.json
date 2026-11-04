@@ -9,8 +9,8 @@
   },
   "devDependencies": {
     "@cloudflare/containers": "0.3.7",
-    "@cloudflare/workers-types": "5.20261022.1",
-    "@types/node": "^24.13.6",
+    "@cloudflare/workers-types": "5.20261028.1",
+    "@types/node": "^24.19.2",
     "typescript": "^7.0.2",
     "vitest": "^5.0.5"
   }
