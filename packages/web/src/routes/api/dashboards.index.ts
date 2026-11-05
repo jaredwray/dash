@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { isChartType } from "@dash/core";
-import { isResponse, requireUser } from "~/server/guard";
+import { isResponse, requireWorkspace } from "~/server/guard";
 import { error, json, readJson } from "~/server/http";
 import { createDashboard, listDashboards } from "~/server/services/dashboards";
 
@@ -73,14 +73,14 @@ export const Route = createFileRoute("/api/dashboards/")({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        const auth = await requireUser(request, "read");
+        const auth = await requireWorkspace(request, "read");
         if (isResponse(auth)) {
           return auth;
         }
-        return json({ dashboards: await listDashboards() });
+        return json({ dashboards: await listDashboards(auth.workspace.id) });
       },
       POST: async ({ request }) => {
-        const auth = await requireUser(request, "write");
+        const auth = await requireWorkspace(request, "write");
         if (isResponse(auth)) {
           return auth;
         }
@@ -89,6 +89,7 @@ export const Route = createFileRoute("/api/dashboards/")({
           return error(400, "Invalid dashboard payload", "invalid_body");
         }
         const dashboard = await createDashboard({
+          workspaceId: auth.workspace.id,
           name: parsed.data.name,
           description: parsed.data.description ?? "",
           widgets: parsed.data.widgets ?? [],

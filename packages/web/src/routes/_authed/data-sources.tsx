@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import type { Dashboard, DataSourceRecord } from "@dash/core";
 import { api } from "~/lib/api";
+import { useWorkspace } from "~/components/WorkspaceProvider";
 import { parseBigQueryUri } from "~/lib/bigquery-uri";
 import {
   DangerButton,
@@ -164,6 +165,7 @@ const emptyForm = {
 };
 
 function DataSourcesPage() {
+  const { workspace, workspaceApi } = useWorkspace();
   const queryClient = useQueryClient();
   const me = useQuery({ queryKey: ["me"], queryFn: fetchMe });
   const sources = useQuery({
@@ -174,9 +176,9 @@ function DataSourcesPage() {
     },
   });
   const dashboards = useQuery({
-    queryKey: ["dashboards"],
+    queryKey: ["dashboards", workspace.id],
     queryFn: async () => {
-      const payload = await api<{ dashboards: Dashboard[] }>("/api/dashboards");
+      const payload = await workspaceApi<{ dashboards: Dashboard[] }>("/api/dashboards");
       return payload.dashboards;
     },
   });
@@ -413,8 +415,8 @@ function DataSourcesPage() {
                 </dl>
                 <p className="mt-3 text-xs text-mist">
                   {widgets === 0
-                    ? "Not used on any dashboard"
-                    : `Used by ${widgets} widget${widgets === 1 ? "" : "s"}`}
+                    ? "Not used in this workspace"
+                    : `Used by ${widgets} widget${widgets === 1 ? "" : "s"} in this workspace`}
                 </p>
                 {isAdmin ? (
                   <DangerButton
@@ -940,7 +942,7 @@ function DataSourcesPage() {
               Remove <span className="text-paper">{pendingDelete.name}</span>? Dashboards that
               query it will fail until you point those widgets at another source.
               {usageCount(pendingDelete.id) > 0
-                ? ` ${usageCount(pendingDelete.id)} widget(s) currently use it.`
+                ? ` ${usageCount(pendingDelete.id)} widget(s) in this workspace use it. Other workspaces can also use this source.`
                 : ""}
             </p>
             {remove.isError ? (

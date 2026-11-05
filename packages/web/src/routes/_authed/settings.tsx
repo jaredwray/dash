@@ -44,11 +44,11 @@ function SettingsPage() {
     <div className="max-w-xl">
       <h1 className="text-3xl font-semibold">Settings</h1>
       <p className="mt-2 text-sm text-mist">
-        Workspace preferences. API tokens and MCP live on their own pages.
+        Organization preferences. API tokens and MCP live on their own pages.
       </p>
       {current ? (
         <div className="mt-8 space-y-4 rounded-2xl border border-line bg-panel p-6">
-          <Field label="Workspace name">
+          <Field label="Organization name">
             <TextInput
               value={name ?? current.name}
               onChange={(event) => setName(event.target.value)}

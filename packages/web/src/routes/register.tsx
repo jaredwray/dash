@@ -37,7 +37,7 @@ function RegisterPage() {
           </Link>
         }
       >
-        <p className="text-sm text-mist">Ask an administrator for an invite link if you need access to this workspace.</p>
+        <p className="text-sm text-mist">Ask an administrator for an invite link if you need access to this organization.</p>
       </AuthCard>
     );
   }
@@ -79,7 +79,7 @@ function RegisterForm({ needsSetup }: { needsSetup: boolean }) {
       subtitle={
         needsSetup
           ? "The first account becomes the administrator. You can invite others later, or turn registration off in Settings."
-          : "Join this workspace. An administrator can close registration at any time."
+          : "Join this organization. An administrator can close registration at any time."
       }
       onSubmit={(event) => void onSubmit(event)}
       footer={

@@ -1,5 +1,6 @@
 import type { DashboardWidget } from "@dash/core";
 import { EmailTakenError, countUsers, createUser, findUserByEmail, grantInitialAdmin } from "./auth.ts";
+import { ensurePersonalWorkspace } from "./services/workspaces.ts";
 import { getDb } from "./db.ts";
 import { getEnv } from "./env.ts";
 import { createDashboard, listDashboards } from "./services/dashboards.ts";
@@ -136,52 +137,60 @@ export function resetSeedForTests(): void {
 }
 
 async function seedOnce(): Promise<void> {
-  await getDb();
+  const db = await getDb();
   await getSettings();
-  const { seedDemo } = getEnv();
-  if (!seedDemo) {
-    return;
+  if (!getEnv().seedDemo) return;
+  const progress = db.collection<{ _id: string; complete: boolean }>("settings");
+  let state = await progress.findOne({ _id: "demo-seed" });
+  if (!state) {
+    if ((await countUsers()) !== 0) return;
+    await progress.updateOne(
+      { _id: "demo-seed" },
+      { $setOnInsert: { complete: false } },
+      { upsert: true },
+    );
+    state = await progress.findOne({ _id: "demo-seed" });
   }
-  if ((await countUsers()) === 0) {
-    let adminId: string;
+  if (state?.complete) return;
+
+  // Resume each step after a failed request or a server restart.
+  let admin = await findUserByEmail(DEMO_LOGIN.email);
+  if (!admin) {
     try {
-      const admin = await createUser({
+      await createUser({
         email: DEMO_LOGIN.email,
         name: "Dash Admin",
         password: DEMO_LOGIN.password,
         role: "member",
       });
-      adminId = admin.id;
     } catch (error) {
-      if (!(error instanceof EmailTakenError)) {
-        throw error;
-      }
-      const existing = await findUserByEmail(DEMO_LOGIN.email);
-      if (!existing) {
-        throw error;
-      }
-      adminId = existing._id;
+      if (!(error instanceof EmailTakenError)) throw error;
     }
-    await grantInitialAdmin(adminId);
-    await updateSettings({ name: "Dash", allowRegistration: true });
-    if ((await listDataSources()).length === 0) {
-      const source = await createDataSource({
-        name: "Sample warehouse",
-        description: "Built-in product analytics for trying Dash without a database.",
-        config: { kind: "demo" },
-        createdBy: adminId,
-      });
-      if ((await listDashboards()).length === 0) {
-        await createDashboard({
-          name: "Growth overview",
-          description:
-            "Revenue, acquisition, and product mix from the sample warehouse. Duplicate it or ask Dash MCP to add charts.",
-          widgets: demoWidgets(source.id),
-          createdBy: adminId,
-        });
-      }
-    }
+    admin = await findUserByEmail(DEMO_LOGIN.email);
   }
+  if (!admin) throw new Error("Demo account not found");
+  await grantInitialAdmin(admin._id);
+  const workspaceId = await ensurePersonalWorkspace(admin._id);
+  await updateSettings({ name: "Dash", allowRegistration: true });
+  const source =
+    (await listDataSources()).find((item) => item.kind === "demo") ??
+    (await createDataSource({
+      name: "Sample warehouse",
+      description: "Built-in product analytics for trying Dash without a database.",
+      config: { kind: "demo" },
+      createdBy: admin._id,
+    }));
+  if ((await listDashboards(workspaceId)).length === 0) {
+    await createDashboard({
+      workspaceId,
+      name: "Growth overview",
+      description:
+        "Revenue, acquisition, and product mix from the sample warehouse. Duplicate it or ask Dash MCP to add charts.",
+      widgets: demoWidgets(source.id),
+      createdBy: admin._id,
+    });
+  }
+  await progress.updateOne({ _id: "demo-seed" }, { $set: { complete: true } });
 }
 
 export function ensureSeeded(): Promise<void> {

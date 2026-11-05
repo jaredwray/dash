@@ -4,11 +4,16 @@ import {
   Outlet,
   Scripts,
   createRootRouteWithContext,
+  retainSearchParams,
 } from "@tanstack/react-router";
 import type { QueryClient } from "@tanstack/react-query";
 import appCss from "~/styles/app.css?url";
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
+  validateSearch: (search: Record<string, unknown>): { workspace?: string } => ({
+    workspace: typeof search.workspace === "string" && search.workspace ? search.workspace : undefined,
+  }),
+  search: { middlewares: [retainSearchParams(["workspace"])] },
   head: () => ({
     meta: [
       { charSet: "utf-8" },

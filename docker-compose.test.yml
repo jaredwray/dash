@@ -68,6 +68,11 @@ services:
   mongodb:
     image: mongo:7.0
     container_name: dash-test-mongodb
+    # Each isolated test database opens its own collection and index files.
+    ulimits:
+      nofile:
+        soft: 16384
+        hard: 16384
     environment:
       MONGO_INITDB_ROOT_USERNAME: dash
       MONGO_INITDB_ROOT_PASSWORD: dash

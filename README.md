@@ -46,13 +46,13 @@ The same product-revenue chart, drawn in the session after a Dash MCP query agai
 
 ### Team
 
-Everyone in the workspace with their role. Administrators invite people with a single-use link and switch members between **User** and **Admin**.
+Everyone in the organization with their role. Administrators invite people with a single-use link and switch members between **User** and **Admin**.
 
 <img alt="Team page with members, roles, an invite form, and a pending invitation" src="docs/screenshots/team.png" width="880">
 
 ### Settings
 
-<img alt="Workspace settings and the Dash MCP endpoint note" src="docs/screenshots/settings.png" width="880">
+<img alt="Organization settings and the Dash MCP endpoint note" src="docs/screenshots/settings.png" width="880">
 
 ### Profile
 
@@ -106,10 +106,10 @@ There is no separate user-admin CLI. Accounts are created in the product:
 
 1. Open the app. With no users, sign-in points at `/register`. The first account becomes the administrator.
 2. Later people use the same registration form while **Settings → Allow new account registration** is on.
-3. An administrator turns that setting off to keep the workspace closed. Registration stays available while there are no users, so a fresh database can always create its first admin.
+3. An administrator turns that setting off to keep the organization closed. Registration stays available while there are no users, so a fresh database can always create its first admin.
 4. With registration closed, an administrator adds people from **Team**: enter an email, pick **User** or **Admin**, and share the sign-up link. Dash does not send email. A link works once and expires after 7 days.
 
-`GET /api/auth/bootstrap` is public and reports whether the demo login should be shown, whether the workspace still needs that first account, and whether registration is open.
+`GET /api/auth/bootstrap` is public and reports whether the demo login should be shown, whether the organization still needs that first account, and whether registration is open.
 
 ## Feature checklist
 
@@ -137,6 +137,10 @@ Keep this list in sync as PRs land. Checked items are in the tree today.
 
 - [x] Login and registration
 - [x] User profile
+- [x] One organization per instance, with multiple workspaces
+- [x] Personal workspaces, private by default, with access for selected organization members
+- [x] Shared workspaces that organization admins create and manage
+- [x] Viewer and editor access, with workspace checks for dashboard API and MCP requests
 - [x] Team members: member list, User / Admin roles, invitation links
 - [x] Settings
 - [x] Dynamic dashboard pages
@@ -171,7 +175,7 @@ All routes except bootstrap, register, login, invitation preview and accept, hea
 | POST | `/api/auth/logout` | |
 | GET | `/api/auth/me` | |
 | PATCH | `/api/users/me` | Profile / password |
-| GET | `/api/members` | Everyone in the workspace |
+| GET | `/api/members` | Everyone in the organization |
 | PATCH | `/api/members/:id` | Change role. Admin session only. The last admin cannot be demoted |
 | GET/POST | `/api/invitations` | Admin session only. POST returns the link token once |
 | DELETE | `/api/invitations/:id` | Revoke. Admin session only |
@@ -181,15 +185,36 @@ All routes except bootstrap, register, login, invitation preview and accept, hea
 | GET | `/api/data-sources/:id/schema` | |
 | POST | `/api/data-sources/:id/connect` | Connection test |
 | POST | `/api/data-sources/:id/query` | Structured query |
-| GET/POST | `/api/dashboards` | |
-| GET/PATCH/DELETE | `/api/dashboards/:id` | |
+| GET/POST | `/api/workspaces` | Session only. POST requires an organization admin |
+| PATCH | `/api/workspaces/:id` | Rename. Workspace manager session only |
+| GET/PUT | `/api/workspaces/:id/members` | Workspace manager session only. PUT sets viewer/editor access or removes access with a null role |
+| GET/POST | `/api/dashboards` | Selected workspace. POST requires editor access |
+| GET/PATCH/DELETE | `/api/dashboards/:id` | Selected workspace. PATCH and DELETE require editor access |
 | GET/POST | `/api/tokens` | Session only; token value shown once |
 | DELETE | `/api/tokens/:id` | Revoke |
 | GET/POST | `/mcp` | Bearer token with `mcp` scope |
 
+## Organizations and workspaces
+
+Each Dash instance serves one organization. Accounts, organization settings, invitations, and data sources belong to that instance.
+
+Each user receives a personal workspace. Only its owner has access at first. The owner can share it with existing organization members.
+Organization admins can create shared workspaces and manage their access. Admins cannot access another person's personal workspace without an explicit grant.
+Viewers can read dashboards. Editors can create, change, and delete dashboards. Workspace managers control names and access.
+
+Select a workspace in the sidebar. Open **Workspaces** to manage access or copy a workspace link.
+A link retains the selected workspace, but it does not grant access. Without a workspace in the URL, Dash opens your personal workspace.
+
+Data sources remain available throughout the organization. Only organization admins can add, change, or remove them.
+Workspace privacy protects dashboards; it does not restrict access to data sources.
+
+Session API clients select a workspace with the `X-Dash-Workspace-Id` header. Without that header, dashboard requests use the user's personal workspace.
+New API tokens bind to the workspace selected at creation. Tokens cannot select another workspace. Each request checks current membership and token scopes.
+This change does not migrate existing dashboards or tokens. See [ADR 0009](docs/adr/0009-organization-workspaces.md).
+
 ## MCP
 
-Issue a token with the `mcp` scope, then point a client at `/mcp`. Tools include `list_data_sources`, `get_schema`, `query_data`, `list_dashboards`, `get_dashboard`, `create_dashboard`, and `add_chart_widget`.
+Select the target workspace. Issue a token with the `read` and `mcp` scopes. Add `write` for dashboard changes. Point the client at `/mcp`. Tools include `list_data_sources`, `get_schema`, `query_data`, `list_dashboards`, `get_dashboard`, `create_dashboard`, and `add_chart_widget`.
 
 ## Scripts
 

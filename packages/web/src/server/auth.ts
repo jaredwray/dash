@@ -5,6 +5,7 @@ import {
   publicTokenPrefix,
 } from "@dash/core";
 import { getEnv } from "./env.ts";
+import { getWorkspace } from "./services/workspaces.ts";
 import { MongoServerError } from "mongodb";
 import { apiTokens, getDb, nowIso, sessions, users, type ApiTokenDoc, type UserDoc } from "./db.ts";
 import {
@@ -175,6 +176,7 @@ async function sessionUser(token: string): Promise<PublicUser | undefined> {
 
 function toPublicToken(row: ApiTokenDoc) {
   return {
+    workspaceId: row.workspaceId,
     id: row._id,
     name: row.name,
     prefix: row.prefix,
@@ -195,17 +197,20 @@ export async function listTokens(userId: string) {
 
 export async function issueApiToken(input: {
   userId: string;
+  workspaceId: string;
   name: string;
   scopes: ApiTokenScope[];
   expiresAt: string | null;
 }): Promise<{ token: string; record: Awaited<ReturnType<typeof listTokens>>[number] }> {
   await assertUserExists(input.userId);
+  await getWorkspace(toPublicUser((await findUserById(input.userId))!), input.workspaceId);
   const token = generateApiToken();
   const id = randomId();
   const createdAt = nowIso();
   const prefix = publicTokenPrefix(token);
   const record = {
     _id: id,
+    workspaceId: input.workspaceId,
     userId: input.userId,
     name: input.name,
     tokenHash: hashSecret(token),
@@ -256,6 +261,7 @@ async function tokenAuth(token: string): Promise<AuthContext | undefined> {
     scopes: row.scopes as ApiTokenScope[],
     via: "token",
     tokenId: row._id,
+    workspaceId: row.workspaceId,
   };
 }
 

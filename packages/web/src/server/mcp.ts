@@ -1,9 +1,10 @@
 import { createMcpHandler, McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import { type ApiTokenScope, isChartType } from "@dash/core";
-import { findUserById } from "./auth.ts";
+import { ensurePersonalWorkspace, getWorkspace } from "./services/workspaces.ts";
+import { findUserById, toPublicUser } from "./auth.ts";
 import { randomId } from "./crypto.ts";
-import type { AuthContext } from "./http.ts";
+import type { WorkspaceAuthContext } from "./http.ts";
 import {
   createDashboard,
   getDashboard,
@@ -16,7 +17,7 @@ import { queryDataSource, schemaForDataSource } from "./services/query.ts";
 /** Combined array elements and object members allowed in one tools/call payload. */
 const MAX_TOOL_INPUT_ELEMENTS = 10_000;
 
-function buildServer(auth: AuthContext): McpServer {
+function buildServer(auth: WorkspaceAuthContext): McpServer {
   const server = new McpServer(
     {
       name: "dash",
@@ -103,7 +104,7 @@ function buildServer(auth: AuthContext): McpServer {
       description: "List dashboard pages in this Dash workspace.",
     },
     async () => ({
-      content: [{ type: "text", text: JSON.stringify(await listDashboards(), null, 2) }],
+      content: [{ type: "text", text: JSON.stringify(await listDashboards(auth.workspace.id), null, 2) }],
     }),
   );
 
@@ -114,7 +115,7 @@ function buildServer(auth: AuthContext): McpServer {
       inputSchema: z.object({ dashboardId: z.string() }),
     },
     async ({ dashboardId }) => {
-      const dashboard = await getDashboard(dashboardId);
+      const dashboard = await getDashboard(auth.workspace.id, dashboardId);
       if (!dashboard) {
         return { content: [{ type: "text", text: "Dashboard not found" }], isError: true };
       }
@@ -122,7 +123,7 @@ function buildServer(auth: AuthContext): McpServer {
     },
   );
 
-  if (auth.scopes.includes("write")) {
+  if (auth.scopes.includes("write") && auth.workspace.role !== "viewer") {
     server.registerTool(
       "create_dashboard",
       {
@@ -134,6 +135,7 @@ function buildServer(auth: AuthContext): McpServer {
       },
       async ({ name, description }) => {
         const dashboard = await createDashboard({
+          workspaceId: auth.workspace.id,
           name,
           description: description ?? "",
           widgets: [],
@@ -170,7 +172,7 @@ function buildServer(auth: AuthContext): McpServer {
             isError: true,
           };
         }
-        const dashboard = await getDashboard(input.dashboardId);
+        const dashboard = await getDashboard(auth.workspace.id, input.dashboardId);
         if (!dashboard) {
           return { content: [{ type: "text", text: "Dashboard not found" }], isError: true };
         }
@@ -201,7 +203,7 @@ function buildServer(auth: AuthContext): McpServer {
             smooth: input.smooth,
           },
         };
-        const updated = await appendDashboardWidget(input.dashboardId, widget);
+        const updated = await appendDashboardWidget(auth.workspace.id, input.dashboardId, widget);
         return { content: [{ type: "text", text: JSON.stringify(updated, null, 2) }] };
       },
     );
@@ -219,14 +221,12 @@ export const mcpHandler = createMcpHandler(
     if (!row) {
       throw new Error("Unknown MCP user");
     }
-    const auth: AuthContext = {
-      user: {
-        id: row._id,
-        email: row.email,
-        name: row.name,
-        role: row.role,
-        createdAt: row.createdAt,
-      },
+    const user = toPublicUser(row);
+    const workspaceId = authInfo.extra?.workspaceId;
+    const workspace = await getWorkspace(user, typeof workspaceId === "string" ? workspaceId : await ensurePersonalWorkspace(user.id));
+    const auth: WorkspaceAuthContext = {
+      workspace,
+      user,
       scopes: (authInfo.scopes ?? ["read", "mcp"]) as ApiTokenScope[],
       via: "token",
     };

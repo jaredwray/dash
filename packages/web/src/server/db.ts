@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import type { DashboardWidget, PublicUser, UserRole } from "@dash/core";
+import type { DashboardWidget, PublicUser, UserRole, WorkspaceMemberRole } from "@dash/core";
 import { MongoClient, type Collection, type Db } from "mongodb";
 import { getEnv } from "./env.ts";
 import { explainDatabaseError } from "./mongo-error.ts";
@@ -22,6 +22,7 @@ export interface SessionDoc {
 }
 
 export interface ApiTokenDoc {
+  workspaceId: string;
   _id: string;
   userId: string;
   name: string;
@@ -67,6 +68,7 @@ export interface DataSourceDoc {
 }
 
 export interface DashboardDoc {
+  workspaceId: string;
   _id: string;
   name: string;
   description: string;
@@ -82,6 +84,13 @@ let connectTask: Promise<Db> | undefined;
 
 async function ensureIndexes(db: Db): Promise<void> {
   await Promise.all([
+    db.collection("workspaces").createIndex({ ownerId: 1 }, {
+      unique: true,
+      name: "personal_workspace_owner",
+      partialFilterExpression: { kind: "personal" },
+    }),
+    db.collection("workspaces").createIndex({ "members.userId": 1 }, { name: "workspace_members" }),
+    db.collection("dashboards").createIndex({ workspaceId: 1, updatedAt: -1 }, { name: "workspace_dashboards" }),
     db.collection("users").createIndex({ email: 1 }, { unique: true, name: "users_email" }),
     db.collection("sessions").createIndex(
       { tokenHash: 1 },
@@ -261,4 +270,17 @@ export async function dataSources(): Promise<Collection<DataSourceDoc>> {
 
 export async function dashboards(): Promise<Collection<DashboardDoc>> {
   return (await getDb()).collection<DashboardDoc>("dashboards");
+}
+
+export interface WorkspaceDoc {
+  _id: string;
+  name: string;
+  kind: "personal" | "shared";
+  ownerId: string | null;
+  members: Array<{ userId: string; role: WorkspaceMemberRole }>;
+  createdAt: string;
+}
+
+export async function workspaces(): Promise<Collection<WorkspaceDoc>> {
+  return (await getDb()).collection<WorkspaceDoc>("workspaces");
 }
