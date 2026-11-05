@@ -6,6 +6,7 @@ All notable changes to Dash are documented here.
 
 ### Fixed
 
+- Cloud setup installs Aikido Safe Chain 1.5.27. Version 1.5.15 exits on pnpm 12, so the environment build fails and agents boot the default image.
 - Sidebar sections use a subtle blue selected state with a left accent and brighter icon. Keyboard focus gets its own inset outline, and the current section is announced to screen readers.
 - App MongoDB connections authenticate a URI user against `admin` when `authSource` is omitted, which is where Atlas stores SCRAM users. The database named in the URI is created on that first connection. A `dbAdmin` role still cannot store accounts; sign-in reports that the user needs `readWrite` on that database. MongoDB data-source connection strings follow the same `authSource` default.
 - `pnpm dev` reads `MONGODB_URI`, `DASH_SECRET`, and `DASH_SEED_DEMO` from the repo `.env`. Vite does not copy those unprefixed variables into the server process. Values already set in the environment win, and production ignores `.env`.
