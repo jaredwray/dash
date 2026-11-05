@@ -81,6 +81,13 @@ export async function createUser(input: {
   };
 }
 
+export async function deleteUser(userId: string): Promise<void> {
+  const result = await (await users()).deleteOne({ _id: userId });
+  if (result.deletedCount !== 1) {
+    throw new Error("The rejected account was not removed");
+  }
+}
+
 export async function findUserByEmail(email: string): Promise<UserDoc | undefined> {
   const row = await (await users()).findOne({ email });
   return row ?? undefined;
