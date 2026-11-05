@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { Copy } from "lucide-react";
 import { GhostButton } from "~/components/ui";
 
 export function McpConnectionBanner({ showTokenLink = true }: { showTokenLink?: boolean }) {
@@ -28,8 +29,15 @@ export function McpConnectionBanner({ showTokenLink = true }: { showTokenLink?: 
       <code className="shrink-0 rounded-lg bg-ink px-3 py-2 text-sm text-accent">
         {url || "Loading MCP URL…"}
       </code>
-      <GhostButton className="shrink-0" type="button" disabled={!url} onClick={() => void copyUrl()}>
-        Copy MCP URL
+      <GhostButton
+        className="inline-flex h-10 w-10 shrink-0 items-center justify-center p-0"
+        type="button"
+        aria-label="Copy MCP URL"
+        title="Copy MCP URL"
+        disabled={!url}
+        onClick={() => void copyUrl()}
+      >
+        <Copy size={16} aria-hidden="true" />
       </GhostButton>
       {showTokenLink ? (
         <Link to="/tokens" className="shrink-0 text-sm font-medium text-accent underline underline-offset-4">
