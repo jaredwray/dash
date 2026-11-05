@@ -12,6 +12,7 @@ import { invitations } from "../db.ts";
 import { isResponse, requireAdminSession } from "../guard.ts";
 import { SESSION_COOKIE } from "../http.ts";
 import { destroyAppDatabase, useFreshAppDatabase } from "../test-db.ts";
+import { EmailDomainNotAllowedError } from "./account-policy.ts";
 import { updateSettings } from "./settings.ts";
 import {
   INVITATION_TTL_MS,
@@ -179,6 +180,39 @@ describe("team", () => {
       expect(await listInvitations()).toHaveLength(1);
       const usable = await Promise.all(issued.map((row) => previewInvitation(row.token)));
       expect(usable.filter(Boolean)).toHaveLength(1);
+    });
+
+    it("creates an account only for a domain on the list", async () => {
+      const ada = await admin();
+      await updateSettings({ allowedEmailDomains: ["acme.com"] });
+      await expect(
+        createInvitation({ email: "linus@example.com", role: "member", invitedBy: ada.id }),
+      ).rejects.toBeInstanceOf(EmailDomainNotAllowedError);
+      expect(await listInvitations()).toEqual([]);
+
+      const { token } = await createInvitation({
+        email: "linus@acme.com",
+        role: "member",
+        invitedBy: ada.id,
+      });
+      await expect(
+        acceptInvitation({ token, name: "Linus", password: "password123" }),
+      ).resolves.toMatchObject({ email: "linus@acme.com", role: "member" });
+    });
+
+    it("releases an invitation when the domain is no longer allowed", async () => {
+      const ada = await admin();
+      const { token } = await createInvitation({
+        email: "linus@example.com",
+        role: "member",
+        invitedBy: ada.id,
+      });
+      await updateSettings({ allowedEmailDomains: ["acme.com"] });
+      await expect(
+        acceptInvitation({ token, name: "Linus", password: "password123" }),
+      ).rejects.toBeInstanceOf(EmailDomainNotAllowedError);
+      expect(await findUserByEmail("linus@example.com")).toBeUndefined();
+      expect(await previewInvitation(token)).toMatchObject({ email: "linus@example.com" });
     });
 
     it("refuses to invite an existing member", async () => {

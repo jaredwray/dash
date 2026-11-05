@@ -4,6 +4,7 @@ import { EmailTakenError, createSession } from "~/server/auth";
 import { getEnv } from "~/server/env";
 import { error, json, readJson, sessionCookie } from "~/server/http";
 import { ensureSeeded } from "~/server/seed";
+import { EmailDomainNotAllowedError } from "~/server/services/account-policy";
 import { acceptInvitation } from "~/server/services/team";
 
 const bodySchema = z.object({
@@ -28,6 +29,9 @@ export const Route = createFileRoute("/api/auth/invitation/accept")({
         } catch (cause) {
           if (cause instanceof EmailTakenError) {
             return error(409, "An account with this email already exists. Log in instead.", "email_taken");
+          }
+          if (cause instanceof EmailDomainNotAllowedError) {
+            return error(403, cause.message, "domain_not_allowed");
           }
           throw cause;
         }

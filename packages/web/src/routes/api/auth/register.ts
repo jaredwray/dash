@@ -2,7 +2,6 @@ import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import {
   EmailTakenError,
-  countUsers,
   createSession,
   createUser,
   findUserByEmail,
@@ -11,7 +10,7 @@ import {
 import { getEnv } from "~/server/env";
 import { error, json, readJson, sessionCookie } from "~/server/http";
 import { ensureSeeded } from "~/server/seed";
-import { getSettings } from "~/server/services/settings";
+import { registrationPolicy } from "~/server/services/account-policy";
 
 const bodySchema = z.object({
   email: z.string().email(),
@@ -28,12 +27,12 @@ export const Route = createFileRoute("/api/auth/register")({
         if (!parsed.success) {
           return error(400, "Invalid registration payload", "invalid_body");
         }
-        const settings = await getSettings();
         const email = parsed.data.email.trim().toLowerCase();
-        const userCount = await countUsers();
-        if (userCount > 0 && !settings.allowRegistration) {
-          return error(403, "Registration is closed", "registration_closed");
+        const policy = await registrationPolicy(email);
+        if (policy.denial) {
+          return error(403, policy.denial.message, policy.denial.code);
         }
+        const userCount = policy.userCount;
         if (await findUserByEmail(email)) {
           return error(409, "Email already registered", "email_taken");
         }

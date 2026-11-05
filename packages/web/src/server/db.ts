@@ -54,6 +54,8 @@ export interface SettingsDoc {
   _id: "organization";
   name: string;
   allowRegistration: boolean;
+  /** Older documents have no domain list. */
+  allowedEmailDomains?: string[];
 }
 
 export interface DataSourceDoc {

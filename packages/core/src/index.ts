@@ -69,5 +69,14 @@ export {
   isUserRole,
 } from "./auth.ts";
 
+export {
+  ALLOWED_EMAIL_DOMAIN_MESSAGES,
+  MAX_ALLOWED_EMAIL_DOMAINS,
+  emailDomainAllowed,
+  normalizeAllowedEmailDomains,
+  parseAllowedEmailDomainText,
+} from "./email-domain.ts";
+export type { AllowedEmailDomainParse, AllowedEmailDomainReason } from "./email-domain.ts";
+
 export { isApiTokenFormat, publicTokenPrefix } from "./tokens.ts";
 export * from "./workspace.ts";

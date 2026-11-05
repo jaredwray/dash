@@ -2,11 +2,12 @@ import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { isResponse, requireUser } from "~/server/guard";
 import { error, isAdmin, json, readJson } from "~/server/http";
-import { getSettings, updateSettings } from "~/server/services/settings";
+import { getSettings, InvalidEmailDomainError, updateSettings } from "~/server/services/settings";
 
 const bodySchema = z.object({
   name: z.string().min(1).max(80).optional(),
   allowRegistration: z.boolean().optional(),
+  allowedEmailDomains: z.array(z.string().max(300)).max(100).optional(),
 });
 
 export const Route = createFileRoute("/api/settings")({
@@ -31,7 +32,14 @@ export const Route = createFileRoute("/api/settings")({
         if (!parsed.success) {
           return error(400, "Invalid settings payload", "invalid_body");
         }
-        return json({ settings: await updateSettings(parsed.data) });
+        try {
+          return json({ settings: await updateSettings(parsed.data) });
+        } catch (cause) {
+          if (cause instanceof InvalidEmailDomainError) {
+            return error(400, cause.message, "invalid_domain");
+          }
+          throw cause;
+        }
       },
     },
   },

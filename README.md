@@ -168,7 +168,7 @@ All routes except bootstrap, register, login, invitation preview and accept, hea
 | GET | `/healthz` | Public. Confirms the app MongoDB is connected |
 | GET | `/ping` | Public. Confirms the app MongoDB is connected |
 | GET | `/api/auth/bootstrap` | Public. Demo login, first-account setup, registration |
-| POST | `/api/auth/register` | First user becomes admin. Closed when users exist and registration is off |
+| POST | `/api/auth/register` | The first user becomes admin. Registration is closed when users exist and the switch is off. When the domain list is not empty, the email domain must be on that list. |
 | POST | `/api/auth/invitation` | Public. Preview an invitation from its token |
 | POST | `/api/auth/invitation/accept` | Public. Create the invited account and set `dash_session`. Works while registration is off |
 | POST | `/api/auth/login` | Sets `dash_session` |
@@ -179,7 +179,7 @@ All routes except bootstrap, register, login, invitation preview and accept, hea
 | PATCH | `/api/members/:id` | Change role. Admin session only. The last admin cannot be demoted |
 | GET/POST | `/api/invitations` | Admin session only. POST returns the link token once |
 | DELETE | `/api/invitations/:id` | Revoke. Admin session only |
-| GET/PATCH | `/api/settings` | PATCH is admin-only |
+| GET/PATCH | `/api/settings` | PATCH is admin-only. `allowedEmailDomains` lists the email domains that can create accounts. An empty list allows every domain. |
 | GET/POST | `/api/data-sources` | POST is admin-only |
 | GET/PATCH/DELETE | `/api/data-sources/:id` | |
 | GET | `/api/data-sources/:id/schema` | |

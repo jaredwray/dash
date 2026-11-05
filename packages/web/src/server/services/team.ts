@@ -8,6 +8,7 @@ import { MongoServerError } from "mongodb";
 import { EmailTakenError, createUser, findUserByEmail, toPublicUser } from "../auth.ts";
 import { generateInvitationToken, hashSecret, randomId } from "../crypto.ts";
 import { invitations, nowIso, users, type InvitationDoc } from "../db.ts";
+import { assertEmailDomainAllowed } from "./account-policy.ts";
 import { getSettings } from "./settings.ts";
 
 export const INVITATION_TTL_MS = 1000 * 60 * 60 * 24 * 7;
@@ -107,6 +108,7 @@ export async function createInvitation(input: {
   if (await findUserByEmail(email)) {
     throw new EmailTakenError();
   }
+  await assertEmailDomainAllowed(email);
   const collection = await invitations();
   const token = generateInvitationToken();
   const createdAt = nowIso();
@@ -216,6 +218,7 @@ export async function acceptInvitation(input: {
   }
   let user: PublicUser;
   try {
+    await assertEmailDomainAllowed(claimed.email);
     user = await createUser({
       email: claimed.email,
       name: input.name.trim(),
