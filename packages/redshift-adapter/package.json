@@ -18,7 +18,7 @@
   },
   "dependencies": {
     "@dash/core": "workspace:*",
-    "pg": "^8.16.3"
+    "pg": "8.23.1"
   },
   "devDependencies": {
     "@types/node": "^24.19.2",
