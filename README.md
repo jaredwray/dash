@@ -155,6 +155,7 @@ Keep this list in sync as PRs land. Checked items are in the tree today.
 - [x] REST API
 - [x] Session authentication (httpOnly cookie)
 - [x] API tokens (hashed, scoped, expiring, revocable)
+- [x] Agent tokens page with a full MCP URL and copy controls
 - [x] MCP server (`POST /mcp`) for charts and dashboards
 - [x] Public health checks (`GET /healthz`, `GET /ping`) that verify the app database
 - [ ] OAuth for MCP clients
@@ -214,7 +215,9 @@ This change does not migrate existing dashboards or tokens. See [ADR 0009](docs/
 
 ## MCP
 
-Select the target workspace. Issue a token with the `read` and `mcp` scopes. Add `write` for dashboard changes. Point the client at `/mcp`. Tools include `list_data_sources`, `get_schema`, `query_data`, `list_dashboards`, `get_dashboard`, `create_dashboard`, and `add_chart_widget`.
+Select the target workspace. Open **Agent tokens** (`/agent-tokens`). Issue a token with the required `read` and `mcp` scopes. Select `write` for dashboard changes. New tokens expire after 90 days. Copy the full MCP URL from the banner. The URL uses the current site address and the `/mcp` path. Set the client authorization header to `Authorization: Bearer <token>`.
+
+The Agent tokens page lists API tokens with the `mcp` scope. You can revoke these tokens from either token page. Tools include `list_data_sources`, `get_schema`, `query_data`, `list_dashboards`, `get_dashboard`, `create_dashboard`, and `add_chart_widget`.
 
 ## Scripts
 

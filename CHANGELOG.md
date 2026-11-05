@@ -13,6 +13,7 @@ All notable changes to Dash are documented here.
 
 ### Added
 
+- The Agent tokens page creates and revokes tokens for MCP access. The banner shows the full MCP URL from the current site address, with a copy button.
 - Each Dash instance serves one organization with multiple workspaces. Each user receives a personal workspace that they can share with existing organization members.
 - Organization admins can create shared workspaces and manage viewer or editor access. Dashboard API and MCP requests check workspace access.
 - The sidebar has a workspace selector. Workspace links retain the selected workspace. New API tokens bind to that workspace.
