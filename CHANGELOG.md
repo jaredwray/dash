@@ -39,6 +39,8 @@ All notable changes to Dash are documented here.
 
 ### Changed
 
+- The workspace menu uses icons and a selected marker. It appears only when the user has more than one workspace.
+
 - Security: the lockfile resolves `undici` 7.30.1 in place of 7.29.1. `miniflare` from `wrangler` 4.152.0 requires `undici` 7.29.1. `pnpm-workspace.yaml` overrides only that version. The release fixes CVE-2026-109829, CVE-2026-87018, CVE-2026-109869, and CVE-2026-109383. npm published 7.30.1 on 2026-10-15, so the 7-day cooldown applies. `trustPolicy: no-downgrade` accepts 7.30.1, and this change adds no exclude.
 - Data sources, team members, invitations, and settings belong to the organization. This change does not migrate existing dashboards or tokens.
 
