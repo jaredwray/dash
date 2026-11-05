@@ -22,7 +22,7 @@
     "@dash/adapter-stripe": "workspace:*",
     "@dash/core": "workspace:*",
     "@modelcontextprotocol/server": "2.4.0",
-    "@tanstack/charts": "1.0.0",
+    "@tanstack/charts": "1.1.0",
     "@tanstack/react-query": "^5.103.1",
     "@tanstack/react-router": "1.170.42",
     "@tanstack/react-start": "1.168.61",
