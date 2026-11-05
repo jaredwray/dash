@@ -1,4 +1,5 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { Collection } from "mongodb";
 import {
   EmailTakenError,
   authenticatePassword,
@@ -20,6 +21,7 @@ import { SESSION_COOKIE } from "./http.ts";
 import { ensureSeeded, resetSeedForTests } from "./seed.ts";
 import { appendDashboardWidget, createDashboard, listDashboards, updateDashboard } from "./services/dashboards.ts";
 import { getSettings, updateSettings } from "./services/settings.ts";
+import { listDataSources } from "./services/data-sources.ts";
 import { destroyAppDatabase, useFreshAppDatabase } from "./test-db.ts";
 
 function sessionRequest(token: string): Request {
@@ -189,5 +191,49 @@ describe("app database", () => {
     expect(await listDashboards(workspaceId)).toHaveLength(1);
     await ensureSeeded();
     expect(await countUsers()).toBe(1);
+  });
+
+  it.each(["workspace", "dashboard"])("resumes demo setup after a failed %s write", async (step) => {
+    process.env.DASH_SEED_DEMO = "true";
+    const updateOne = Collection.prototype.updateOne;
+    const insertOne = Collection.prototype.insertOne;
+    const update = vi
+      .spyOn(Collection.prototype, "updateOne")
+      .mockImplementation(function (this: Collection, ...args) {
+        if (step === "workspace" && this.collectionName === "workspaces") {
+          return Promise.reject(new Error("Seed write failed"));
+        }
+        return updateOne.apply(this, args);
+      });
+    const insert = vi
+      .spyOn(Collection.prototype, "insertOne")
+      .mockImplementation(function (this: Collection, ...args) {
+        if (step === "dashboard" && this.collectionName === "dashboards") {
+          return Promise.reject(new Error("Seed write failed"));
+        }
+        return insertOne.apply(this, args);
+      });
+    try {
+      await expect(ensureSeeded()).rejects.toThrow("Seed write failed");
+    } finally {
+      update.mockRestore();
+      insert.mockRestore();
+    }
+    expect(await countUsers()).toBe(1);
+    resetSeedForTests();
+    await Promise.all([ensureSeeded(), ensureSeeded()]);
+    const admin = (await findUserByEmail("admin@dash.dev"))!;
+    const workspaceId = await ensurePersonalWorkspace(admin._id);
+    const sources = await listDataSources();
+    const pages = await listDashboards(workspaceId);
+    expect(sources).toHaveLength(1);
+    expect(pages).toHaveLength(1);
+    expect(pages[0]?.widgets.every((widget) => widget.dataSourceId === sources[0]?.id)).toBe(true);
+    expect(admin.role).toBe("admin");
+    resetSeedForTests();
+    await ensureSeeded();
+    expect(await countUsers()).toBe(1);
+    expect(await listDataSources()).toHaveLength(1);
+    expect(await listDashboards(workspaceId)).toHaveLength(1);
   });
 });

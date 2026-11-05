@@ -32,6 +32,7 @@ A workspace link does not grant access. The recipient must sign in with an accou
 Workspace privacy protects dashboards. It does not restrict the organization's data sources. A user can query those sources from their personal workspace.
 
 The demo dashboard belongs to the demo admin's personal workspace. The demo data source remains available throughout the organization.
+Demo setup records completion in MongoDB. A retry can resume incomplete account, workspace, source, or dashboard setup after a failed request.
 
 Personal workspace creation uses a deterministic ID and an upsert after authentication. Account creation does not write or delete workspace records.
 This separates account creation from workspace creation without a transaction. A failed workspace request can retry the same upsert.
