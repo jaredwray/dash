@@ -14,7 +14,7 @@ export const INVITATION_TTL_MS = 1000 * 60 * 60 * 24 * 7;
 
 export class LastAdminError extends Error {
   constructor() {
-    super("The workspace needs at least one admin");
+    super("The organization needs at least one admin");
     this.name = "LastAdminError";
   }
 }
@@ -40,7 +40,7 @@ export async function listMembers(): Promise<PublicUser[]> {
 /**
  * Change a member's role. Demoting the last admin is refused. The check runs
  * after the write: if no admin remains, the change is reverted, so two admins
- * demoting each other at once cannot leave the workspace without one.
+ * demoting each other at once cannot leave the organization without one.
  */
 export async function setMemberRole(
   userId: string,
@@ -187,7 +187,7 @@ export async function previewInvitation(token: string): Promise<InvitationPrevie
   return {
     email: row.email,
     role: row.role,
-    workspaceName: settings.name,
+    organizationName: settings.name,
     invitedByName: names.get(row.invitedBy) ?? null,
     expiresAt: row.expiresAt,
   };

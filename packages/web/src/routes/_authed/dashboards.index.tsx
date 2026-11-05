@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
 import type { Dashboard } from "@dash/core";
-import { api } from "~/lib/api";
+import { useWorkspace } from "~/components/WorkspaceProvider";
 import { GhostButton, PrimaryButton } from "~/components/ui";
 import { McpConnectionBanner } from "~/components/mcp-connection-banner";
 
@@ -11,10 +11,12 @@ export const Route = createFileRoute("/_authed/dashboards/")({
 });
 
 function DashboardsPage() {
+  const { workspace, workspaceApi: api } = useWorkspace();
+  const canEdit = workspace.role !== "viewer";
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const dashboards = useQuery({
-    queryKey: ["dashboards"],
+    queryKey: ["dashboards", workspace.id],
     queryFn: async () => {
       const payload = await api<{ dashboards: Dashboard[] }>("/api/dashboards");
       return payload.dashboards;
@@ -30,7 +32,7 @@ function DashboardsPage() {
         widgets: [],
       }),
     });
-    await queryClient.invalidateQueries({ queryKey: ["dashboards"] });
+    await queryClient.invalidateQueries({ queryKey: ["dashboards", workspace.id] });
     await navigate({
       to: "/dashboards/$dashboardId",
       params: { dashboardId: payload.dashboard.id },
@@ -44,12 +46,13 @@ function DashboardsPage() {
           <p className="text-xs uppercase tracking-[0.2em] text-mist">Workspace</p>
           <h1 className="mt-1 text-3xl font-semibold">Dashboards</h1>
         </div>
-        <PrimaryButton type="button" onClick={() => void createDashboard()}>
+        {canEdit ? <PrimaryButton type="button" onClick={() => void createDashboard()}>
           <span className="inline-flex items-center gap-2">
             <Plus size={16} /> New dashboard
           </span>
-        </PrimaryButton>
+        </PrimaryButton> : null}
       </div>
+      {dashboards.error ? <p role="alert" className="mt-4 text-rose-300">{dashboards.error.message}</p> : null}
       <McpConnectionBanner />
       <div className="mt-8 grid gap-4 md:grid-cols-2">
         {(dashboards.data ?? []).map((dashboard) => (
@@ -71,9 +74,9 @@ function DashboardsPage() {
       {dashboards.data?.length === 0 ? (
         <div className="mt-10 rounded-2xl border border-dashed border-line p-10 text-center">
           <p className="text-mist">No dashboards yet.</p>
-          <GhostButton className="mt-4" type="button" onClick={() => void createDashboard()}>
+          {canEdit ? <GhostButton className="mt-4" type="button" onClick={() => void createDashboard()}>
             Create the first page
-          </GhostButton>
+          </GhostButton> : null}
         </div>
       ) : null}
     </div>

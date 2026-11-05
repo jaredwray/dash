@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import type { AdapterSchema, Dashboard, DashboardWidget, DataSourceRecord } from "@dash/core";
-import { api } from "~/lib/api";
+import { useWorkspace } from "~/components/WorkspaceProvider";
 import { WidgetCard } from "~/components/WidgetCard";
 import { WidgetEditor } from "~/components/WidgetEditor";
 import { GhostButton, PrimaryButton, TextInput } from "~/components/ui";
@@ -13,13 +13,15 @@ export const Route = createFileRoute("/_authed/dashboards/$dashboardId")({
 
 function DashboardPage() {
   const { dashboardId } = Route.useParams();
+  const { workspace, workspaceApi: api } = useWorkspace();
+  const canEdit = workspace.role !== "viewer";
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState(false);
   const [adding, setAdding] = useState(false);
 
   const dashboardQuery = useQuery({
-    queryKey: ["dashboard", dashboardId],
+    queryKey: ["dashboard", workspace.id, dashboardId],
     queryFn: async () => {
       const payload = await api<{ dashboard: Dashboard }>(`/api/dashboards/${dashboardId}`);
       return payload.dashboard;
@@ -58,8 +60,8 @@ function DashboardPage() {
       return payload.dashboard;
     },
     onSuccess: (dashboard) => {
-      queryClient.setQueryData(["dashboard", dashboardId], dashboard);
-      void queryClient.invalidateQueries({ queryKey: ["dashboards"] });
+      queryClient.setQueryData(["dashboard", workspace.id, dashboardId], dashboard);
+      void queryClient.invalidateQueries({ queryKey: ["dashboards", workspace.id] });
     },
   });
 
@@ -93,7 +95,7 @@ function DashboardPage() {
       return;
     }
     await api(`/api/dashboards/${dashboardId}`, { method: "DELETE" });
-    await queryClient.invalidateQueries({ queryKey: ["dashboards"] });
+    await queryClient.invalidateQueries({ queryKey: ["dashboards", workspace.id] });
     await navigate({ to: "/dashboards" });
   }
 
@@ -106,7 +108,7 @@ function DashboardPage() {
               <TextInput
                 value={dashboard.name}
                 onChange={(event) =>
-                  queryClient.setQueryData(["dashboard", dashboardId], {
+                  queryClient.setQueryData(["dashboard", workspace.id, dashboardId], {
                     ...dashboard,
                     name: event.target.value,
                   })
@@ -115,7 +117,7 @@ function DashboardPage() {
               <TextInput
                 value={dashboard.description}
                 onChange={(event) =>
-                  queryClient.setQueryData(["dashboard", dashboardId], {
+                  queryClient.setQueryData(["dashboard", workspace.id, dashboardId], {
                     ...dashboard,
                     description: event.target.value,
                   })
@@ -129,7 +131,7 @@ function DashboardPage() {
             </>
           )}
         </div>
-        <div className="flex flex-wrap gap-2">
+        {canEdit ? <div className="flex flex-wrap gap-2">
           {editing ? (
             <PrimaryButton
               type="button"
@@ -154,8 +156,9 @@ function DashboardPage() {
           <GhostButton type="button" onClick={() => void removeDashboard()}>
             Delete
           </GhostButton>
-        </div>
+        </div> : null}
       </div>
+      {save.error ? <p role="alert" className="mt-4 text-rose-300">{save.error.message}</p> : null}
       <div className="dash-grid mt-8">
         {dashboard.widgets.map((widget) => (
           <WidgetCard key={widget.id} widget={widget} />

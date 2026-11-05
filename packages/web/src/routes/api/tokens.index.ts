@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { API_TOKEN_SCOPES, type ApiTokenScope } from "@dash/core";
 import { issueApiToken, listTokens } from "~/server/auth";
-import { isResponse, requireUser } from "~/server/guard";
+import { isResponse, requireUser, requireWorkspace } from "~/server/guard";
 import { error, json, readJson } from "~/server/http";
 
 const createSchema = z.object({
@@ -25,7 +25,7 @@ export const Route = createFileRoute("/api/tokens/")({
         return json({ tokens: await listTokens(auth.user.id) });
       },
       POST: async ({ request }) => {
-        const auth = await requireUser(request, "write");
+        const auth = await requireWorkspace(request, "read");
         if (isResponse(auth)) {
           return auth;
         }
@@ -41,6 +41,7 @@ export const Route = createFileRoute("/api/tokens/")({
           : null;
         const issued = await issueApiToken({
           userId: auth.user.id,
+          workspaceId: auth.workspace.id,
           name: parsed.data.name,
           scopes: parsed.data.scopes as ApiTokenScope[],
           expiresAt,

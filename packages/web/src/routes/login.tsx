@@ -41,7 +41,7 @@ function SetupPrompt() {
   return (
     <AuthCard
       title="Create the first account"
-      subtitle="This workspace has no users yet. The first account is the administrator. Additional people register after that, until an admin turns registration off in Settings."
+      subtitle="This organization has no users yet. The first account is the administrator. Additional people register after that, until an admin turns registration off in Settings."
     >
       <Link
         to="/register"
@@ -91,7 +91,7 @@ function LoginForm({
       subtitle={
         demoLogin
           ? `Local demo: ${demoLogin.email} / ${demoLogin.password}`
-          : "Sign in with your workspace account."
+          : "Sign in with your organization account."
       }
       onSubmit={(event) => void onSubmit(event)}
       footer={

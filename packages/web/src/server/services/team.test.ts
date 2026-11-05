@@ -1,3 +1,4 @@
+import { ensurePersonalWorkspace } from "./workspaces.ts";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   EmailTakenError,
@@ -117,7 +118,7 @@ describe("team", () => {
       expect(await previewInvitation(token)).toEqual({
         email: "linus@example.com",
         role: "admin",
-        workspaceName: "Acme",
+        organizationName: "Acme",
         invitedByName: "Ada",
         expiresAt: invitation.expiresAt,
       });
@@ -278,6 +279,7 @@ describe("team", () => {
 
       const issued = await issueApiToken({
         userId: ada.id,
+        workspaceId: await ensurePersonalWorkspace(ada.id),
         name: "automation",
         scopes: ["read", "write"],
         expiresAt: null,

@@ -1,5 +1,6 @@
 import type { DashboardWidget } from "@dash/core";
 import { EmailTakenError, countUsers, createUser, findUserByEmail, grantInitialAdmin } from "./auth.ts";
+import { ensurePersonalWorkspace } from "./services/workspaces.ts";
 import { getDb } from "./db.ts";
 import { getEnv } from "./env.ts";
 import { createDashboard, listDashboards } from "./services/dashboards.ts";
@@ -163,6 +164,7 @@ async function seedOnce(): Promise<void> {
       adminId = existing._id;
     }
     await grantInitialAdmin(adminId);
+    const workspaceId = await ensurePersonalWorkspace(adminId);
     await updateSettings({ name: "Dash", allowRegistration: true });
     if ((await listDataSources()).length === 0) {
       const source = await createDataSource({
@@ -171,8 +173,9 @@ async function seedOnce(): Promise<void> {
         config: { kind: "demo" },
         createdBy: adminId,
       });
-      if ((await listDashboards()).length === 0) {
+      if ((await listDashboards(workspaceId)).length === 0) {
         await createDashboard({
+          workspaceId,
           name: "Growth overview",
           description:
             "Revenue, acquisition, and product mix from the sample warehouse. Duplicate it or ask Dash MCP to add charts.",

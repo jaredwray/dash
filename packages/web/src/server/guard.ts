@@ -1,7 +1,8 @@
 import type { ApiTokenScope } from "@dash/core";
 import { resolveAuth } from "./auth.ts";
 import { ensureSeeded } from "./seed.ts";
-import { error, hasScope, isAdmin, type AuthContext } from "./http.ts";
+import { error, hasScope, isAdmin, type AuthContext, type WorkspaceAuthContext } from "./http.ts";
+import { ensurePersonalWorkspace, getWorkspace, WorkspaceError } from "./services/workspaces.ts";
 
 export async function withSeed<T>(fn: () => Promise<T> | T): Promise<T> {
   await ensureSeeded();
@@ -43,4 +44,27 @@ export async function requireAdminSession(request: Request): Promise<AuthContext
 
 export function isResponse(value: AuthContext | Response): value is Response {
   return value instanceof Response;
+}
+
+export async function requireWorkspace(
+  request: Request, scope: ApiTokenScope = "read",
+): Promise<WorkspaceAuthContext | Response> {
+  const auth = await requireUser(request, scope);
+  if (isResponse(auth)) return auth;
+  const requestedId = request.headers.get("x-dash-workspace-id");
+  if (auth.via === "token" && requestedId && requestedId !== auth.workspaceId) {
+    return error(403, "This token belongs to a different workspace", "forbidden");
+  }
+  const id = auth.via === "token" ? auth.workspaceId : requestedId ?? await ensurePersonalWorkspace(auth.user.id);
+  if (!id) return error(403, "The token has no workspace", "forbidden");
+  try {
+    const workspace = await getWorkspace(auth.user, id);
+    if (scope === "write" && workspace.role === "viewer") {
+      return error(403, "Editor access required", "forbidden");
+    }
+    return { ...auth, workspace };
+  } catch (cause) {
+    if (cause instanceof WorkspaceError) return error(cause.status, cause.message, "workspace_access");
+    throw cause;
+  }
 }

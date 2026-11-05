@@ -13,9 +13,12 @@ import {
 import { api } from "~/lib/api";
 import { fetchMe } from "~/lib/session";
 import { cn } from "~/lib/cn";
+import { WorkspaceProvider, useWorkspace } from "./WorkspaceProvider";
+import { Select } from "./ui";
 
 const NAV = [
   { to: "/dashboards", label: "Dashboards", icon: LayoutDashboard },
+  { to: "/workspaces", label: "Workspaces", icon: Users },
   { to: "/data-sources", label: "Data sources", icon: Database, admin: true },
   { to: "/team", label: "Team", icon: Users },
   { to: "/tokens", label: "API tokens", icon: KeyRound },
@@ -24,6 +27,7 @@ const NAV = [
 ] as const;
 
 export function AppShell({ user }: { user: PublicUser }) {
+  const { workspace, workspaces, selectWorkspace } = useWorkspace();
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -31,7 +35,7 @@ export function AppShell({ user }: { user: PublicUser }) {
   async function logout() {
     await api("/api/auth/logout", { method: "POST" });
     queryClient.clear();
-    await navigate({ to: "/login" });
+    await navigate({ to: "/login", search: { workspace: undefined } });
   }
 
   return (
@@ -46,6 +50,14 @@ export function AppShell({ user }: { user: PublicUser }) {
             <span className="block text-xs text-mist">AI analytics</span>
           </span>
         </Link>
+        <label className="mt-6 block text-xs text-mist">
+          Workspace
+          <Select className="mt-2" value={workspace.id} onChange={(event) => selectWorkspace(event.target.value)}>
+            {workspaces.map((item) => <option key={item.id} value={item.id}>
+              {item.name}{item.kind === "personal" ? item.ownerId === user.id ? " (yours)" : " (shared personal)" : ""}
+            </option>)}
+          </Select>
+        </label>
         <nav className="mt-6 flex gap-1 overflow-x-auto lg:mt-10 lg:flex-col">
           {NAV.filter((item) => !("admin" in item && item.admin) || user.role === "admin").map(
             (item) => {
@@ -102,5 +114,5 @@ export function AuthedGate() {
   if (me.isError || !me.data) {
     return <Navigate to="/login" />;
   }
-  return <AppShell user={me.data} />;
+  return <WorkspaceProvider key={me.data.id} user={me.data}><AppShell user={me.data} /></WorkspaceProvider>;
 }

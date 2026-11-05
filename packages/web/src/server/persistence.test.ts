@@ -6,12 +6,14 @@ import {
   createSession,
   createUser,
   findUserById,
+  findUserByEmail,
   grantInitialAdmin,
   issueApiToken,
   listTokens,
   resolveAuth,
   revokeApiToken,
 } from "./auth.ts";
+import { ensurePersonalWorkspace } from "./services/workspaces.ts";
 import { hashSecret } from "./crypto.ts";
 import { dashboards, sessions } from "./db.ts";
 import { SESSION_COOKIE } from "./http.ts";
@@ -72,6 +74,7 @@ describe("app database", () => {
 
     const issued = await issueApiToken({
       userId: user.id,
+      workspaceId: await ensurePersonalWorkspace(user.id),
       name: "mcp",
       scopes: ["read", "mcp"],
       expiresAt: null,
@@ -104,13 +107,16 @@ describe("app database", () => {
       password: "password123",
       role: "admin",
     });
+    const workspaceId = await ensurePersonalWorkspace(admin.id);
     const first = await createDashboard({
+      workspaceId,
       name: "First",
       description: "older",
       widgets: [],
       createdBy: admin.id,
     });
     const second = await createDashboard({
+      workspaceId,
       name: "Second",
       description: "newer",
       widgets: [],
@@ -119,13 +125,13 @@ describe("app database", () => {
     await (
       await dashboards()
     ).updateOne({ _id: first.id }, { $set: { updatedAt: "2000-01-01T00:00:00.000Z" } });
-    expect((await listDashboards()).map((dashboard) => dashboard.id)).toEqual([
+    expect((await listDashboards(workspaceId)).map((dashboard) => dashboard.id)).toEqual([
       second.id,
       first.id,
     ]);
 
     await Promise.all([
-      appendDashboardWidget(second.id, {
+      appendDashboardWidget(workspaceId, second.id, {
         id: "w1",
         type: "table",
         title: "One",
@@ -133,7 +139,7 @@ describe("app database", () => {
         dataSourceId: "demo",
         query: { resource: "product_sales" },
       }),
-      appendDashboardWidget(second.id, {
+      appendDashboardWidget(workspaceId, second.id, {
         id: "w2",
         type: "table",
         title: "Two",
@@ -142,7 +148,7 @@ describe("app database", () => {
         query: { resource: "product_sales" },
       }),
     ]);
-    const renamed = await updateDashboard(second.id, { name: "Renamed" });
+    const renamed = await updateDashboard(workspaceId, second.id, { name: "Renamed" });
     expect(renamed?.name).toBe("Renamed");
     expect(renamed?.widgets.map((widget) => widget.id).sort()).toEqual(["w1", "w2"]);
   });
@@ -178,7 +184,9 @@ describe("app database", () => {
     resetSeedForTests();
     await Promise.all([ensureSeeded(), ensureSeeded()]);
     expect(await countUsers()).toBe(1);
-    expect(await listDashboards()).toHaveLength(1);
+    const admin = (await findUserByEmail("admin@dash.dev"))!;
+    const workspaceId = await ensurePersonalWorkspace(admin._id);
+    expect(await listDashboards(workspaceId)).toHaveLength(1);
     await ensureSeeded();
     expect(await countUsers()).toBe(1);
   });

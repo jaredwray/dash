@@ -28,6 +28,7 @@ export interface DashboardWidget {
 }
 
 export interface Dashboard {
+  workspaceId: string;
   id: string;
   name: string;
   description: string;
