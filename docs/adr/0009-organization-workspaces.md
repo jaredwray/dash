@@ -32,3 +32,6 @@ A workspace link does not grant access. The recipient must sign in with an accou
 Workspace privacy protects dashboards. It does not restrict the organization's data sources. A user can query those sources from their personal workspace.
 
 The demo dashboard belongs to the demo admin's personal workspace. The demo data source remains available throughout the organization.
+
+Personal workspace creation uses a deterministic ID and an upsert. A later authenticated request can restore a missing personal workspace.
+An uncertain account insert retains its workspace because the account can exist despite the error. An unused personal workspace grants no access.

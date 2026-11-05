@@ -69,10 +69,11 @@ export async function createUser(input: {
       createdAt,
     });
   } catch (error) {
-    await workspaces().then((collection) => collection.deleteOne({ _id: workspaceId })).catch(() => undefined);
     if (error instanceof MongoServerError && error.code === 11000) {
+      await workspaces().then((collection) => collection.deleteOne({ _id: workspaceId })).catch(() => undefined);
       throw new EmailTakenError();
     }
+    // An uncertain insert can succeed. Keep its workspace available to that account.
     throw error;
   }
   return {

@@ -121,6 +121,39 @@ describe("organization workspaces", () => {
     ).resolves.toMatchObject({ email: "retry@example.com" });
   });
 
+  it("keeps the personal workspace when a user insert commits before an error", async () => {
+    const original = Collection.prototype.insertOne;
+    const insert = vi.spyOn(Collection.prototype, "insertOne").mockImplementation(async function (
+      this: Collection,
+      ...args
+    ) {
+      const result = await original.apply(this, args);
+      if (this.collectionName === "users") throw new Error("Insert response lost");
+      return result;
+    });
+    try {
+      await expect(
+        createUser({
+          email: "committed@example.com",
+          name: "Committed",
+          password: "password123",
+          role: "member",
+        }),
+      ).rejects.toThrow("Insert response lost");
+    } finally {
+      insert.mockRestore();
+    }
+    const user = (await findUserByEmail("committed@example.com"))!;
+    const personal = await (await workspaces()).findOne({ ownerId: user._id });
+    expect(personal?.kind).toBe("personal");
+    const session = await createSession(user._id);
+    const response = await call(WorkspaceIndex, "GET", session);
+    expect(response.status).toBe(200);
+    expect(
+      (await response.json()).workspaces.map((workspace: { id: string }) => workspace.id),
+    ).toEqual([personal?._id]);
+  });
+
   it("limits shared workspace creation and access changes to organization admins", async () => {
     expect(
       (await call(WorkspaceIndex, "POST", memberSession, { body: { name: "No" } })).status,
