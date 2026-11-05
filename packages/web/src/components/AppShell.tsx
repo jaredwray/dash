@@ -14,7 +14,7 @@ import { api } from "~/lib/api";
 import { fetchMe } from "~/lib/session";
 import { cn } from "~/lib/cn";
 import { WorkspaceProvider, useWorkspace } from "./WorkspaceProvider";
-import { Select } from "./ui";
+import { WorkspaceSwitcher } from "./WorkspaceSwitcher";
 
 const NAV = [
   { to: "/dashboards", label: "Dashboards", icon: LayoutDashboard },
@@ -27,7 +27,7 @@ const NAV = [
 ] as const;
 
 export function AppShell({ user }: { user: PublicUser }) {
-  const { workspace, workspaces, selectWorkspace } = useWorkspace();
+  const { workspaces } = useWorkspace();
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -50,14 +50,7 @@ export function AppShell({ user }: { user: PublicUser }) {
             <span className="block text-xs text-mist">AI analytics</span>
           </span>
         </Link>
-        <label className="mt-6 block text-xs text-mist">
-          Workspace
-          <Select className="mt-2" value={workspace.id} onChange={(event) => selectWorkspace(event.target.value)}>
-            {workspaces.map((item) => <option key={item.id} value={item.id}>
-              {item.name}{item.kind === "personal" ? item.ownerId === user.id ? " (yours)" : " (shared personal)" : ""}
-            </option>)}
-          </Select>
-        </label>
+        {workspaces.length > 1 ? <WorkspaceSwitcher userId={user.id} /> : null}
         <nav className="mt-6 flex gap-1 overflow-x-auto lg:mt-10 lg:flex-col">
           {NAV.filter((item) => !("admin" in item && item.admin) || user.role === "admin").map(
             (item) => {
