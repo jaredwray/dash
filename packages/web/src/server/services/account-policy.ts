@@ -6,6 +6,7 @@ import {
   countUsers,
   createUser,
   findUserByEmail,
+  findUserById,
   finishBootstrapAdmin,
   grantInitialAdmin,
   isActiveAccount,
@@ -89,6 +90,13 @@ export async function registerAccount(input: {
         return owner;
       }
       await releasePendingAccount(existing._id);
+      const started = await findUserById(existing._id);
+      if (started?.bootstrapClaim && (await grantInitialAdmin(existing._id))) {
+        const admin = await finishBootstrapAdmin(existing._id);
+        if (admin) {
+          return admin;
+        }
+      }
     }
     throw new RegistrationDeniedError(policy.denial);
   }
@@ -140,6 +148,13 @@ export async function registerAccount(input: {
     const restored = await finishBootstrapAdmin(userId);
     if (restored) {
       return restored;
+    }
+    const started = await findUserById(userId);
+    if (started?.bootstrapClaim && (await grantInitialAdmin(userId))) {
+      const admin = await finishBootstrapAdmin(userId);
+      if (admin) {
+        return admin;
+      }
     }
     throw new RegistrationDeniedError(denial);
   }

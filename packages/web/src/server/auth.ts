@@ -138,36 +138,21 @@ export async function finishBootstrapAdmin(userId: string): Promise<PublicUser |
     await users()
   ).findOneAndUpdate(
     { _id: userId },
-    { $set: { role: "admin", accountState: "active" } },
+    { $set: { role: "admin", accountState: "active", bootstrapClaim: true } },
     { returnDocument: "after" },
   );
   return row ? toPublicUser(row) : undefined;
 }
 
-/**
- * Remove a pending account. Do not remove the account that claimed the first admin.
- * Restore that account when the claim lands during the delete.
- */
+/** Remove a pending account. Skip an account that started the first-admin claim. */
 export async function releasePendingAccount(userId: string): Promise<void> {
-  if ((await bootstrapAdminId()) === userId) {
-    return;
-  }
-  const deleted = await (
+  await (
     await users()
-  ).findOneAndDelete({ _id: userId, accountState: "pending" });
-  if (!deleted) {
-    return;
-  }
-  if ((await bootstrapAdminId()) !== userId) {
-    return;
-  }
-  try {
-    await (await users()).insertOne(deleted);
-  } catch (error) {
-    if (!(error instanceof MongoServerError) || error.code !== 11000) {
-      throw error;
-    }
-  }
+  ).deleteOne({
+    _id: userId,
+    accountState: "pending",
+    bootstrapClaim: { $ne: true },
+  });
 }
 
 export async function findUserByEmail(email: string): Promise<UserDoc | undefined> {
@@ -180,32 +165,55 @@ export async function findUserById(id: string): Promise<UserDoc | undefined> {
   return row ?? undefined;
 }
 
-/**
- * The first successful claim on an empty app database becomes admin.
- * Later callers are not promoted.
- */
-export async function grantInitialAdmin(userId: string): Promise<boolean> {
+async function writeBootstrapAdminId(userId: string): Promise<boolean> {
   const settings = (await getDb()).collection<{ _id: string; adminUserId?: string }>("settings");
-  let adminUserId: string | undefined;
   try {
     const doc = await settings.findOneAndUpdate(
       { _id: "bootstrap" },
       { $setOnInsert: { adminUserId: userId } },
       { upsert: true, returnDocument: "after" },
     );
-    adminUserId = doc?.adminUserId;
+    return doc?.adminUserId === userId;
   } catch (error) {
     if (!(error instanceof MongoServerError) || error.code !== 11000) {
       throw error;
     }
-    adminUserId = (await settings.findOne({ _id: "bootstrap" }))?.adminUserId;
+    return (await settings.findOne({ _id: "bootstrap" }))?.adminUserId === userId;
   }
-  if (adminUserId !== userId) {
+}
+
+async function clearBootstrapClaim(userId: string): Promise<void> {
+  await (
+    await users()
+  ).updateOne({ _id: userId, accountState: "pending" }, { $unset: { bootstrapClaim: "" } });
+}
+
+/**
+ * The first successful claim on an empty app database becomes admin.
+ * The user row records the claim before the bootstrap document is written.
+ * Later callers are not promoted.
+ */
+export async function grantInitialAdmin(userId: string): Promise<boolean> {
+  const marked = await (
+    await users()
+  ).updateOne({ _id: userId, bootstrapClaim: { $ne: true } }, { $set: { bootstrapClaim: true } });
+  if (marked.matchedCount !== 1) {
+    const user = await findUserById(userId);
+    if (!user?.bootstrapClaim) {
+      return false;
+    }
+  }
+  const won = await writeBootstrapAdminId(userId);
+  if (!won) {
+    await clearBootstrapClaim(userId);
     return false;
   }
   const result = await (
     await users()
-  ).updateOne({ _id: userId }, { $set: { role: "admin", accountState: "active" } });
+  ).updateOne(
+    { _id: userId },
+    { $set: { role: "admin", accountState: "active", bootstrapClaim: true } },
+  );
   if (result.matchedCount !== 1) {
     throw new Error("The first account was not activated");
   }

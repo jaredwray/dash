@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { authenticatePassword, countUsers, createSession, createUser } from "../auth.ts";
-import { getDb } from "../db.ts";
+import { getDb, type UserDoc } from "../db.ts";
 import { destroyAppDatabase, useFreshAppDatabase } from "../test-db.ts";
 import { RegistrationDeniedError, registerAccount, registrationPolicy } from "./account-policy.ts";
 import { updateSettings } from "./settings.ts";
@@ -172,5 +172,37 @@ describe("registration policy", () => {
         expect.objectContaining({ email: "linus@acme.com", role: "member" }),
       ]),
     );
+  });
+
+  it("keeps a pending account that has started the first-admin claim", async () => {
+    await updateSettings({ allowedEmailDomains: ["acme.com"] });
+    const pending = await createUser({
+      email: "ada@other.com",
+      name: "Ada",
+      password: "password123",
+      role: "member",
+      accountState: "pending",
+    });
+    await (await getDb()).collection<UserDoc>("users").updateOne(
+      { _id: pending.id },
+      { $set: { bootstrapClaim: true } },
+    );
+    await createUser({
+      email: "linus@acme.com",
+      name: "Linus",
+      password: "password123",
+      role: "member",
+    });
+
+    const admin = await registerAccount({
+      email: "ada@other.com",
+      name: "Ada",
+      password: "password123",
+    });
+    expect(admin).toMatchObject({ id: pending.id, role: "admin" });
+    expect(await authenticatePassword("ada@other.com", "password123")).toMatchObject({
+      id: pending.id,
+      role: "admin",
+    });
   });
 });

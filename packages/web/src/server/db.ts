@@ -13,6 +13,8 @@ export interface UserDoc {
   createdAt: string;
   /** Absent on older documents. Those accounts are active. */
   accountState?: "active" | "pending";
+  /** True after this account starts the first-admin claim. */
+  bootstrapClaim?: boolean;
 }
 
 export interface SessionDoc {
