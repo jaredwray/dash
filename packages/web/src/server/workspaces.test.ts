@@ -1,7 +1,6 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { Collection } from "mongodb";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { PublicUser } from "@dash/core";
-import { createSession, createUser, findUserByEmail, issueApiToken } from "./auth.ts";
+import { createSession, createUser, issueApiToken } from "./auth.ts";
 import { workspaces } from "./db.ts";
 import { destroyAppDatabase, useFreshAppDatabase } from "./test-db.ts";
 import { ensurePersonalWorkspace, listWorkspaces } from "./services/workspaces.ts";
@@ -70,88 +69,36 @@ describe("organization workspaces", () => {
     return (await response.json()).workspace.id as string;
   }
 
-  it("creates exactly one private personal workspace per account", async () => {
-    expect(await (await workspaces()).countDocuments({ kind: "personal" })).toBe(2);
+  it("creates one private personal workspace on first access", async () => {
+    expect((await call(WorkspaceIndex, "GET", "")).status).toBe(401);
+    expect(await (await workspaces()).countDocuments()).toBe(0);
+    const responses = await Promise.all(
+      Array.from({ length: 8 }, () => call(WorkspaceIndex, "GET", memberSession)),
+    );
     const ids = await Promise.all(
-      Array.from({ length: 8 }, () => ensurePersonalWorkspace(member.id)),
+      responses.map(async (response) => {
+        expect(response.status).toBe(200);
+        const payload = await response.json();
+        expect(payload.workspaces).toHaveLength(1);
+        expect(payload.workspaces[0]).toMatchObject({
+          ownerId: member.id,
+          kind: "personal",
+          role: "owner",
+        });
+        return payload.workspaces[0].id as string;
+      }),
     );
     expect(new Set(ids).size).toBe(1);
     expect(await (await workspaces()).countDocuments({ ownerId: member.id })).toBe(1);
     const visible = await listWorkspaces(admin);
     expect(visible.map((workspace) => workspace.ownerId)).toEqual([admin.id]);
-    expect((await call(WorkspaceIndex, "GET", "")).status).toBe(401);
+    expect(await (await workspaces()).countDocuments({ kind: "personal" })).toBe(2);
     expect((await call(WorkspaceMembers, "GET", adminSession, { id: ids[0] })).status).toBe(404);
     const response = await call(DashboardIndex, "POST", memberSession, {
       body: { name: "My dashboard" },
     });
     expect(response.status).toBe(201);
     expect((await response.json()).dashboard.workspaceId).toBe(ids[0]);
-  });
-
-  it("does not create an account if its personal workspace cannot be saved", async () => {
-    const original = Collection.prototype.updateOne;
-    const update = vi.spyOn(Collection.prototype, "updateOne").mockImplementation(function (
-      this: Collection,
-      ...args
-    ) {
-      if (this.collectionName === "workspaces")
-        return Promise.reject(new Error("Workspace write failed"));
-      return original.apply(this, args);
-    });
-    try {
-      await expect(
-        createUser({
-          email: "retry@example.com",
-          name: "Retry",
-          password: "password123",
-          role: "member",
-        }),
-      ).rejects.toThrow("Workspace write failed");
-    } finally {
-      update.mockRestore();
-    }
-    expect(await findUserByEmail("retry@example.com")).toBeUndefined();
-    await expect(
-      createUser({
-        email: "retry@example.com",
-        name: "Retry",
-        password: "password123",
-        role: "member",
-      }),
-    ).resolves.toMatchObject({ email: "retry@example.com" });
-  });
-
-  it("keeps the personal workspace when a user insert commits before an error", async () => {
-    const original = Collection.prototype.insertOne;
-    const insert = vi.spyOn(Collection.prototype, "insertOne").mockImplementation(async function (
-      this: Collection,
-      ...args
-    ) {
-      const result = await original.apply(this, args);
-      if (this.collectionName === "users") throw new Error("Insert response lost");
-      return result;
-    });
-    try {
-      await expect(
-        createUser({
-          email: "committed@example.com",
-          name: "Committed",
-          password: "password123",
-          role: "member",
-        }),
-      ).rejects.toThrow("Insert response lost");
-    } finally {
-      insert.mockRestore();
-    }
-    const user = (await findUserByEmail("committed@example.com"))!;
-    const personal = await (await workspaces()).findOne({ ownerId: user._id });
-    expect(personal?.kind).toBe("personal");
-    const session = await createSession(user._id);
-    const response = await call(WorkspaceIndex, "GET", session);
-    expect(response.status).toBe(200);
-    expect(
-      (await response.json()).workspaces.map((workspace: { id: string }) => workspace.id),
-    ).toEqual([personal?._id]);
   });
 
   it("limits shared workspace creation and access changes to organization admins", async () => {

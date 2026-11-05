@@ -5,9 +5,9 @@ import {
   publicTokenPrefix,
 } from "@dash/core";
 import { getEnv } from "./env.ts";
-import { ensurePersonalWorkspace, getWorkspace } from "./services/workspaces.ts";
+import { getWorkspace } from "./services/workspaces.ts";
 import { MongoServerError } from "mongodb";
-import { apiTokens, getDb, nowIso, sessions, users, workspaces, type ApiTokenDoc, type UserDoc } from "./db.ts";
+import { apiTokens, getDb, nowIso, sessions, users, type ApiTokenDoc, type UserDoc } from "./db.ts";
 import {
   generateApiToken,
   generateSessionToken,
@@ -55,8 +55,6 @@ export async function createUser(input: {
   const id = randomId();
   const createdAt = nowIso();
   const passwordHash = await hashPassword(input.password);
-  // Create the workspace first so a failure cannot leave the first account without an admin.
-  const workspaceId = await ensurePersonalWorkspace(id);
   try {
     await (
       await users()
@@ -70,10 +68,8 @@ export async function createUser(input: {
     });
   } catch (error) {
     if (error instanceof MongoServerError && error.code === 11000) {
-      await workspaces().then((collection) => collection.deleteOne({ _id: workspaceId })).catch(() => undefined);
       throw new EmailTakenError();
     }
-    // An uncertain insert can succeed. Keep its workspace available to that account.
     throw error;
   }
   return {

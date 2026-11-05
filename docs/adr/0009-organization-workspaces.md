@@ -11,7 +11,7 @@ Each Dash instance serves one organization. Users need a personal workspace and 
 ## Decision
 
 - Accounts, organization roles, invitations, settings, and data sources belong to the instance.
-- Each account receives one personal workspace. A unique database index prevents duplicate personal workspaces.
+- Dash creates one personal workspace on the user's first workspace access. A unique database index prevents duplicate personal workspaces.
 - A personal workspace is private by default. Its owner can share it with existing organization members.
 - Only organization admins can create shared workspaces. All organization admins can manage these workspaces.
 - Organization admins cannot access another person's personal workspace without an explicit grant.
@@ -33,5 +33,5 @@ Workspace privacy protects dashboards. It does not restrict the organization's d
 
 The demo dashboard belongs to the demo admin's personal workspace. The demo data source remains available throughout the organization.
 
-Personal workspace creation uses a deterministic ID and an upsert. A later authenticated request can restore a missing personal workspace.
-An uncertain account insert retains its workspace because the account can exist despite the error. An unused personal workspace grants no access.
+Personal workspace creation uses a deterministic ID and an upsert after authentication. Account creation does not write or delete workspace records.
+This separates account creation from workspace creation without a transaction. A failed workspace request can retry the same upsert.
