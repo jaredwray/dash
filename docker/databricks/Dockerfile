@@ -1,6 +1,6 @@
-FROM python:3.12-slim-bookworm
+FROM python:3.12.16-slim-bookworm@sha256:e697c81897302a4c4333bade000d98038fbb21eb064f8ee1fd42d02ebcd9d337
 
-RUN pip install --no-cache-dir --disable-pip-version-check "duckdb==1.2.2"
+RUN pip install --no-cache-dir --disable-pip-version-check "duckdb==2.0.0"
 
 WORKDIR /opt/dash
 COPY server.py healthcheck.py ./
