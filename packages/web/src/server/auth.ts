@@ -120,9 +120,54 @@ export async function activateAccount(userId: string): Promise<PublicUser> {
   return toPublicUser(row);
 }
 
-/** Remove a pending account. An active account is left in place. */
+async function bootstrapAdminId(): Promise<string | undefined> {
+  const settings = (await getDb()).collection<{ _id: string; adminUserId?: string }>("settings");
+  const doc = await settings.findOne({ _id: "bootstrap" });
+  return doc?.adminUserId;
+}
+
+/**
+ * Activate the account that already claimed the first admin.
+ * Return undefined when this account does not own that claim.
+ */
+export async function finishBootstrapAdmin(userId: string): Promise<PublicUser | undefined> {
+  if ((await bootstrapAdminId()) !== userId) {
+    return undefined;
+  }
+  const row = await (
+    await users()
+  ).findOneAndUpdate(
+    { _id: userId },
+    { $set: { role: "admin", accountState: "active" } },
+    { returnDocument: "after" },
+  );
+  return row ? toPublicUser(row) : undefined;
+}
+
+/**
+ * Remove a pending account. Do not remove the account that claimed the first admin.
+ * Restore that account when the claim lands during the delete.
+ */
 export async function releasePendingAccount(userId: string): Promise<void> {
-  await (await users()).deleteOne({ _id: userId, accountState: "pending" });
+  if ((await bootstrapAdminId()) === userId) {
+    return;
+  }
+  const deleted = await (
+    await users()
+  ).findOneAndDelete({ _id: userId, accountState: "pending" });
+  if (!deleted) {
+    return;
+  }
+  if ((await bootstrapAdminId()) !== userId) {
+    return;
+  }
+  try {
+    await (await users()).insertOne(deleted);
+  } catch (error) {
+    if (!(error instanceof MongoServerError) || error.code !== 11000) {
+      throw error;
+    }
+  }
 }
 
 export async function findUserByEmail(email: string): Promise<UserDoc | undefined> {
@@ -158,7 +203,12 @@ export async function grantInitialAdmin(userId: string): Promise<boolean> {
   if (adminUserId !== userId) {
     return false;
   }
-  await (await users()).updateOne({ _id: userId }, { $set: { role: "admin" } });
+  const result = await (
+    await users()
+  ).updateOne({ _id: userId }, { $set: { role: "admin", accountState: "active" } });
+  if (result.matchedCount !== 1) {
+    throw new Error("The first account was not activated");
+  }
   return true;
 }
 

@@ -6,6 +6,7 @@ import {
   countUsers,
   createUser,
   findUserByEmail,
+  finishBootstrapAdmin,
   grantInitialAdmin,
   isActiveAccount,
   releasePendingAccount,
@@ -82,6 +83,11 @@ export async function registerAccount(input: {
   const policy = await registrationPolicy(email);
   if (policy.denial) {
     if (existing) {
+      await revisePendingAccount(existing._id, { name, password: input.password });
+      const owner = await finishBootstrapAdmin(existing._id);
+      if (owner) {
+        return owner;
+      }
       await releasePendingAccount(existing._id);
     }
     throw new RegistrationDeniedError(policy.denial);
@@ -118,11 +124,23 @@ export async function registerAccount(input: {
     }
   }
   if (policy.userCount === 0 && (await grantInitialAdmin(userId))) {
-    return activateAccount(userId);
+    const admin = await finishBootstrapAdmin(userId);
+    if (!admin) {
+      throw new Error("The first account was not activated");
+    }
+    return admin;
+  }
+  const owner = await finishBootstrapAdmin(userId);
+  if (owner) {
+    return owner;
   }
   const denial = await laterAccountDenial(email);
   if (denial) {
     await releasePendingAccount(userId);
+    const restored = await finishBootstrapAdmin(userId);
+    if (restored) {
+      return restored;
+    }
     throw new RegistrationDeniedError(denial);
   }
   return activateAccount(userId);

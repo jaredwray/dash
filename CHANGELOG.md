@@ -8,6 +8,7 @@ All notable changes to Dash are documented here.
 
 - A concurrent first registration does not keep an account when its email domain is not on the list. Only the account that claims the first user skips the list.
 - A rejected registration cannot sign in when removal of that account fails. The account stays pending, and a later attempt removes it or accepts it.
+- A later registration does not remove the pending account that claimed the first admin. That account becomes the administrator.
 - Sidebar sections use a subtle blue selected state with a left accent and brighter icon. Keyboard focus gets its own inset outline, and the current section is announced to screen readers.
 - App MongoDB connections authenticate a URI user against `admin` when `authSource` is omitted, which is where Atlas stores SCRAM users. The database named in the URI is created on that first connection. A `dbAdmin` role still cannot store accounts; sign-in reports that the user needs `readWrite` on that database. MongoDB data-source connection strings follow the same `authSource` default.
 - `pnpm dev` reads `MONGODB_URI`, `DASH_SECRET`, and `DASH_SEED_DEMO` from the repo `.env`. Vite does not copy those unprefixed variables into the server process. Values already set in the environment win, and production ignores `.env`.
