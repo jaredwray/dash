@@ -2,11 +2,14 @@ import type { PublicUser } from "@dash/core";
 import { emailDomainAllowed } from "@dash/core";
 import {
   EmailTakenError,
+  activateAccount,
   countUsers,
   createUser,
-  deleteUser,
   findUserByEmail,
   grantInitialAdmin,
+  isActiveAccount,
+  releasePendingAccount,
+  revisePendingAccount,
 } from "../auth.ts";
 import { getSettings } from "./settings.ts";
 
@@ -37,34 +40,33 @@ export class RegistrationDeniedError extends Error {
 /**
  * The first account skips the registration switch and the domain list.
  * A later account must pass both checks. A closed registration wins.
- * A request that loses the first-account claim is checked again.
  */
+async function laterAccountDenial(email: string): Promise<RegistrationDenial | undefined> {
+  const settings = await getSettings();
+  if (!settings.allowRegistration) {
+    return { code: "registration_closed", message: "Registration is closed" };
+  }
+  if (!emailDomainAllowed(email, settings.allowedEmailDomains)) {
+    return { code: "domain_not_allowed", message: EMAIL_DOMAIN_NOT_ALLOWED_MESSAGE };
+  }
+}
+
 export async function registrationPolicy(email: string): Promise<{
   userCount: number;
   denial?: RegistrationDenial;
 }> {
-  const [settings, userCount] = await Promise.all([getSettings(), countUsers()]);
+  const userCount = await countUsers();
   if (userCount === 0) {
     return { userCount };
   }
-  if (!settings.allowRegistration) {
-    return {
-      userCount,
-      denial: { code: "registration_closed", message: "Registration is closed" },
-    };
-  }
-  if (!emailDomainAllowed(email, settings.allowedEmailDomains)) {
-    return {
-      userCount,
-      denial: { code: "domain_not_allowed", message: EMAIL_DOMAIN_NOT_ALLOWED_MESSAGE },
-    };
-  }
-  return { userCount };
+  const denial = await laterAccountDenial(email);
+  return denial ? { userCount, denial } : { userCount };
 }
 
 /**
- * Create an account. Only the request that claims the first account skips the
- * domain list. A later request in that race is removed when the list rejects it.
+ * Create an account as pending. The person cannot sign in until the account is active.
+ * Only the first claimed account skips the domain list.
+ * A rejected account stays pending when removal fails.
  */
 export async function registerAccount(input: {
   email: string;
@@ -72,31 +74,58 @@ export async function registerAccount(input: {
   password: string;
 }): Promise<PublicUser> {
   const email = input.email.trim().toLowerCase();
-  const policy = await registrationPolicy(email);
-  if (policy.denial) {
-    throw new RegistrationDeniedError(policy.denial);
-  }
-  if (await findUserByEmail(email)) {
+  const name = input.name.trim();
+  let existing = await findUserByEmail(email);
+  if (existing && isActiveAccount(existing)) {
     throw new EmailTakenError();
   }
-  const user = await createUser({
-    email,
-    name: input.name.trim(),
-    password: input.password,
-    role: "member",
-  });
-  if (policy.userCount !== 0) {
-    return user;
+  const policy = await registrationPolicy(email);
+  if (policy.denial) {
+    if (existing) {
+      await releasePendingAccount(existing._id);
+    }
+    throw new RegistrationDeniedError(policy.denial);
   }
-  if (await grantInitialAdmin(user.id)) {
-    return { ...user, role: "admin" };
+  let userId: string;
+  if (existing) {
+    userId = existing._id;
+  } else {
+    try {
+      userId = (
+        await createUser({
+          email,
+          name,
+          password: input.password,
+          role: "member",
+          accountState: "pending",
+        })
+      ).id;
+    } catch (error) {
+      if (!(error instanceof EmailTakenError)) {
+        throw error;
+      }
+      existing = await findUserByEmail(email);
+      if (!existing || isActiveAccount(existing)) {
+        throw error;
+      }
+      userId = existing._id;
+    }
   }
-  const after = await registrationPolicy(email);
-  if (after.denial) {
-    await deleteUser(user.id);
-    throw new RegistrationDeniedError(after.denial);
+  if (existing) {
+    const revised = await revisePendingAccount(userId, { name, password: input.password });
+    if (!revised) {
+      throw new EmailTakenError();
+    }
   }
-  return user;
+  if (policy.userCount === 0 && (await grantInitialAdmin(userId))) {
+    return activateAccount(userId);
+  }
+  const denial = await laterAccountDenial(email);
+  if (denial) {
+    await releasePendingAccount(userId);
+    throw new RegistrationDeniedError(denial);
+  }
+  return activateAccount(userId);
 }
 
 /** Invitations use the domain list even when open registration is off. */

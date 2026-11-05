@@ -42,8 +42,15 @@ export function toPublicUser(row: UserDoc): PublicUser {
   };
 }
 
+/** A pending account cannot sign in. Older documents have no state and stay active. */
+export function isActiveAccount(user: Pick<UserDoc, "accountState">): boolean {
+  return user.accountState !== "pending";
+}
+
 export function countUsers(): Promise<number> {
-  return users().then((collection) => collection.countDocuments());
+  return users().then((collection) =>
+    collection.countDocuments({ accountState: { $ne: "pending" } }),
+  );
 }
 
 export async function createUser(input: {
@@ -51,6 +58,7 @@ export async function createUser(input: {
   name: string;
   password: string;
   role: PublicUser["role"];
+  accountState?: "pending";
 }): Promise<PublicUser> {
   const id = randomId();
   const createdAt = nowIso();
@@ -65,6 +73,7 @@ export async function createUser(input: {
       role: input.role,
       passwordHash,
       createdAt,
+      ...(input.accountState === "pending" ? { accountState: "pending" as const } : {}),
     });
   } catch (error) {
     if (error instanceof MongoServerError && error.code === 11000) {
@@ -81,11 +90,39 @@ export async function createUser(input: {
   };
 }
 
-export async function deleteUser(userId: string): Promise<void> {
-  const result = await (await users()).deleteOne({ _id: userId });
-  if (result.deletedCount !== 1) {
-    throw new Error("The rejected account was not removed");
+/** Replace the name and password on a pending account. An active account is left unchanged. */
+export async function revisePendingAccount(
+  userId: string,
+  input: { name: string; password: string },
+): Promise<boolean> {
+  const passwordHash = await hashPassword(input.password);
+  const result = await (
+    await users()
+  ).updateOne(
+    { _id: userId, accountState: "pending" },
+    { $set: { name: input.name, passwordHash } },
+  );
+  return result.matchedCount === 1;
+}
+
+/** Mark a pending account active and return it. */
+export async function activateAccount(userId: string): Promise<PublicUser> {
+  const row = await (
+    await users()
+  ).findOneAndUpdate(
+    { _id: userId },
+    { $set: { accountState: "active" } },
+    { returnDocument: "after" },
+  );
+  if (!row || !isActiveAccount(row)) {
+    throw new Error("User not found");
   }
+  return toPublicUser(row);
+}
+
+/** Remove a pending account. An active account is left in place. */
+export async function releasePendingAccount(userId: string): Promise<void> {
+  await (await users()).deleteOne({ _id: userId, accountState: "pending" });
 }
 
 export async function findUserByEmail(email: string): Promise<UserDoc | undefined> {
@@ -127,7 +164,7 @@ export async function grantInitialAdmin(userId: string): Promise<boolean> {
 
 export async function assertUserExists(userId: string): Promise<void> {
   const user = await findUserById(userId);
-  if (!user) {
+  if (!user || !isActiveAccount(user)) {
     throw new Error("User not found");
   }
 }
@@ -141,7 +178,7 @@ export async function authenticatePassword(
     return undefined;
   }
   const ok = await verifyPassword(password, user.passwordHash);
-  if (!ok) {
+  if (!ok || !isActiveAccount(user)) {
     return undefined;
   }
   return toPublicUser(user);
@@ -178,7 +215,7 @@ async function sessionUser(token: string): Promise<PublicUser | undefined> {
     return undefined;
   }
   const user = await findUserById(session.userId);
-  return user ? toPublicUser(user) : undefined;
+  return user && isActiveAccount(user) ? toPublicUser(user) : undefined;
 }
 
 function toPublicToken(row: ApiTokenDoc) {
@@ -259,7 +296,7 @@ async function tokenAuth(token: string): Promise<AuthContext | undefined> {
     return undefined;
   }
   const user = await findUserById(row.userId);
-  if (!user) {
+  if (!user || !isActiveAccount(user)) {
     return undefined;
   }
   await collection.updateOne({ _id: row._id }, { $set: { lastUsedAt: nowIso() } });

@@ -11,6 +11,8 @@ export interface UserDoc {
   role: PublicUser["role"];
   passwordHash: string;
   createdAt: string;
+  /** Absent on older documents. Those accounts are active. */
+  accountState?: "active" | "pending";
 }
 
 export interface SessionDoc {

@@ -32,9 +32,12 @@ function isExpired(row: Pick<InvitationDoc, "expiresAt">, now = Date.now()): boo
   return new Date(row.expiresAt).getTime() <= now;
 }
 
-/** Everyone with an account, oldest first so the founding admin leads the list. */
+/** Active accounts, oldest first. The founding admin leads the list. */
 export async function listMembers(): Promise<PublicUser[]> {
-  const rows = await (await users()).find().sort({ createdAt: 1, _id: 1 }).toArray();
+  const rows = await (await users())
+    .find({ accountState: { $ne: "pending" } })
+    .sort({ createdAt: 1, _id: 1 })
+    .toArray();
   return rows.map(toPublicUser);
 }
 
@@ -49,7 +52,7 @@ export async function setMemberRole(
 ): Promise<PublicUser | undefined> {
   const collection = await users();
   const before = await collection.findOneAndUpdate(
-    { _id: userId },
+    { _id: userId, accountState: { $ne: "pending" } },
     { $set: { role } },
     { returnDocument: "before" },
   );
@@ -57,7 +60,10 @@ export async function setMemberRole(
     return undefined;
   }
   if (before.role === "admin" && role !== "admin") {
-    const admins = await collection.countDocuments({ role: "admin" });
+    const admins = await collection.countDocuments({
+      role: "admin",
+      accountState: { $ne: "pending" },
+    });
     if (admins === 0) {
       await collection.updateOne({ _id: userId, role }, { $set: { role: "admin" } });
       throw new LastAdminError();
