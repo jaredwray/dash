@@ -15,7 +15,7 @@ import {
 } from "./auth.ts";
 import { ensurePersonalWorkspace } from "./services/workspaces.ts";
 import { hashSecret } from "./crypto.ts";
-import { dashboards, sessions } from "./db.ts";
+import { dashboards, sessions, workspaces } from "./db.ts";
 import { SESSION_COOKIE } from "./http.ts";
 import { ensureSeeded, resetSeedForTests } from "./seed.ts";
 import { appendDashboardWidget, createDashboard, listDashboards, updateDashboard } from "./services/dashboards.ts";
@@ -53,6 +53,7 @@ describe("app database", () => {
         role: "member",
       }),
     ).rejects.toBeInstanceOf(EmailTakenError);
+    expect(await (await workspaces()).countDocuments()).toBe(1);
 
     const authenticated = await authenticatePassword("ada@example.com", "password123");
     expect(authenticated?.id).toBe(user.id);

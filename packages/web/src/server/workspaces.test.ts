@@ -1,6 +1,7 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { Collection } from "mongodb";
 import type { PublicUser } from "@dash/core";
-import { createSession, createUser, issueApiToken } from "./auth.ts";
+import { createSession, createUser, findUserByEmail, issueApiToken } from "./auth.ts";
 import { workspaces } from "./db.ts";
 import { destroyAppDatabase, useFreshAppDatabase } from "./test-db.ts";
 import { ensurePersonalWorkspace, listWorkspaces } from "./services/workspaces.ts";
@@ -85,6 +86,39 @@ describe("organization workspaces", () => {
     });
     expect(response.status).toBe(201);
     expect((await response.json()).dashboard.workspaceId).toBe(ids[0]);
+  });
+
+  it("does not create an account if its personal workspace cannot be saved", async () => {
+    const original = Collection.prototype.updateOne;
+    const update = vi.spyOn(Collection.prototype, "updateOne").mockImplementation(function (
+      this: Collection,
+      ...args
+    ) {
+      if (this.collectionName === "workspaces")
+        return Promise.reject(new Error("Workspace write failed"));
+      return original.apply(this, args);
+    });
+    try {
+      await expect(
+        createUser({
+          email: "retry@example.com",
+          name: "Retry",
+          password: "password123",
+          role: "member",
+        }),
+      ).rejects.toThrow("Workspace write failed");
+    } finally {
+      update.mockRestore();
+    }
+    expect(await findUserByEmail("retry@example.com")).toBeUndefined();
+    await expect(
+      createUser({
+        email: "retry@example.com",
+        name: "Retry",
+        password: "password123",
+        role: "member",
+      }),
+    ).resolves.toMatchObject({ email: "retry@example.com" });
   });
 
   it("limits shared workspace creation and access changes to organization admins", async () => {
@@ -342,6 +376,22 @@ describe("organization workspaces", () => {
     expect((await call(DashboardIndex, "POST", "", { token, body: { name: "No" } })).status).toBe(
       403,
     );
+    expect(
+      (
+        await call(Tokens, "POST", memberSession, {
+          workspaceId: id,
+          body: { name: "Viewer MCP", scopes: ["read", "mcp"] },
+        })
+      ).status,
+    ).toBe(201);
+    expect(
+      (
+        await call(Tokens, "POST", "", {
+          token: readOnly.token,
+          body: { name: "No", scopes: ["read", "write"] },
+        })
+      ).status,
+    ).toBe(403);
     await call(WorkspaceMembers, "PUT", adminSession, {
       id,
       body: { userId: member.id, role: null },

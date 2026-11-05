@@ -7,7 +7,7 @@ import {
 import { getEnv } from "./env.ts";
 import { ensurePersonalWorkspace, getWorkspace } from "./services/workspaces.ts";
 import { MongoServerError } from "mongodb";
-import { apiTokens, getDb, nowIso, sessions, users, type ApiTokenDoc, type UserDoc } from "./db.ts";
+import { apiTokens, getDb, nowIso, sessions, users, workspaces, type ApiTokenDoc, type UserDoc } from "./db.ts";
 import {
   generateApiToken,
   generateSessionToken,
@@ -55,6 +55,8 @@ export async function createUser(input: {
   const id = randomId();
   const createdAt = nowIso();
   const passwordHash = await hashPassword(input.password);
+  // Create the workspace first so a failure cannot leave the first account without an admin.
+  const workspaceId = await ensurePersonalWorkspace(id);
   try {
     await (
       await users()
@@ -67,12 +69,12 @@ export async function createUser(input: {
       createdAt,
     });
   } catch (error) {
+    await workspaces().then((collection) => collection.deleteOne({ _id: workspaceId })).catch(() => undefined);
     if (error instanceof MongoServerError && error.code === 11000) {
       throw new EmailTakenError();
     }
     throw error;
   }
-  await ensurePersonalWorkspace(id);
   return {
     id,
     email: input.email,
