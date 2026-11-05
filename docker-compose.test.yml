@@ -66,7 +66,7 @@ services:
       start_period: 40s
 
   mongodb:
-    image: mongo:7.0
+    image: mongo:7.0.45@sha256:8bb4442761a63a8dda452744082cdac9644b429807eb977b42324a63cef59ca4
     container_name: dash-test-mongodb
     # Each isolated test database opens its own collection and index files.
     ulimits:
@@ -112,7 +112,7 @@ services:
       start_period: 10s
 
   bigquery:
-    image: ghcr.io/goccy/bigquery-emulator:0.8.1
+    image: ghcr.io/goccy/bigquery-emulator:0.8.1@sha256:f4e428d265a93dc5ce36c294e1c584c7c9b384117d47ab8ddbb63d8d50b7f393
     container_name: dash-test-bigquery
     # In-memory emulator capped like a micro instance: 256 MiB and half a CPU.
     # The image entrypoint is the emulator binary; replace it so the fixture

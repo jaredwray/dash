@@ -10,6 +10,7 @@ All notable changes to Dash are documented here.
 - A rejected registration cannot sign in when removal of that account fails. The account stays pending, and a later attempt removes it or accepts it.
 - A later registration does not remove the pending account that claimed the first admin. That account becomes the administrator.
 - A pending account that has started the first-admin claim is not removed before that claim is stored.
+- Cloud setup installs Aikido Safe Chain 1.5.27. Version 1.5.15 exits on pnpm 12, so the environment build fails and agents boot the default image.
 - Sidebar sections use a subtle blue selected state with a left accent and brighter icon. Keyboard focus gets its own inset outline, and the current section is announced to screen readers.
 - App MongoDB connections authenticate a URI user against `admin` when `authSource` is omitted, which is where Atlas stores SCRAM users. The database named in the URI is created on that first connection. A `dbAdmin` role still cannot store accounts; sign-in reports that the user needs `readWrite` on that database. MongoDB data-source connection strings follow the same `authSource` default.
 - `pnpm dev` reads `MONGODB_URI`, `DASH_SECRET`, and `DASH_SEED_DEMO` from the repo `.env`. Vite does not copy those unprefixed variables into the server process. Values already set in the environment win, and production ignores `.env`.
