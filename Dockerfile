@@ -1,6 +1,5 @@
 # Cloudflare Containers run linux/amd64. `wrangler deploy` builds and pushes this image.
-# The build stage pins the index digest of node:24.22.2-bookworm-slim.
-# The runtime stage pins the linux/amd64 manifest.
+# Both stages pin the index digest of node:24.22.2-bookworm-slim.
 
 FROM node:24.22.2-bookworm-slim@sha256:c86ecead9e55a5210ac1727de38a4ca840bf03dcaf34dc9749addbf383b1920c AS build
 
@@ -14,7 +13,7 @@ COPY . .
 RUN pnpm install --frozen-lockfile --filter @dash/web...
 RUN pnpm --filter @dash/web build
 
-FROM node:24-bookworm-slim@sha256:a43f7fc3e52e87d12a905f46eea0275def84ca8f2981a5b53fed44d7fb398ee0 AS runtime
+FROM node:24.22.2-bookworm-slim@sha256:c86ecead9e55a5210ac1727de38a4ca840bf03dcaf34dc9749addbf383b1920c AS runtime
 
 WORKDIR /app
 ENV NODE_ENV=production \
