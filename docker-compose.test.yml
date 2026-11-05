@@ -112,7 +112,7 @@ services:
       start_period: 10s
 
   bigquery:
-    image: ghcr.io/goccy/bigquery-emulator:0.8.1
+    image: ghcr.io/goccy/bigquery-emulator:0.8.1@sha256:f4e428d265a93dc5ce36c294e1c584c7c9b384117d47ab8ddbb63d8d50b7f393
     container_name: dash-test-bigquery
     # In-memory emulator capped like a micro instance: 256 MiB and half a CPU.
     # The image entrypoint is the emulator binary; replace it so the fixture
