@@ -20,6 +20,47 @@ function WorkspaceIcon({ workspace }: { workspace: Workspace }) {
 
 export function WorkspaceSwitcher({ userId }: { userId: string }) {
   const { workspace, workspaces, selectWorkspace } = useWorkspace();
+  const [supportsPopover, setSupportsPopover] = useState(false);
+
+  useEffect(() => {
+    setSupportsPopover(
+      "popover" in HTMLElement.prototype &&
+        typeof HTMLElement.prototype.showPopover === "function" &&
+        typeof HTMLElement.prototype.hidePopover === "function",
+    );
+  }, []);
+
+  if (supportsPopover) return <WorkspaceMenu userId={userId} />;
+
+  return (
+    <label className="relative mt-6 block">
+      <span className="sr-only">Switch workspace</span>
+      <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center">
+        <WorkspaceIcon workspace={workspace} />
+      </span>
+      <select
+        value={workspace.id}
+        onChange={(event) => selectWorkspace(event.target.value)}
+        className="w-full appearance-none truncate rounded-xl border border-line bg-panel py-4 pl-14 pr-9 text-sm text-paper hover:border-white/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+      >
+        {workspaces.map((item) => (
+          <option key={item.id} value={item.id}>
+            {item.name}
+            {item.ownerId === userId ? " · Your workspace" : ""}
+          </option>
+        ))}
+      </select>
+      <ChevronsUpDown
+        size={15}
+        aria-hidden="true"
+        className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-mist"
+      />
+    </label>
+  );
+}
+
+function WorkspaceMenu({ userId }: { userId: string }) {
+  const { workspace, workspaces, selectWorkspace } = useWorkspace();
   const menuId = useId();
   const trigger = useRef<HTMLButtonElement>(null);
   const menu = useRef<HTMLDivElement>(null);
