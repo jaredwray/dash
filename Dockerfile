@@ -1,7 +1,8 @@
 # Cloudflare Containers run linux/amd64. `wrangler deploy` builds and pushes this image.
-# Digest is the linux/amd64 manifest for node:24-bookworm-slim.
+# The build stage pins the index digest of node:24.22.2-bookworm-slim.
+# The runtime stage pins the linux/amd64 manifest.
 
-FROM node:24-bookworm-slim@sha256:a43f7fc3e52e87d12a905f46eea0275def84ca8f2981a5b53fed44d7fb398ee0 AS build
+FROM node:24.22.2-bookworm-slim@sha256:c86ecead9e55a5210ac1727de38a4ca840bf03dcaf34dc9749addbf383b1920c AS build
 
 WORKDIR /app
 ENV CI=true
