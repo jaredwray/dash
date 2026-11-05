@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { isChartType } from "@dash/core";
-import { isResponse, requireUser } from "~/server/guard";
+import { isResponse, requireWorkspace } from "~/server/guard";
 import { error, json, readJson } from "~/server/http";
 import {
   deleteDashboard,
@@ -77,18 +77,18 @@ export const Route = createFileRoute("/api/dashboards/$id")({
   server: {
     handlers: {
       GET: async ({ request, params }) => {
-        const auth = await requireUser(request, "read");
+        const auth = await requireWorkspace(request, "read");
         if (isResponse(auth)) {
           return auth;
         }
-        const dashboard = await getDashboard(params.id);
+        const dashboard = await getDashboard(auth.workspace.id, params.id);
         if (!dashboard) {
           return error(404, "Dashboard not found", "not_found");
         }
         return json({ dashboard });
       },
       PATCH: async ({ request, params }) => {
-        const auth = await requireUser(request, "write");
+        const auth = await requireWorkspace(request, "write");
         if (isResponse(auth)) {
           return auth;
         }
@@ -96,18 +96,18 @@ export const Route = createFileRoute("/api/dashboards/$id")({
         if (!parsed.success) {
           return error(400, "Invalid dashboard payload", "invalid_body");
         }
-        const dashboard = await updateDashboard(params.id, parsed.data);
+        const dashboard = await updateDashboard(auth.workspace.id, params.id, parsed.data);
         if (!dashboard) {
           return error(404, "Dashboard not found", "not_found");
         }
         return json({ dashboard });
       },
       DELETE: async ({ request, params }) => {
-        const auth = await requireUser(request, "write");
+        const auth = await requireWorkspace(request, "write");
         if (isResponse(auth)) {
           return auth;
         }
-        if (!(await deleteDashboard(params.id))) {
+        if (!(await deleteDashboard(auth.workspace.id, params.id))) {
           return error(404, "Dashboard not found", "not_found");
         }
         return json({ ok: true });

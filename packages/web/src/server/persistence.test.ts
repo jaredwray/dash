@@ -1,4 +1,5 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { Collection } from "mongodb";
 import {
   EmailTakenError,
   authenticatePassword,
@@ -6,18 +7,21 @@ import {
   createSession,
   createUser,
   findUserById,
+  findUserByEmail,
   grantInitialAdmin,
   issueApiToken,
   listTokens,
   resolveAuth,
   revokeApiToken,
 } from "./auth.ts";
+import { ensurePersonalWorkspace } from "./services/workspaces.ts";
 import { hashSecret } from "./crypto.ts";
 import { dashboards, sessions } from "./db.ts";
 import { SESSION_COOKIE } from "./http.ts";
 import { ensureSeeded, resetSeedForTests } from "./seed.ts";
 import { appendDashboardWidget, createDashboard, listDashboards, updateDashboard } from "./services/dashboards.ts";
 import { getSettings, updateSettings } from "./services/settings.ts";
+import { listDataSources } from "./services/data-sources.ts";
 import { destroyAppDatabase, useFreshAppDatabase } from "./test-db.ts";
 
 function sessionRequest(token: string): Request {
@@ -72,6 +76,7 @@ describe("app database", () => {
 
     const issued = await issueApiToken({
       userId: user.id,
+      workspaceId: await ensurePersonalWorkspace(user.id),
       name: "mcp",
       scopes: ["read", "mcp"],
       expiresAt: null,
@@ -104,13 +109,16 @@ describe("app database", () => {
       password: "password123",
       role: "admin",
     });
+    const workspaceId = await ensurePersonalWorkspace(admin.id);
     const first = await createDashboard({
+      workspaceId,
       name: "First",
       description: "older",
       widgets: [],
       createdBy: admin.id,
     });
     const second = await createDashboard({
+      workspaceId,
       name: "Second",
       description: "newer",
       widgets: [],
@@ -119,13 +127,13 @@ describe("app database", () => {
     await (
       await dashboards()
     ).updateOne({ _id: first.id }, { $set: { updatedAt: "2000-01-01T00:00:00.000Z" } });
-    expect((await listDashboards()).map((dashboard) => dashboard.id)).toEqual([
+    expect((await listDashboards(workspaceId)).map((dashboard) => dashboard.id)).toEqual([
       second.id,
       first.id,
     ]);
 
     await Promise.all([
-      appendDashboardWidget(second.id, {
+      appendDashboardWidget(workspaceId, second.id, {
         id: "w1",
         type: "table",
         title: "One",
@@ -133,7 +141,7 @@ describe("app database", () => {
         dataSourceId: "demo",
         query: { resource: "product_sales" },
       }),
-      appendDashboardWidget(second.id, {
+      appendDashboardWidget(workspaceId, second.id, {
         id: "w2",
         type: "table",
         title: "Two",
@@ -142,7 +150,7 @@ describe("app database", () => {
         query: { resource: "product_sales" },
       }),
     ]);
-    const renamed = await updateDashboard(second.id, { name: "Renamed" });
+    const renamed = await updateDashboard(workspaceId, second.id, { name: "Renamed" });
     expect(renamed?.name).toBe("Renamed");
     expect(renamed?.widgets.map((widget) => widget.id).sort()).toEqual(["w1", "w2"]);
   });
@@ -178,8 +186,54 @@ describe("app database", () => {
     resetSeedForTests();
     await Promise.all([ensureSeeded(), ensureSeeded()]);
     expect(await countUsers()).toBe(1);
-    expect(await listDashboards()).toHaveLength(1);
+    const admin = (await findUserByEmail("admin@dash.dev"))!;
+    const workspaceId = await ensurePersonalWorkspace(admin._id);
+    expect(await listDashboards(workspaceId)).toHaveLength(1);
     await ensureSeeded();
     expect(await countUsers()).toBe(1);
+  });
+
+  it.each(["workspace", "dashboard"])("resumes demo setup after a failed %s write", async (step) => {
+    process.env.DASH_SEED_DEMO = "true";
+    const updateOne = Collection.prototype.updateOne;
+    const insertOne = Collection.prototype.insertOne;
+    const update = vi
+      .spyOn(Collection.prototype, "updateOne")
+      .mockImplementation(function (this: Collection, ...args) {
+        if (step === "workspace" && this.collectionName === "workspaces") {
+          return Promise.reject(new Error("Seed write failed"));
+        }
+        return updateOne.apply(this, args);
+      });
+    const insert = vi
+      .spyOn(Collection.prototype, "insertOne")
+      .mockImplementation(function (this: Collection, ...args) {
+        if (step === "dashboard" && this.collectionName === "dashboards") {
+          return Promise.reject(new Error("Seed write failed"));
+        }
+        return insertOne.apply(this, args);
+      });
+    try {
+      await expect(ensureSeeded()).rejects.toThrow("Seed write failed");
+    } finally {
+      update.mockRestore();
+      insert.mockRestore();
+    }
+    expect(await countUsers()).toBe(1);
+    resetSeedForTests();
+    await Promise.all([ensureSeeded(), ensureSeeded()]);
+    const admin = (await findUserByEmail("admin@dash.dev"))!;
+    const workspaceId = await ensurePersonalWorkspace(admin._id);
+    const sources = await listDataSources();
+    const pages = await listDashboards(workspaceId);
+    expect(sources).toHaveLength(1);
+    expect(pages).toHaveLength(1);
+    expect(pages[0]?.widgets.every((widget) => widget.dataSourceId === sources[0]?.id)).toBe(true);
+    expect(admin.role).toBe("admin");
+    resetSeedForTests();
+    await ensureSeeded();
+    expect(await countUsers()).toBe(1);
+    expect(await listDataSources()).toHaveLength(1);
+    expect(await listDashboards(workspaceId)).toHaveLength(1);
   });
 });

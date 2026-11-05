@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { ApiTokenScope, PublicApiToken } from "@dash/core";
 import { API_TOKEN_SCOPES } from "@dash/core";
 import { api } from "~/lib/api";
+import { useWorkspace } from "~/components/WorkspaceProvider";
 import { Field, GhostButton, PrimaryButton, TextInput } from "~/components/ui";
 import { McpConnectionBanner } from "~/components/mcp-connection-banner";
 
@@ -12,6 +13,7 @@ export const Route = createFileRoute("/_authed/tokens")({
 });
 
 function TokensPage() {
+  const { workspace, workspaces, workspaceApi } = useWorkspace();
   const queryClient = useQueryClient();
   const tokens = useQuery({
     queryKey: ["tokens"],
@@ -26,7 +28,7 @@ function TokensPage() {
 
   const create = useMutation({
     mutationFn: async () =>
-      api<{ token: string; record: PublicApiToken }>("/api/tokens", {
+      workspaceApi<{ token: string; record: PublicApiToken }>("/api/tokens", {
         method: "POST",
         body: JSON.stringify({ name, scopes, expiresInDays: 90 }),
       }),
@@ -59,6 +61,7 @@ function TokensPage() {
           create.mutate();
         }}
       >
+        <p className="text-sm text-mist">New tokens use the {workspace.name} workspace.</p>
         <Field label="Token name">
           <TextInput value={name} onChange={(event) => setName(event.target.value)} />
         </Field>
@@ -80,6 +83,7 @@ function TokensPage() {
         <PrimaryButton type="submit" disabled={create.isPending || scopes.length === 0}>
           Issue token
         </PrimaryButton>
+        {create.error ? <p role="alert" className="text-rose-300">{create.error.message}</p> : null}
         {issued ? (
           <div className="rounded-xl border border-accent/30 bg-accent/10 p-3 text-sm">
             <div className="mb-1 text-mist">Copy this token now. It cannot be retrieved later.</div>
@@ -92,6 +96,7 @@ function TokensPage() {
           <thead className="bg-white/4 text-mist">
             <tr>
               <th className="px-4 py-3 font-medium">Name</th>
+              <th className="px-4 py-3 font-medium">Workspace</th>
               <th className="px-4 py-3 font-medium">Prefix</th>
               <th className="px-4 py-3 font-medium">Scopes</th>
               <th className="px-4 py-3 font-medium">Expires</th>
@@ -102,6 +107,7 @@ function TokensPage() {
             {(tokens.data ?? []).map((token) => (
               <tr key={token.id} className="border-t border-line">
                 <td className="px-4 py-3">{token.name}</td>
+                <td className="px-4 py-3">{workspaces.find((item) => item.id === token.workspaceId)?.name ?? "No access"}</td>
                 <td className="px-4 py-3 font-mono text-xs">{token.prefix}…</td>
                 <td className="px-4 py-3">{token.scopes.join(", ")}</td>
                 <td className="px-4 py-3 text-mist">

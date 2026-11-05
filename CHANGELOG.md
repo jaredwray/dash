@@ -13,6 +13,11 @@ All notable changes to Dash are documented here.
 
 ### Added
 
+- Each Dash instance serves one organization with multiple workspaces. Each user receives a personal workspace that they can share with existing organization members.
+- Organization admins can create shared workspaces and manage viewer or editor access. Dashboard API and MCP requests check workspace access.
+- The sidebar has a workspace selector. Workspace links retain the selected workspace. New API tokens bind to that workspace.
+
+
 - Cloudflare logging for [dev.dash.io](https://dev.dash.io). `wrangler.jsonc` turns on Workers Logs, with invocation logs, for the `dash-development` Worker and turns on logs for its container, so the Node server's stdout and stderr reach the Cloudflare dashboard. The Worker logs `request blocked` with the reason when `DASH_SECRET` or `MONGODB_URI` is missing, `container started` when the instance boots, and `container stopped` or `container crashed` with the exit code.
 - Team page (`/team`) listing every member with their role. Roles are **Admin** and **User** (stored as `member`). Administrators can change a member's role; the last admin cannot be demoted. Administrators can invite people by email and role. Dash creates a single-use sign-up link to share, valid for 7 days, that works while open registration is off. Inviting the same email again replaces the open link. Pending invitations can be reissued or revoked. Invitation tokens are stored as SHA-256 and travel in the URL fragment. New endpoints: `GET /api/members`, `PATCH /api/members/:id`, `GET/POST /api/invitations`, `DELETE /api/invitations/:id`, and the public `POST /api/auth/invitation` and `POST /api/auth/invitation/accept`. Inviting and role changes require an admin session; API tokens cannot use them. See [ADR 0008](docs/adr/0008-team-invitations.md).
 - Public `GET /healthz` and `GET /ping` endpoints. Both run a MongoDB `ping` against the app database and return 503 when it is unreachable. A failed probe drops the cached client so the next check can reconnect.
@@ -35,6 +40,8 @@ All notable changes to Dash are documented here.
 ### Changed
 
 - Security: the lockfile resolves `undici` 7.30.1 in place of 7.29.1. `miniflare` from `wrangler` 4.152.0 requires `undici` 7.29.1. `pnpm-workspace.yaml` overrides only that version. The release fixes CVE-2026-109829, CVE-2026-87018, CVE-2026-109869, and CVE-2026-109383. npm published 7.30.1 on 2026-10-15, so the 7-day cooldown applies. `trustPolicy: no-downgrade` accepts 7.30.1, and this change adds no exclude.
+- Data sources, team members, invitations, and settings belong to the organization. This change does not migrate existing dashboards or tokens.
+
 - The login page shows `admin@dash.dev` only when `DASH_SEED_DEMO` is enabled. With seeding off, the first account is created at `/register` and becomes the administrator.
 - App state (users, sessions, API tokens, settings, data sources, and dashboards) is stored in MongoDB. `MONGODB_URI` is required and must name a database. `dev.dash.io` reads it from a Worker secret (`wrangler secret put MONGODB_URI`); requests return 500 until `DASH_SECRET` and `MONGODB_URI` are both set. `DASH_DATABASE_PATH` is gone.
 - The data-source form can add an Amazon Redshift connection. Choosing Redshift starts with encryption on and clears a URI left over from another kind. Pasting a Redshift URI updates the SSL checkbox from `ssl` and `sslmode`. An explicit SSL flag overrides the URI. Explicit host, port, database, user, and password fields override the same parts of a URI.

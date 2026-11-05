@@ -1,4 +1,4 @@
-import type { ApiTokenScope, PublicUser, UserRole } from "@dash/core";
+import type { ApiTokenScope, PublicUser, UserRole, Workspace } from "@dash/core";
 
 export const SESSION_COOKIE = "dash_session";
 export const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30;
@@ -8,6 +8,11 @@ export interface AuthContext {
   scopes: ApiTokenScope[];
   via: "session" | "token";
   tokenId?: string;
+  workspaceId?: string;
+}
+
+export interface WorkspaceAuthContext extends AuthContext {
+  workspace: Workspace;
 }
 
 export function json(data: unknown, init: ResponseInit = {}): Response {

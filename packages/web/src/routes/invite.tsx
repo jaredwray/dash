@@ -96,7 +96,7 @@ function AcceptForm({ token, invitation }: { token: string; invitation: Invitati
 
   return (
     <AuthCard
-      title={`Join ${invitation.workspaceName}`}
+      title={`Join ${invitation.organizationName}`}
       subtitle={
         invitation.invitedByName
           ? `${invitation.invitedByName} invited you with the ${role} role.`

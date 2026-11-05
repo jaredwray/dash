@@ -5,6 +5,7 @@ import { randomId } from "../crypto.ts";
 
 function toDashboard(row: DashboardDoc): Dashboard {
   return {
+    workspaceId: row.workspaceId,
     id: row._id,
     name: row.name,
     description: row.description,
@@ -15,17 +16,18 @@ function toDashboard(row: DashboardDoc): Dashboard {
   };
 }
 
-export async function listDashboards(): Promise<Dashboard[]> {
-  const rows = await (await dashboards()).find({}).sort({ updatedAt: -1 }).toArray();
+export async function listDashboards(workspaceId: string): Promise<Dashboard[]> {
+  const rows = await (await dashboards()).find({ workspaceId }).sort({ updatedAt: -1 }).toArray();
   return rows.map(toDashboard);
 }
 
-export async function getDashboard(id: string): Promise<Dashboard | undefined> {
-  const row = await (await dashboards()).findOne({ _id: id });
+export async function getDashboard(workspaceId: string, id: string): Promise<Dashboard | undefined> {
+  const row = await (await dashboards()).findOne({ _id: id, workspaceId });
   return row ? toDashboard(row) : undefined;
 }
 
 export async function createDashboard(input: {
+  workspaceId: string;
   name: string;
   description: string;
   widgets: DashboardWidget[];
@@ -38,6 +40,7 @@ export async function createDashboard(input: {
     await dashboards()
   ).insertOne({
     _id: id,
+    workspaceId: input.workspaceId,
     name: input.name,
     description: input.description,
     widgets: input.widgets,
@@ -45,10 +48,11 @@ export async function createDashboard(input: {
     createdAt,
     updatedAt: createdAt,
   });
-  return (await getDashboard(id))!;
+  return (await getDashboard(input.workspaceId, id))!;
 }
 
 export async function updateDashboard(
+  workspaceId: string,
   id: string,
   patch: {
     name?: string;
@@ -73,25 +77,26 @@ export async function updateDashboard(
   }
   const row = await (
     await dashboards()
-  ).findOneAndUpdate({ _id: id }, { $set }, { returnDocument: "after" });
+  ).findOneAndUpdate({ _id: id, workspaceId }, { $set }, { returnDocument: "after" });
   return row ? toDashboard(row) : undefined;
 }
 
 export async function appendDashboardWidget(
+  workspaceId: string,
   id: string,
   widget: DashboardWidget,
 ): Promise<Dashboard | undefined> {
   const row = await (
     await dashboards()
   ).findOneAndUpdate(
-    { _id: id },
+    { _id: id, workspaceId },
     { $push: { widgets: widget }, $set: { updatedAt: nowIso() } },
     { returnDocument: "after" },
   );
   return row ? toDashboard(row) : undefined;
 }
 
-export async function deleteDashboard(id: string): Promise<boolean> {
-  const result = await (await dashboards()).deleteOne({ _id: id });
+export async function deleteDashboard(workspaceId: string, id: string): Promise<boolean> {
+  const result = await (await dashboards()).deleteOne({ _id: id, workspaceId });
   return result.deletedCount === 1;
 }

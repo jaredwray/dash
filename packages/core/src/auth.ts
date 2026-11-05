@@ -34,7 +34,7 @@ export interface PublicInvitation {
 export interface InvitationPreview {
   email: string;
   role: UserRole;
-  workspaceName: string;
+  organizationName: string;
   invitedByName: string | null;
   expiresAt: string;
 }
@@ -54,6 +54,7 @@ export function isApiTokenScope(value: string): value is ApiTokenScope {
 export const API_TOKEN_PREFIX = "dash_live_";
 
 export interface PublicApiToken {
+  workspaceId: string;
   id: string;
   name: string;
   prefix: string;

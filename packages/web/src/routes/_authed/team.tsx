@@ -59,7 +59,7 @@ function TeamPage() {
       <p className="text-xs uppercase tracking-[0.2em] text-mist">Workspace</p>
       <h1 className="mt-1 text-3xl font-semibold">Team</h1>
       <p className="mt-2 text-sm text-mist">
-        Everyone with access to this workspace. Admins can invite people, change roles, and
+        Everyone with access to this organization. Admins can invite people, change roles, and
         manage data sources and settings. Users can build dashboards and issue their own API
         tokens.
       </p>
@@ -290,7 +290,7 @@ function MembersTable({
                         aria-label={`Role for ${member.name}`}
                         value={pendingRole ?? member.role}
                         disabled={changeRole.isPending || isLastAdmin}
-                        title={isLastAdmin ? "The workspace needs at least one admin" : undefined}
+                        title={isLastAdmin ? "The organization needs at least one admin" : undefined}
                         onChange={(event) =>
                           changeRole.mutate({
                             id: member.id,
