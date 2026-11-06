@@ -66,7 +66,7 @@ services:
       start_period: 40s
 
   mongodb:
-    image: mongo:7.0.45@sha256:8bb4442761a63a8dda452744082cdac9644b429807eb977b42324a63cef59ca4
+    image: mongo:8.2.12@sha256:e0ce8c35124d4a9f9785532d1f268f39e9728ffa1cb38f46fa482436424c4bd3
     container_name: dash-test-mongodb
     # Each isolated test database opens its own collection and index files.
     ulimits:

@@ -17,6 +17,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as McpRouteImport } from './routes/mcp'
 import { Route as PingRouteImport } from './routes/ping'
 import { Route as RegisterRouteImport } from './routes/register'
+import { Route as AuthedAgentTokensRouteImport } from './routes/_authed/agent-tokens'
 import { Route as AuthedDataSourcesRouteImport } from './routes/_authed/data-sources'
 import { Route as AuthedProfileRouteImport } from './routes/_authed/profile'
 import { Route as AuthedSettingsRouteImport } from './routes/_authed/settings'
@@ -89,6 +90,11 @@ const RegisterRoute = RegisterRouteImport.update({
   id: '/register',
   path: '/register',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthedAgentTokensRoute = AuthedAgentTokensRouteImport.update({
+  id: '/agent-tokens',
+  path: '/agent-tokens',
+  getParentRoute: () => AuthedRoute,
 } as any)
 const AuthedDataSourcesRoute = AuthedDataSourcesRouteImport.update({
   id: '/data-sources',
@@ -265,6 +271,7 @@ export interface FileRoutesByFullPath {
   '/mcp': typeof McpRoute
   '/ping': typeof PingRoute
   '/register': typeof RegisterRoute
+  '/agent-tokens': typeof AuthedAgentTokensRoute
   '/data-sources': typeof AuthedDataSourcesRoute
   '/profile': typeof AuthedProfileRoute
   '/settings': typeof AuthedSettingsRoute
@@ -307,6 +314,7 @@ export interface FileRoutesByTo {
   '/mcp': typeof McpRoute
   '/ping': typeof PingRoute
   '/register': typeof RegisterRoute
+  '/agent-tokens': typeof AuthedAgentTokensRoute
   '/data-sources': typeof AuthedDataSourcesRoute
   '/profile': typeof AuthedProfileRoute
   '/settings': typeof AuthedSettingsRoute
@@ -351,6 +359,7 @@ export interface FileRoutesById {
   '/mcp': typeof McpRoute
   '/ping': typeof PingRoute
   '/register': typeof RegisterRoute
+  '/_authed/agent-tokens': typeof AuthedAgentTokensRoute
   '/_authed/data-sources': typeof AuthedDataSourcesRoute
   '/_authed/profile': typeof AuthedProfileRoute
   '/_authed/settings': typeof AuthedSettingsRoute
@@ -395,6 +404,7 @@ export interface FileRouteTypes {
     | '/mcp'
     | '/ping'
     | '/register'
+    | '/agent-tokens'
     | '/data-sources'
     | '/profile'
     | '/settings'
@@ -437,6 +447,7 @@ export interface FileRouteTypes {
     | '/mcp'
     | '/ping'
     | '/register'
+    | '/agent-tokens'
     | '/data-sources'
     | '/profile'
     | '/settings'
@@ -480,6 +491,7 @@ export interface FileRouteTypes {
     | '/mcp'
     | '/ping'
     | '/register'
+    | '/_authed/agent-tokens'
     | '/_authed/data-sources'
     | '/_authed/profile'
     | '/_authed/settings'
@@ -603,6 +615,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/register'
       preLoaderRoute: typeof RegisterRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authed/agent-tokens': {
+      id: '/_authed/agent-tokens'
+      path: '/agent-tokens'
+      fullPath: '/agent-tokens'
+      preLoaderRoute: typeof AuthedAgentTokensRouteImport
+      parentRoute: typeof AuthedRoute
     }
     '/_authed/data-sources': {
       id: '/_authed/data-sources'
@@ -839,6 +858,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthedRouteChildren {
+  AuthedAgentTokensRoute: typeof AuthedAgentTokensRoute
   AuthedDataSourcesRoute: typeof AuthedDataSourcesRoute
   AuthedProfileRoute: typeof AuthedProfileRoute
   AuthedSettingsRoute: typeof AuthedSettingsRoute
@@ -850,6 +870,7 @@ interface AuthedRouteChildren {
 }
 
 const AuthedRouteChildren: AuthedRouteChildren = {
+  AuthedAgentTokensRoute: AuthedAgentTokensRoute,
   AuthedDataSourcesRoute: AuthedDataSourcesRoute,
   AuthedProfileRoute: AuthedProfileRoute,
   AuthedSettingsRoute: AuthedSettingsRoute,
