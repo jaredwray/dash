@@ -2,6 +2,7 @@ import type { PublicUser } from "@dash/core";
 import { Link, Navigate, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  Bot,
   Database,
   KeyRound,
   LayoutDashboard,
@@ -22,6 +23,7 @@ const NAV = [
   { to: "/data-sources", label: "Data sources", icon: Database, admin: true },
   { to: "/team", label: "Team", icon: Users },
   { to: "/tokens", label: "API tokens", icon: KeyRound },
+  { to: "/agent-tokens", label: "Agent tokens", icon: Bot },
   { to: "/settings", label: "Settings", icon: Settings },
   { to: "/profile", label: "Profile", icon: UserRound },
 ] as const;
