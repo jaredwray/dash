@@ -34,5 +34,6 @@ jobs:
       - run: pnpm test:services:start
       - run: pnpm test
       - run: pnpm --filter @dash/web build
+      - run: pnpm test:shutdown
       - if: always()
         run: pnpm test:services:stop
