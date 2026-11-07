@@ -23,7 +23,7 @@ async function call(method: string, auth: { session?: string; token?: string }, 
   const request = new Request(`http://localhost/api/dev-seed${options.query ?? ""}`, {
     method,
     headers,
-    ...(options.body === undefined ? {} : { body: JSON.stringify(options.body) }),
+    ...(options.body === undefined || method === "GET" ? {} : { body: JSON.stringify(options.body) }),
   });
   const handlers = (DevSeed.options.server as { handlers: Record<string, Handler> }).handlers;
   return handlers[method]!({ request, params: {} });
