@@ -4,6 +4,10 @@ All notable changes to Dash are documented here.
 
 ## Unreleased
 
+### Removed
+
+- **Breaking:** the built-in `demo` adapter and the `demo` data source kind. `DASH_SEED_DEMO` now seeds only the demo admin, with no sample warehouse and no Growth overview dashboard. On the first request, Dash deletes stored `demo` data sources and the widgets that read them. It also deletes a dashboard that has no widget left.
+
 ### Fixed
 
 - A concurrent first registration does not keep an account when its email domain is not on the list. Only the account that claims the first user skips the list.
@@ -19,6 +23,9 @@ All notable changes to Dash are documented here.
 
 ### Added
 
+- Development seed for data sources. When `DASH_SEED_DEV_SOURCES` is `true` outside production, **Settings** shows **Sample company data**. An administrator can write the Fernway sample company into the configured Postgres, MongoDB, and BigQuery sources. The run adds six dashboards in a shared **Fernway** workspace. The numbers agree across sources: finance MRR equals the subscriptions, and collections equal the charges. Dash refuses a schema, dataset, or collection that it did not create. New endpoint: `GET/POST/DELETE /api/dev-seed`, for an admin session only. The generator is the new `@dash/seed` package, with `@faker-js/faker` 10.6.0. See [ADR 0010](docs/adr/0010-dev-seed-data-sources.md).
+- `@dash/adapter-bigquery` exports `BigQueryAdminClient` for dataset and table management, streaming inserts, and load jobs by multipart upload. Only the seed writer uses it. `@dash/adapter-postgres` exports `postgresPoolConfig`.
+- The Postgres test cluster creates an empty `fernway` database for development seeding.
 - Administrators can save the email domains that can create accounts. An empty list allows every domain. Open registration and invitations both use the list. The first account does not use the list.
 - The Agent tokens page creates and revokes tokens for MCP access. The banner shows the full MCP URL from the current site address, with a copy button.
 - Each Dash instance serves one organization with multiple workspaces. Each user receives a personal workspace that they can share with existing organization members.

@@ -10,6 +10,7 @@ import { api } from "~/lib/api";
 import { fetchMe } from "~/lib/session";
 import { Field, PrimaryButton, TextArea, TextInput } from "~/components/ui";
 import { McpConnectionBanner } from "~/components/mcp-connection-banner";
+import { DevSeedPanel } from "~/components/dev-seed-panel";
 
 export const Route = createFileRoute("/_authed/settings")({
   component: SettingsPage,
@@ -114,6 +115,7 @@ function SettingsPage() {
       ) : (
         <p className="mt-8 text-mist">Loading settings…</p>
       )}
+      {isAdmin ? <DevSeedPanel /> : null}
       <McpConnectionBanner />
     </div>
   );

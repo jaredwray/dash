@@ -6,7 +6,7 @@ Dash is a modern Tableau / Looker-style workspace. Agents can list warehouses, r
 
 ## Screenshots
 
-Taken from the demo workspace (`admin@dash.dev`). The sample warehouse ships with a **Growth overview** page. **Regional revenue review** is a custom page on the same data.
+These screenshots come from an earlier build with a built-in sample warehouse. That warehouse is removed. To get realistic dashboards now, seed the Fernway sample company. See [Sample company data](#sample-company-data-development).
 
 ### Sign in
 
@@ -69,6 +69,7 @@ Everyone in the organization with their role. Administrators invite people with 
 ```text
 packages/web/                @dash/web              UX + REST API + MCP (TanStack Start)
 packages/core/               @dash/core             Shared types and adapter interfaces
+packages/seed/               @dash/seed             Development seed: Fernway sample company and writers
 packages/postgres-adapter/   @dash/adapter-postgres
 packages/mysql-adapter/      @dash/adapter-mysql
 packages/snowflake-adapter/  @dash/adapter-snowflake
@@ -100,7 +101,7 @@ Set `MONGODB_URI` in `.env` or the environment before starting the app. `pnpm de
 
 ## First account
 
-Set `DASH_SEED_DEMO=false` to start with no users and no sample warehouse. The login page does not show the demo admin in that mode.
+Set `DASH_SEED_DEMO=false` to start with no users. The login page does not show the demo admin in that mode.
 
 There is no separate user-admin CLI. Accounts are created in the product:
 
@@ -110,6 +111,50 @@ There is no separate user-admin CLI. Accounts are created in the product:
 4. With registration closed, an administrator adds people from **Team**: enter an email, pick **User** or **Admin**, and share the sign-up link. Dash does not send email. A link works once and expires after 7 days.
 
 `GET /api/auth/bootstrap` is public and reports whether the demo login should be shown, whether the organization still needs that first account, and whether registration is open.
+
+## Sample company data (development)
+
+Dash can write a realistic dataset into the data sources that you configured. The dataset is for Fernway, Inc., a fictional B2B SaaS company. It has 36 months of history that ends with the last full month. Use it to test dashboards, charts, and agents against real engines.
+
+The numbers agree across sources. Finance MRR equals the subscriptions in the product database. Collections equal the successful charges. Each account id is the same in every source. At the standard size, Fernway grows from about $7M to about $35M ARR, with about 110% net revenue retention.
+
+| Domain | Contents | Kinds, in order of preference |
+| --- | --- | --- |
+| Product database | Accounts, users, plans, subscriptions, subscription events | Postgres, BigQuery, MongoDB |
+| Billing | Customers, invoices, charges, refunds, and disputes in the shape of a Stripe export | Postgres, BigQuery, MongoDB |
+| Sales CRM | Sales reps, leads, opportunities, stage history | Postgres, BigQuery, MongoDB |
+| Finance warehouse | GL entries, opex, headcount, MRR movements, SaaS KPIs | BigQuery, Postgres, MongoDB |
+| Product analytics | Raw events, account usage, active users, feature adoption, cohort retention | BigQuery, Postgres, MongoDB |
+| Marketing analytics | Campaigns, ad spend, web sessions, signup funnel | BigQuery, Postgres, MongoDB |
+| Customer support | Tickets with conversations, CSAT, NPS, agents, incidents | MongoDB, Postgres, BigQuery |
+
+Each domain goes to the oldest source of the first kind on its list. A Postgres or BigQuery source receives one `fernway_<domain>` schema or dataset for each domain. A MongoDB source receives `<domain>_<table>` collections in its configured database. Each domain has raw tables and `mart_*` tables. Dash queries do not join or group rows, so the charts read the marts.
+
+To seed the local clusters:
+
+1. Start the clusters with `pnpm test:services:start`.
+2. In `.env`, set `MONGODB_URI=mongodb://dash:dash@127.0.0.1:27029/dash_app?authSource=admin` and `DASH_SEED_DEV_SOURCES=true`.
+3. Run `pnpm dev` and sign in as an administrator.
+4. On **Data sources**, add these sources:
+   - Postgres: `postgres://dash:dash@127.0.0.1:54329/fernway`
+   - MongoDB: `mongodb://dash:dash@127.0.0.1:27029/fernway?authSource=admin`
+   - BigQuery: project `dash`, API endpoint `http://127.0.0.1:9059`, and no default dataset
+5. Open **Settings**, go to **Sample company data**, select a size, and click **Seed data sources**.
+
+Do not point a source at the `dash` fixture database. The adapter tests expect only their fixture tables there. The Postgres cluster creates an empty `fernway` database for this purpose. Use the **Small** size with the BigQuery emulator, because the emulator has only 256 MiB of memory.
+
+The run continues in the background. The panel shows each domain and its row count. When the run is complete, the shared **Fernway** workspace has six dashboards: Executive overview, Revenue & billing, Sales pipeline, Product engagement, Marketing performance, and Customer support. **Remove sample data** drops the data that the seeder wrote and deletes those dashboards.
+
+Safety rules:
+
+- The feature is off unless `DASH_SEED_DEV_SOURCES=true`. Production (`NODE_ENV=production`) ignores the flag.
+- Only an administrator with a browser session can start a run. API tokens and MCP cannot.
+- Dash writes only to `fernway_*` schemas and datasets, and to the MongoDB collections that its manifest records. Each target holds a `dash_seed_manifest` table or collection.
+- Dash refuses a target that exists without that manifest. It examines every target before the first write.
+- Dash refuses a MongoDB source that points at the Dash app database.
+- Email addresses use the reserved `.example` domain, so no seeded address can reach a real mailbox.
+
+The generator is in `packages/seed` (`@dash/seed`). It uses `@faker-js/faker` with a fixed seed, so the same month and size give the same data. See [ADR 0010](docs/adr/0010-dev-seed-data-sources.md).
 
 ## Feature checklist
 
@@ -146,7 +191,8 @@ Keep this list in sync as PRs land. Checked items are in the tree today.
 - [x] Dynamic dashboard pages
 - [x] Chart widgets (TanStack Charts)
 - [x] Sortable and filterable tables (TanStack Table)
-- [x] Data sources page (admin): add and remove sources (demo warehouse, Postgres, MySQL, Snowflake, MongoDB, BigQuery, Databricks SQL, Redshift)
+- [x] Data sources page (admin): add and remove sources (Postgres, MySQL, Snowflake, MongoDB, BigQuery, Databricks SQL, Redshift)
+- [x] Development seed: the Fernway sample company in Postgres, MongoDB, and BigQuery sources (`DASH_SEED_DEV_SOURCES`)
 - [ ] Real-time multi-user dashboard collaboration
 - [ ] Light theme
 
@@ -186,6 +232,7 @@ All routes except bootstrap, register, login, invitation preview and accept, hea
 | GET | `/api/data-sources/:id/schema` | |
 | POST | `/api/data-sources/:id/connect` | Connection test |
 | POST | `/api/data-sources/:id/query` | Structured query |
+| GET/POST/DELETE | `/api/dev-seed` | Development only. Answers 404 unless `DASH_SEED_DEV_SOURCES` is `true` outside production. Admin session only. GET returns the plan and the run state. POST starts a seed run, and DELETE starts a removal |
 | GET/POST | `/api/workspaces` | Session only. POST requires an organization admin |
 | PATCH | `/api/workspaces/:id` | Rename. Workspace manager session only |
 | GET/PUT | `/api/workspaces/:id/members` | Workspace manager session only. PUT sets viewer/editor access or removes access with a null role |

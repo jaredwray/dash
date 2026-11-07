@@ -21,6 +21,7 @@
     "@dash/adapter-snowflake": "workspace:*",
     "@dash/adapter-stripe": "workspace:*",
     "@dash/core": "workspace:*",
+    "@dash/seed": "workspace:*",
     "@modelcontextprotocol/server": "2.4.0",
     "@tanstack/charts": "1.1.0",
     "@tanstack/react-query": "5.105.0",

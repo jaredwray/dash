@@ -16,7 +16,7 @@ import {
 } from "./auth.ts";
 import { ensurePersonalWorkspace } from "./services/workspaces.ts";
 import { hashSecret } from "./crypto.ts";
-import { dashboards, organizationSettings, sessions } from "./db.ts";
+import { dashboards, dataSources, nowIso, organizationSettings, sessions, workspaces } from "./db.ts";
 import { SESSION_COOKIE } from "./http.ts";
 import { ensureSeeded, resetSeedForTests } from "./seed.ts";
 import { appendDashboardWidget, createDashboard, listDashboards, updateDashboard } from "./services/dashboards.ts";
@@ -205,59 +205,80 @@ describe("app database", () => {
     expect((await findUserById(loser))?.role).toBe("member");
   });
 
-  it("seeds the demo workspace once", async () => {
+  it("seeds the demo admin once, with no sample source or dashboard", async () => {
     process.env.DASH_SEED_DEMO = "true";
     resetSeedForTests();
     await Promise.all([ensureSeeded(), ensureSeeded()]);
     expect(await countUsers()).toBe(1);
     const admin = (await findUserByEmail("admin@dash.dev"))!;
+    expect(admin.role).toBe("admin");
     const workspaceId = await ensurePersonalWorkspace(admin._id);
-    expect(await listDashboards(workspaceId)).toHaveLength(1);
+    expect(await listDashboards(workspaceId)).toEqual([]);
+    expect(await listDataSources()).toEqual([]);
     await ensureSeeded();
     expect(await countUsers()).toBe(1);
   });
 
-  it.each(["workspace", "dashboard"])("resumes demo setup after a failed %s write", async (step) => {
+  it("resumes demo setup after a failed workspace write", async () => {
     process.env.DASH_SEED_DEMO = "true";
     const updateOne = Collection.prototype.updateOne;
-    const insertOne = Collection.prototype.insertOne;
     const update = vi
       .spyOn(Collection.prototype, "updateOne")
       .mockImplementation(function (this: Collection, ...args) {
-        if (step === "workspace" && this.collectionName === "workspaces") {
+        if (this.collectionName === "workspaces") {
           return Promise.reject(new Error("Seed write failed"));
         }
         return updateOne.apply(this, args);
-      });
-    const insert = vi
-      .spyOn(Collection.prototype, "insertOne")
-      .mockImplementation(function (this: Collection, ...args) {
-        if (step === "dashboard" && this.collectionName === "dashboards") {
-          return Promise.reject(new Error("Seed write failed"));
-        }
-        return insertOne.apply(this, args);
       });
     try {
       await expect(ensureSeeded()).rejects.toThrow("Seed write failed");
     } finally {
       update.mockRestore();
-      insert.mockRestore();
     }
     expect(await countUsers()).toBe(1);
     resetSeedForTests();
     await Promise.all([ensureSeeded(), ensureSeeded()]);
     const admin = (await findUserByEmail("admin@dash.dev"))!;
-    const workspaceId = await ensurePersonalWorkspace(admin._id);
-    const sources = await listDataSources();
-    const pages = await listDashboards(workspaceId);
-    expect(sources).toHaveLength(1);
-    expect(pages).toHaveLength(1);
-    expect(pages[0]?.widgets.every((widget) => widget.dataSourceId === sources[0]?.id)).toBe(true);
     expect(admin.role).toBe("admin");
+    expect(await (await workspaces()).countDocuments({ _id: `personal:${admin._id}` })).toBe(1);
     resetSeedForTests();
     await ensureSeeded();
     expect(await countUsers()).toBe(1);
-    expect(await listDataSources()).toHaveLength(1);
-    expect(await listDashboards(workspaceId)).toHaveLength(1);
+  });
+
+  it("retires built-in sample warehouse sources and the widgets that read them", async () => {
+    const owner = await createUser({ email: "owner@example.com", name: "Owner", password: "password123", role: "admin" });
+    const workspaceId = await ensurePersonalWorkspace(owner.id);
+    await (await dataSources()).insertOne({
+      _id: "old-demo",
+      name: "Sample warehouse",
+      kind: "demo" as never,
+      description: "",
+      configEncrypted: "v1.legacy",
+      createdBy: owner.id,
+      createdAt: nowIso(),
+      updatedAt: nowIso(),
+    });
+    const widget = (id: string, dataSourceId: string) => ({
+      id,
+      type: "table" as const,
+      title: id,
+      layout: { x: 0, y: 0, w: 6, h: 4 },
+      dataSourceId,
+      query: { resource: "monthly_revenue" },
+    });
+    const mixed = await createDashboard({ workspaceId, name: "Mixed", description: "", widgets: [widget("old", "old-demo"), widget("kept", "warehouse")], createdBy: owner.id });
+    await createDashboard({ workspaceId, name: "Growth overview", description: "", widgets: [widget("a", "old-demo"), widget("b", "old-demo")], createdBy: owner.id });
+    const untouched = await createDashboard({ workspaceId, name: "Other", description: "", widgets: [widget("c", "warehouse")], createdBy: owner.id });
+
+    for (let run = 0; run < 2; run += 1) {
+      resetSeedForTests();
+      await ensureSeeded();
+      expect(await (await dataSources()).countDocuments({ _id: "old-demo" })).toBe(0);
+      const pages = await listDashboards(workspaceId);
+      expect(pages.map((page) => page.id).sort()).toEqual([mixed.id, untouched.id].sort());
+      expect(pages.find((page) => page.id === mixed.id)?.widgets.map((item) => item.id)).toEqual(["kept"]);
+      expect(pages.find((page) => page.id === untouched.id)?.widgets.map((item) => item.id)).toEqual(["c"]);
+    }
   });
 });

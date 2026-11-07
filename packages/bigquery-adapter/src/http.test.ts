@@ -1,6 +1,6 @@
 import { createVerify, generateKeyPairSync } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
-import { createBigQueryClient, signServiceAccountJwt } from "./http.ts";
+import { BigQueryUploadUnsupportedError, createBigQueryClient, signServiceAccountJwt } from "./http.ts";
 
 const { privateKey, publicKey } = generateKeyPairSync("rsa", {
   modulusLength: 2048,
@@ -276,5 +276,97 @@ describe("BigQuery HTTP client", () => {
     await expect(client.listDatasets()).resolves.toEqual(["analytics"]);
     const jwt = signServiceAccountJwt("file@example.iam.gserviceaccount.com", privateKey.replaceAll("\n", "\\n"));
     expect(jwt.split(".")).toHaveLength(3);
+  });
+
+  it("loads rows into Google BigQuery with a multipart job and waits until it is done", async () => {
+    const fetchImpl = vi.fn<typeof fetch>(async (url) => {
+      const text = String(url);
+      if (text === "https://oauth2.googleapis.com/token") {
+        return jsonResponse({ access_token: "ya29.load", expires_in: 3600 });
+      }
+      if (text.includes("/upload/")) {
+        return jsonResponse({ jobReference: { jobId: "job", location: "EU" }, status: { state: "RUNNING" } });
+      }
+      return jsonResponse({ status: { state: "DONE" } });
+    });
+    const client = createBigQueryClient({
+      projectId: "dash",
+      location: "EU",
+      credentials: { client_email: "dash@example.iam.gserviceaccount.com", private_key: privateKey },
+      fetchImpl,
+      env: {},
+    });
+    await client.loadRows("fernway_marketing", "campaigns", {
+      schema: [{ name: "id", type: "STRING", mode: "REQUIRED" }],
+      description: "Campaigns",
+      rows: [{ id: "a" }, { id: "b" }],
+    });
+    const upload = new URL(String(fetchImpl.mock.calls[1]?.[0]));
+    expect(upload.pathname).toBe("/upload/bigquery/v2/projects/dash/jobs");
+    expect(upload.searchParams.get("uploadType")).toBe("multipart");
+    const init = requestInit(fetchImpl, 1);
+    expect(new Headers(init.headers).get("Authorization")).toBe("Bearer ya29.load");
+    expect(new Headers(init.headers).get("Content-Type")).toMatch(/^multipart\/related; boundary=/);
+    const body = String(init.body);
+    expect(body).toContain('"writeDisposition":"WRITE_TRUNCATE"');
+    expect(body).toContain('"destinationTable":{"projectId":"dash","datasetId":"fernway_marketing","tableId":"campaigns"}');
+    expect(body).toContain('{"id":"a"}\n{"id":"b"}');
+    const poll = new URL(String(fetchImpl.mock.calls[2]?.[0]));
+    expect(poll.pathname).toMatch(/^\/bigquery\/v2\/projects\/dash\/jobs\/dash_seed_campaigns_/);
+    expect(poll.searchParams.get("location")).toBe("EU");
+  });
+
+  it("reports a failed load job", async () => {
+    const fetchImpl = vi.fn<typeof fetch>(async () =>
+      jsonResponse({ status: { state: "DONE", errorResult: { message: "Provided Schema does not match" } } }),
+    );
+    const client = createBigQueryClient({ projectId: "dash", apiEndpoint: "http://127.0.0.1:9059", fetchImpl, env: {} });
+    await expect(
+      client.loadRows("fernway_marketing", "campaigns", { schema: [], rows: [] }),
+    ).rejects.toThrow("BigQuery load job failed: Provided Schema does not match");
+  });
+
+  it("asks for streaming inserts when an emulator refuses the upload, and never for Google", async () => {
+    const refuse = vi.fn<typeof fetch>(async () => new Response("not found", { status: 404 }));
+    const emulator = createBigQueryClient({ projectId: "dash", apiEndpoint: "http://127.0.0.1:9059", fetchImpl: refuse, env: {} });
+    await expect(emulator.loadRows("d", "t", { schema: [], rows: [] })).rejects.toBeInstanceOf(BigQueryUploadUnsupportedError);
+
+    const google = vi.fn<typeof fetch>(async (url) =>
+      String(url).includes("oauth2") ? jsonResponse({ access_token: "ya29.x", expires_in: 3600 }) : new Response("not found", { status: 404 }),
+    );
+    const client = createBigQueryClient({
+      projectId: "dash",
+      credentials: { client_email: "dash@example.iam.gserviceaccount.com", private_key: privateKey },
+      fetchImpl: google,
+      env: {},
+    });
+    const failure = await client.loadRows("d", "t", { schema: [], rows: [] }).catch((error: unknown) => error);
+    expect(failure).not.toBeInstanceOf(BigQueryUploadUnsupportedError);
+    expect(String(failure)).toContain("BigQuery request failed (404)");
+  });
+
+  it("reads a missing dataset or table as null and treats a missing delete target as done", async () => {
+    const fetchImpl = vi.fn<typeof fetch>(async (url, init) => {
+      if (init?.method === "DELETE") return new Response(null, { status: 404 });
+      if (String(url).endsWith("/datasets/present")) return jsonResponse({ description: "Owned" });
+      return jsonResponse({ error: { code: 404, message: "Not found" } }, 404);
+    });
+    const client = createBigQueryClient({ projectId: "dash", apiEndpoint: "http://127.0.0.1:9059", fetchImpl, env: {} });
+    await expect(client.getDataset("present")).resolves.toEqual({ description: "Owned" });
+    await expect(client.getDataset("missing")).resolves.toBeNull();
+    await expect(client.getTable("missing", "t")).resolves.toBeNull();
+    await expect(client.deleteDataset("missing")).resolves.toBeUndefined();
+    const deleteUrl = new URL(String(fetchImpl.mock.calls[3]?.[0]));
+    expect(deleteUrl.searchParams.get("deleteContents")).toBe("true");
+  });
+
+  it("raises the first row error from a streaming insert", async () => {
+    const fetchImpl = vi.fn<typeof fetch>(async () =>
+      jsonResponse({ insertErrors: [{ index: 0, errors: [{ message: "no such field: extra" }] }] }),
+    );
+    const client = createBigQueryClient({ projectId: "dash", apiEndpoint: "http://127.0.0.1:9059", fetchImpl, env: {} });
+    await expect(client.insertRows("d", "t", [{ extra: 1 }], "t_0")).rejects.toThrow("BigQuery insert failed: no such field: extra");
+    const body = JSON.parse(String(requestInit(fetchImpl, 0).body)) as { rows: Array<{ insertId: string }> };
+    expect(body.rows[0]?.insertId).toBe("t_0_0");
   });
 });

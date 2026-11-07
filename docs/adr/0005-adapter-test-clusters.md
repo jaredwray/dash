@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Accepted. The in-process demo adapter is removed. See [ADR 0010](0010-dev-seed-data-sources.md).
 
 ## Context
 

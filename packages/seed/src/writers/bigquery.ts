@@ -1,0 +1,182 @@
+import type { BigQueryConnectionConfig } from "@dash/core";
+import {
+  BigQueryUploadUnsupportedError,
+  assertBigQueryConfig,
+  bigQueryEndpoint,
+  createBigQueryClient,
+  isGoogleApiHost,
+  type BigQueryAdminClient,
+  type BigQueryTableField,
+} from "@dash/adapter-bigquery";
+import { SEED_NAME, SEED_VERSION } from "../company.ts";
+import { sqlNamespace } from "../plan.ts";
+import type { SeedColumn, SeedDomain, SeedDomainKey, SeedTable } from "../table.ts";
+import {
+  ForeignNamespaceError,
+  MANIFEST,
+  OWNER_NOTE,
+  RowCountError,
+  manifestRow,
+  throwIfAborted,
+  type InspectResult,
+  type SeedWriter,
+  type TableResult,
+  type WriteOptions,
+} from "./types.ts";
+
+const INSERT_BATCH = 500;
+
+function fieldType(column: SeedColumn): string {
+  switch (column.type) {
+    case "string":
+    case "json":
+      return "STRING";
+    case "integer":
+      return "INT64";
+    case "decimal":
+      return "FLOAT64";
+    case "boolean":
+      return "BOOL";
+    case "date":
+      return "DATE";
+    case "timestamp":
+      return "TIMESTAMP";
+  }
+}
+
+export function bigQuerySchema(table: Pick<SeedTable, "columns">): BigQueryTableField[] {
+  return table.columns.map((column) => ({
+    name: column.name,
+    type: fieldType(column),
+    mode: column.nullable ? "NULLABLE" : "REQUIRED",
+    description: column.description,
+  }));
+}
+
+/** A row in the JSON form that load jobs and streaming inserts accept. */
+export function toBigQueryRow(table: Pick<SeedTable, "columns">, row: Record<string, unknown>): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
+  for (const column of table.columns) {
+    const raw = row[column.name];
+    if (raw === null || raw === undefined) {
+      result[column.name] = null;
+    } else if (column.type === "json") {
+      result[column.name] = JSON.stringify(raw);
+    } else if (raw instanceof Date) {
+      result[column.name] = raw.toISOString();
+    } else {
+      result[column.name] = raw;
+    }
+  }
+  return result;
+}
+
+const MANIFEST_TABLE: Pick<SeedTable, "columns"> = {
+  columns: [
+    { name: "seed", type: "string", description: "Seed name." },
+    { name: "version", type: "integer", description: "Seed version." },
+    { name: "domain", type: "string", description: "Domain key." },
+    { name: "tables", type: "json", description: "Tables that the seeder owns." },
+    { name: "size", type: "string", description: "Dataset size." },
+    { name: "as_of", type: "date", description: "First day after the data ends." },
+    { name: "written_at", type: "timestamp", description: "Write time." },
+  ],
+};
+
+export class BigQuerySeedWriter implements SeedWriter {
+  readonly kind = "bigquery" as const;
+  readonly #client: BigQueryAdminClient;
+  readonly #projectId: string;
+  readonly #googleApi: boolean;
+  #streaming = false;
+
+  constructor(config: BigQueryConnectionConfig) {
+    assertBigQueryConfig(config);
+    this.#projectId = config.projectId;
+    this.#googleApi = isGoogleApiHost(bigQueryEndpoint(config.apiEndpoint));
+    // No default dataset: the seeder names each dataset.
+    this.#client = createBigQueryClient({
+      projectId: config.projectId,
+      ...(config.location ? { location: config.location } : {}),
+      ...(config.apiEndpoint ? { apiEndpoint: config.apiEndpoint } : {}),
+      ...(config.credentials ? { credentials: config.credentials } : {}),
+    });
+  }
+
+  namespace(domain: SeedDomainKey): string {
+    return sqlNamespace(domain);
+  }
+
+  async inspect(domain: Pick<SeedDomain, "key">): Promise<InspectResult> {
+    const dataset = sqlNamespace(domain.key);
+    const found = await this.#client.getDataset(dataset);
+    if (!found) return { state: "absent", conflicts: [] };
+    if (!(await this.#client.getTable(dataset, MANIFEST))) return { state: "foreign", conflicts: [dataset] };
+    // Read the manifest row. Emulators do not always keep table descriptions.
+    const owner = await this.#client.query(`SELECT seed FROM \`${this.#projectId}.${dataset}.${MANIFEST}\` LIMIT 1`, [], 30_000);
+    return owner.rows[0]?.seed === SEED_NAME ? { state: "owned", conflicts: [] } : { state: "foreign", conflicts: [dataset] };
+  }
+
+  async #write(dataset: string, table: Pick<SeedTable, "name" | "description" | "columns">, rows: Record<string, unknown>[], signal?: AbortSignal): Promise<void> {
+    const schema = bigQuerySchema(table);
+    const converted = rows.map((row) => toBigQueryRow(table, row));
+    if (!this.#streaming) {
+      try {
+        await this.#client.loadRows(dataset, table.name, { schema, description: table.description, rows: converted });
+        return;
+      } catch (error) {
+        if (this.#googleApi || !(error instanceof BigQueryUploadUnsupportedError)) throw error;
+        // A local emulator without upload support: use streaming inserts from now on.
+        this.#streaming = true;
+      }
+    }
+    await this.#client.deleteTable(dataset, table.name);
+    await this.#client.createTable(dataset, table.name, { schema, description: table.description });
+    for (let start = 0; start < converted.length; start += INSERT_BATCH) {
+      throwIfAborted(signal);
+      await this.#client.insertRows(dataset, table.name, converted.slice(start, start + INSERT_BATCH), `${table.name}_${start}`);
+    }
+  }
+
+  async replace(domain: SeedDomain, options: WriteOptions): Promise<TableResult[]> {
+    const dataset = sqlNamespace(domain.key);
+    const state = await this.inspect(domain);
+    if (state.state === "foreign") throw new ForeignNamespaceError(`Dataset ${dataset}`, state.conflicts);
+    if (state.state === "absent") {
+      await this.#client.createDataset(dataset, { description: `${OWNER_NOTE} ${domain.label}.` });
+    }
+    const manifest = manifestRow(domain, options, SEED_VERSION, SEED_NAME);
+    const manifestTable = { name: MANIFEST, description: OWNER_NOTE, columns: MANIFEST_TABLE.columns };
+    // Claim the dataset first, so a failed run can be retried or removed.
+    await this.#write(dataset, manifestTable, [{ ...manifest, written_at: manifest.written_at }]);
+
+    const results: TableResult[] = [];
+    for (const table of domain.tables) {
+      throwIfAborted(options.signal);
+      await this.#write(dataset, table, table.rows, options.signal);
+      const counted = await this.#client.query(`SELECT COUNT(*) AS n FROM \`${this.#projectId}.${dataset}.${table.name}\``, [], 60_000);
+      const actual = Number(counted.rows[0]?.n ?? -1);
+      if (actual !== table.rows.length) throw new RowCountError(`${dataset}.${table.name}`, table.rows.length, actual);
+      results.push({ table: table.name, rows: actual });
+      options.onTable?.(table.name, actual);
+    }
+    const keep = new Set([MANIFEST, ...domain.tables.map((table) => table.name)]);
+    for (const name of await this.#client.listTables(dataset)) {
+      if (!keep.has(name)) await this.#client.deleteTable(dataset, name);
+    }
+    return results;
+  }
+
+  async remove(domain: SeedDomainKey): Promise<boolean> {
+    const dataset = sqlNamespace(domain);
+    const state = await this.inspect({ key: domain });
+    if (state.state === "absent") return false;
+    if (state.state === "foreign") throw new ForeignNamespaceError(`Dataset ${dataset}`, state.conflicts);
+    await this.#client.deleteDataset(dataset);
+    return true;
+  }
+
+  async close(): Promise<void> {
+    await this.#client.end();
+  }
+}

@@ -34,10 +34,6 @@ export interface MysqlConnectionConfig {
   ssl?: boolean;
 }
 
-export interface DemoConnectionConfig {
-  kind: "demo";
-}
-
 export interface SnowflakeConnectionConfig {
   kind: "snowflake";
   connectionString?: string;
@@ -134,7 +130,6 @@ export interface BigQueryConnectionConfig {
 export type ConnectionConfig =
   | PostgresConnectionConfig
   | MysqlConnectionConfig
-  | DemoConnectionConfig
   | SnowflakeConnectionConfig
   | MongoConnectionConfig
   | BigQueryConnectionConfig

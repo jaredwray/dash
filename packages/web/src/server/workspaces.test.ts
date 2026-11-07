@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { PublicUser } from "@dash/core";
 import { createSession, createUser, issueApiToken } from "./auth.ts";
 import { workspaces } from "./db.ts";
-import { destroyAppDatabase, useFreshAppDatabase } from "./test-db.ts";
+import { destroyAppDatabase, uniqueAppMongoUri, useFreshAppDatabase } from "./test-db.ts";
 import { ensurePersonalWorkspace, listWorkspaces } from "./services/workspaces.ts";
 import { Route as WorkspaceIndex } from "../routes/api/workspaces.index.ts";
 import { Route as WorkspaceItem } from "../routes/api/workspaces.$id.ts";
@@ -271,7 +271,7 @@ describe("organization workspaces", () => {
     expect(
       (
         await call(DataSources, "POST", adminSession, {
-          body: { name: "Warehouse", config: { kind: "demo" } },
+          body: { name: "Warehouse", config: { kind: "mongodb", connectionString: uniqueAppMongoUri() } },
         })
       ).status,
     ).toBe(201);
@@ -282,7 +282,7 @@ describe("organization workspaces", () => {
     expect(
       (
         await call(DataSources, "POST", memberSession, {
-          body: { name: "No", config: { kind: "demo" } },
+          body: { name: "No", config: { kind: "mongodb", connectionString: uniqueAppMongoUri() } },
         })
       ).status,
     ).toBe(403);

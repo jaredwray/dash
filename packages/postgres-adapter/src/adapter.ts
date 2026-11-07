@@ -19,7 +19,8 @@ export interface SqlClient {
   end(): Promise<void>;
 }
 
-function toPoolConfig(config: PostgresConnectionConfig): pg.PoolConfig {
+/** Pool settings for a connection config. The seed writer reuses them. */
+export function postgresPoolConfig(config: PostgresConnectionConfig): pg.PoolConfig {
   const shared = {
     ssl: config.ssl ? { rejectUnauthorized: false } : undefined,
     max: 5,
@@ -62,7 +63,7 @@ export class PostgresAdapter implements DataAdapter {
   }
 
   static fromConfig(config: PostgresConnectionConfig): PostgresAdapter {
-    const pool = new pg.Pool(toPoolConfig(config));
+    const pool = new pg.Pool(postgresPoolConfig(config));
     return new PostgresAdapter(wrapPool(pool));
   }
 

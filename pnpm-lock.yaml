@@ -318,6 +318,43 @@ importers:
         specifier: ^5.0.5
         version: 5.0.5(@types/node@24.19.2)(vite@8.3.5(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0))
 
+  packages/seed:
+    dependencies:
+      '@dash/adapter-bigquery':
+        specifier: workspace:*
+        version: link:../bigquery-adapter
+      '@dash/adapter-mongodb':
+        specifier: workspace:*
+        version: link:../mongodb-adapter
+      '@dash/adapter-postgres':
+        specifier: workspace:*
+        version: link:../postgres-adapter
+      '@dash/core':
+        specifier: workspace:*
+        version: link:../core
+      '@faker-js/faker':
+        specifier: 10.6.0
+        version: 10.6.0
+      mongodb:
+        specifier: 7.7.0
+        version: 7.7.0
+      pg:
+        specifier: 8.23.1
+        version: 8.23.1
+    devDependencies:
+      '@types/node':
+        specifier: ^24.19.2
+        version: 24.19.2
+      '@types/pg':
+        specifier: ^8.15.6
+        version: 8.23.1
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+      vitest:
+        specifier: ^5.0.5
+        version: 5.0.5(@types/node@24.19.2)(vite@8.3.5(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0))
+
   packages/snowflake-adapter:
     dependencies:
       '@dash/core':
@@ -379,6 +416,9 @@ importers:
       '@dash/core':
         specifier: workspace:*
         version: link:../core
+      '@dash/seed':
+        specifier: workspace:*
+        version: link:../seed
       '@modelcontextprotocol/server':
         specifier: 2.4.0
         version: 2.4.0
@@ -748,6 +788,10 @@ packages:
     engines: {node: '>=18'}
     cpu: [x64]
     os: [win32]
+
+  '@faker-js/faker@10.6.0':
+    resolution: {integrity: sha512-3RQHgEtvL1Frl/d1cSreo7qhJ3Gk1OdNUai/CtZ8G+wYeRQnJih3s9xJ9/kgYekPQRdwgh0HXRPqMlzWGwivIQ==}
+    engines: {node: ^20.19.0 || ^22.13.0 || ^23.5.0 || >=24.0.0, npm: '>=10'}
 
   '@img/colour@1.1.0':
     resolution: {integrity: sha512-Td76q7j57o/tLVdgS746cYARfSyxk8iEfRxewL9h4OMzYhbW4TAcppl0mT4eyqXddh6L/jwoM75mo7ixa/pCeQ==}
@@ -3085,6 +3129,8 @@ snapshots:
 
   '@esbuild/win32-x64@0.28.2':
     optional: true
+
+  '@faker-js/faker@10.6.0': {}
 
   '@img/colour@1.1.0': {}
 

@@ -27,9 +27,7 @@ async function openAndTest(config: ConnectionConfig): Promise<ConnectionTestResu
   try {
     return await adapter.testConnection();
   } finally {
-    if (config.kind !== "demo") {
-      await adapter.close();
-    }
+    await adapter.close();
   }
 }
 
