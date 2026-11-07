@@ -27,7 +27,7 @@ A Dash query reads one resource. It has columns, filters, sort order, and a limi
   - The manifest lists the tables that the seeder wrote. A replace or a removal touches only those tables. A table with a seed name that the manifest does not list is a conflict. Other tables stay in place, and a schema or dataset is dropped only when it is empty.
   - A Postgres domain is replaced in one transaction. A MongoDB table loads into a temporary collection, which a rename then swaps in. BigQuery uses load jobs with `WRITE_TRUNCATE`.
   - Each writer counts the rows of each table after the write. A count that does not agree fails the step.
-- BigQuery load jobs use a multipart upload. Real BigQuery accepts it, including sandbox projects, which refuse streaming inserts and DML. When a local emulator refuses the upload, the writer uses streaming inserts. A Google endpoint never falls back. Dataset and table management is on `BigQueryAdminClient` in `@dash/adapter-bigquery`. The read adapter does not use it.
+- BigQuery load jobs use a multipart upload. Real BigQuery accepts it, including sandbox projects, which refuse streaming inserts and DML. The pinned emulator (0.8.1) accepts it too, so there is no fallback. Dataset and table management is on `BigQueryAdminClient` in `@dash/adapter-bigquery`. The read adapter does not use it.
 - Access:
   - The feature is on only when `DASH_SEED_DEV_SOURCES=true` and `NODE_ENV` is not `production`. Otherwise `/api/dev-seed` answers 404.
   - Only an administrator with a browser session can call it. API tokens and MCP cannot.

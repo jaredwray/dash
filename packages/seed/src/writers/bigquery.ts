@@ -1,10 +1,7 @@
 import type { BigQueryConnectionConfig } from "@dash/core";
 import {
-  BigQueryUploadUnsupportedError,
   assertBigQueryConfig,
-  bigQueryEndpoint,
   createBigQueryClient,
-  isGoogleApiHost,
   type BigQueryAdminClient,
   type BigQueryTableField,
 } from "@dash/adapter-bigquery";
@@ -23,8 +20,6 @@ import {
   type TableResult,
   type WriteOptions,
 } from "./types.ts";
-
-const INSERT_BATCH = 500;
 
 function fieldType(column: SeedColumn): string {
   switch (column.type) {
@@ -87,13 +82,10 @@ export class BigQuerySeedWriter implements SeedWriter {
   readonly kind = "bigquery" as const;
   readonly #client: BigQueryAdminClient;
   readonly #projectId: string;
-  readonly #googleApi: boolean;
-  #streaming = false;
 
   constructor(config: BigQueryConnectionConfig) {
     assertBigQueryConfig(config);
     this.#projectId = config.projectId;
-    this.#googleApi = isGoogleApiHost(bigQueryEndpoint(config.apiEndpoint));
     // No default dataset: the seeder names each dataset.
     this.#client = createBigQueryClient({
       projectId: config.projectId,
@@ -142,25 +134,13 @@ export class BigQuerySeedWriter implements SeedWriter {
     return { state, conflicts };
   }
 
-  async #write(dataset: string, table: Pick<SeedTable, "name" | "description" | "columns">, rows: Record<string, unknown>[], signal?: AbortSignal): Promise<void> {
-    const schema = bigQuerySchema(table);
-    const converted = rows.map((row) => toBigQueryRow(table, row));
-    if (!this.#streaming) {
-      try {
-        await this.#client.loadRows(dataset, table.name, { schema, description: table.description, rows: converted });
-        return;
-      } catch (error) {
-        if (this.#googleApi || !(error instanceof BigQueryUploadUnsupportedError)) throw error;
-        // A local emulator without upload support: use streaming inserts from now on.
-        this.#streaming = true;
-      }
-    }
-    await this.#client.deleteTable(dataset, table.name);
-    await this.#client.createTable(dataset, table.name, { schema, description: table.description });
-    for (let start = 0; start < converted.length; start += INSERT_BATCH) {
-      throwIfAborted(signal);
-      await this.#client.insertRows(dataset, table.name, converted.slice(start, start + INSERT_BATCH), `${table.name}_${start}`);
-    }
+  /** Replaces a table with a WRITE_TRUNCATE load job. A failed load leaves the old table. */
+  async #write(dataset: string, table: Pick<SeedTable, "name" | "description" | "columns">, rows: Record<string, unknown>[]): Promise<void> {
+    await this.#client.loadRows(dataset, table.name, {
+      schema: bigQuerySchema(table),
+      description: table.description,
+      rows: rows.map((row) => toBigQueryRow(table, row)),
+    });
   }
 
   async replace(domain: SeedDomain, options: WriteOptions): Promise<TableResult[]> {
@@ -179,7 +159,7 @@ export class BigQuerySeedWriter implements SeedWriter {
     const results: TableResult[] = [];
     for (const table of domain.tables) {
       throwIfAborted(options.signal);
-      await this.#write(dataset, table, table.rows, options.signal);
+      await this.#write(dataset, table, table.rows);
       const counted = await this.#client.query(`SELECT COUNT(*) AS n FROM ${this.#table(dataset, table.name)}`, [], 60_000);
       const actual = Number(counted.rows[0]?.n ?? -1);
       if (actual !== table.rows.length) throw new RowCountError(`${dataset}.${table.name}`, table.rows.length, actual);

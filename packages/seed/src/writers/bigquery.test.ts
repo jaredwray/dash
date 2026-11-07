@@ -65,7 +65,7 @@ describe("BigQuerySeedWriter", () => {
   });
 
   it("replaces an owned domain without duplicate rows, and keeps a table that someone added", async () => {
-    await admin.createTable("fernway_marketing", "budget_notes", { schema: [{ name: "note", type: "STRING", mode: "NULLABLE" }] });
+    await admin.query(`CREATE TABLE \`${config.projectId}.fernway_marketing.budget_notes\` (note STRING)`);
     await writer.replace(marketing, options);
     const counted = await admin.query(`SELECT COUNT(*) AS n FROM \`${config.projectId}.fernway_marketing.campaigns\``);
     expect(Number(counted.rows[0]?.n)).toBe(marketing.tables.find((table) => table.name === "campaigns")!.rows.length);
