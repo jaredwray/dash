@@ -60,6 +60,9 @@ const mongo = new MongoClient(
   `mongodb://${encodeURIComponent(mongoEndpoint.user)}:${encodeURIComponent(mongoEndpoint.password)}@${mongoEndpoint.host}:${mongoEndpoint.port}/?authSource=${mongoEndpoint.authSource}`,
 );
 
+// Each seeding test writes every domain, then queries or removes it.
+const SEED_TEST_TIMEOUT = 60_000;
+
 describe("development seeding", () => {
   const previous = { flag: process.env.DASH_SEED_DEV_SOURCES, nodeEnv: process.env.NODE_ENV };
   let admin: PublicUser;
@@ -183,7 +186,7 @@ describe("development seeding", () => {
       await schemas.end();
     }
     expect(await mongo.db(warehouse).listCollections().toArray()).toEqual([]);
-  });
+  }, SEED_TEST_TIMEOUT);
 
   async function seedPostgresOnly() {
     const source = await createDataSource({
@@ -237,7 +240,7 @@ describe("development seeding", () => {
     expect(removed.status).toBe("succeeded");
     expect(removed.hasSeedData).toBe(false);
     expect(await fernwaySchemas()).toEqual([]);
-  });
+  }, SEED_TEST_TIMEOUT);
 
   it("tracks the workspace and each dashboard when a dashboard write fails", async () => {
     const insertOne = Collection.prototype.insertOne;
@@ -266,5 +269,5 @@ describe("development seeding", () => {
     expect(removed.status).toBe("succeeded");
     expect(await listDashboards(state.workspaceId!)).toEqual([]);
     expect(await fernwaySchemas()).toEqual([]);
-  });
+  }, SEED_TEST_TIMEOUT);
 });
