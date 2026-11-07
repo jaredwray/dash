@@ -8,6 +8,7 @@ import {
   updateDataSource,
 } from "~/server/services/data-sources";
 import { testConnectionConfig } from "~/server/services/query";
+import { isDevSeedRunning } from "~/server/services/dev-seed";
 
 const patchSchema = z.object({
   name: z.string().min(1).max(80).optional(),
@@ -122,6 +123,9 @@ export const Route = createFileRoute("/api/data-sources/$id")({
         if (!isAdmin(auth.user)) {
           return error(403, "Admin role required", "forbidden");
         }
+        if (await isDevSeedRunning()) {
+          return error(409, "A sample data run is in progress. Try again when it finishes.", "dev_seed_running");
+        }
         const parsed = patchSchema.safeParse(await readJson(request));
         if (!parsed.success) {
           return error(400, "Invalid data source payload", "invalid_body");
@@ -145,6 +149,9 @@ export const Route = createFileRoute("/api/data-sources/$id")({
         }
         if (!isAdmin(auth.user)) {
           return error(403, "Admin role required", "forbidden");
+        }
+        if (await isDevSeedRunning()) {
+          return error(409, "A sample data run is in progress. Try again when it finishes.", "dev_seed_running");
         }
         if (!(await deleteDataSource(params.id))) {
           return error(404, "Data source not found", "not_found");

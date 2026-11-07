@@ -233,6 +233,17 @@ export async function getDevSeedPlan(size: SeedSize): Promise<SeedPlan> {
 let currentRun: Promise<void> | undefined;
 let currentAbort: AbortController | undefined;
 
+/**
+ * True while a seed or removal run is active. Data source edits wait for it,
+ * so a run never acts on a connection that changed under it.
+ */
+export async function isDevSeedRunning(): Promise<boolean> {
+  if (!devSeedEnabled()) return false;
+  if (currentRun) return true;
+  const doc = await readDoc();
+  return doc.status === "running" && !isStale(doc);
+}
+
 onServerClose(async () => {
   currentAbort?.abort(new ServerClosingError());
   await currentRun?.catch(() => undefined);
@@ -271,13 +282,17 @@ async function claim(action: DevSeedAction, user: PublicUser, patch: Partial<Dev
 
 type Update = (set: Record<string, unknown>) => Promise<void>;
 
-/** State writes for one run. They match nothing after another run takes over. */
-function updater(runId: string): Update {
+/**
+ * State writes for one run. After another run takes over, a write matches
+ * nothing and `onLost` stops this run before its next write to a source.
+ */
+function updater(runId: string, onLost: () => void): Update {
   return async (set) => {
-    await (await stateCollection()).updateOne(
+    const result = await (await stateCollection()).updateOne(
       { _id: "dev-seed", runId },
       { $set: { ...set, heartbeatAt: new Date().toISOString() } },
     );
+    if (result.matchedCount === 0) onLost();
   };
 }
 
@@ -287,7 +302,7 @@ function message(error: unknown): string {
 
 function launch(runId: string, task: (signal: AbortSignal, update: Update) => Promise<void>): void {
   const controller = new AbortController();
-  const update = updater(runId);
+  const update = updater(runId, () => controller.abort(new Error("Another seed run took over. This run stopped.")));
   // A long table load sends no progress, so the heartbeat has its own timer.
   const heartbeat = setInterval(() => void update({}).catch(() => undefined), HEARTBEAT_MS);
   heartbeat.unref?.();
@@ -450,10 +465,11 @@ export async function startDevSeedRemoval(user: PublicUser): Promise<DevSeedStat
   if (!claimed?.runId) throw new DevSeedError(409, "busy", "A seed run is already in progress.");
   const seed = await loadSeed();
 
-  launch(claimed.runId, async (_signal, update) => {
+  launch(claimed.runId, async (signal, update) => {
     const remaining: OwnedTarget[] = [];
     for (const [index, item] of claimed.owned.entries()) {
       await update({ [`steps.${index}.status`]: "running" });
+      if (signal.aborted) throw signal.reason;
       // Read the sources again for each step, so an edit during the run is seen.
       const { configs } = await planSources();
       // Act only on the target that received the data. The source that

@@ -34,7 +34,8 @@ A Dash query reads one resource. It has columns, filters, sort order, and a limi
   - The Settings page shows the plan before a run. The POST request must send the `planId` of that plan, so a changed source list cannot receive data that nobody reviewed.
   - A MongoDB source that points at the Dash app database is refused.
 - The run continues in the server process after the request returns. The `settings` document `dev-seed` holds the progress and works as a lock.
-  - Each claim gets a run id. A state write that does not carry the current run id changes nothing, so a stale worker cannot overwrite a newer run.
+  - Each claim gets a run id. A state write that does not carry the current run id changes nothing, and the worker that made it stops before its next write to a source.
+  - While a run is active, `PATCH` and `DELETE` on `/api/data-sources/:id` answer 409, so a run never acts on a connection that changed under it.
   - A timer refreshes the heartbeat every 30 seconds during a run. A run whose heartbeat is older than five minutes counts as stopped. A run in the same process is never taken over.
   - The workspace id and each dashboard id are saved as soon as they exist, so a failed run leaves nothing that removal cannot find.
   - Each ownership record keeps the engine, host, and database or project of its target, with no credentials. Removal refuses a source that now points somewhere else and keeps the record.

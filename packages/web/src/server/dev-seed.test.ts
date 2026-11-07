@@ -13,6 +13,7 @@ import { DEV_SEED_WORKSPACE, getDevSeedState, type DevSeedState } from "./servic
 import { queryDataSource } from "./services/query.ts";
 import { ensurePersonalWorkspace } from "./services/workspaces.ts";
 import { Route as DevSeed } from "../routes/api/dev-seed.ts";
+import { Route as DataSourceItem } from "../routes/api/data-sources.$id.ts";
 
 type Handler = (input: { request: Request; params: Record<string, string> }) => Promise<Response>;
 
@@ -144,6 +145,13 @@ describe("development seeding", () => {
     expect(started.status).toBe(202);
     const busy = await call("POST", { session }, { body: { planId: planned.plan.planId, size: "small" } });
     expect(busy.status).toBe(409);
+    // A run must not act on a connection that changes under it.
+    const itemHandlers = (DataSourceItem.options.server as { handlers: Record<string, Handler> }).handlers;
+    const deleting = await itemHandlers.DELETE!({
+      request: new Request(`http://localhost/api/data-sources/${postgres.id}`, { method: "DELETE", headers: { cookie: `dash_session=${session}` } }),
+      params: { id: postgres.id },
+    });
+    expect(deleting.status).toBe(409);
 
     const state = await settled();
     expect(state.error).toBeNull();
