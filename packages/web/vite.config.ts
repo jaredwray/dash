@@ -23,6 +23,9 @@ export default defineConfig({
       srcDirectory: "src",
     }),
     viteReact(),
-    nitro(),
+    nitro({
+      // Close database clients on SIGTERM so the process exits after the listener stops.
+      plugins: ["./src/server/plugins/shutdown.ts"],
+    }),
   ],
 });
