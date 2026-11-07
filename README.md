@@ -153,6 +153,7 @@ Safety rules:
 - Dash refuses a target that exists without that manifest. It examines every target before the first write.
 - Dash replaces and drops only the tables that the manifest lists. It keeps any other table in a seeded schema or dataset, and it drops a schema or dataset only when it is empty.
 - Dash refuses a MongoDB source that points at the Dash app database.
+- Removal acts only on the database that received the data. If someone changes a source after a seed run, removal keeps its record and asks you to restore the connection.
 - Email addresses use the reserved `.example` domain, so no seeded address can reach a real mailbox.
 
 The generator is in `packages/seed` (`@dash/seed`). It uses `@faker-js/faker` with a fixed seed, so the same month and size give the same data. See [ADR 0010](docs/adr/0010-dev-seed-data-sources.md).

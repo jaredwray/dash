@@ -1,14 +1,14 @@
 import { randomBytes } from "node:crypto";
-import { MongoClient } from "mongodb";
+import { Collection, MongoClient } from "mongodb";
 import pg from "pg";
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { PublicUser } from "@dash/core";
 import { createSession, createUser, issueApiToken } from "./auth.ts";
 import { closeAdapters } from "./adapters/registry.ts";
 import { workspaces } from "./db.ts";
 import { destroyAppDatabase, useFreshAppDatabase } from "./test-db.ts";
 import { listDashboards } from "./services/dashboards.ts";
-import { createDataSource } from "./services/data-sources.ts";
+import { createDataSource, updateDataSource } from "./services/data-sources.ts";
 import { DEV_SEED_WORKSPACE, getDevSeedState, type DevSeedState } from "./services/dev-seed.ts";
 import { queryDataSource } from "./services/query.ts";
 import { ensurePersonalWorkspace } from "./services/workspaces.ts";
@@ -183,5 +183,79 @@ describe("development seeding", () => {
       await schemas.end();
     }
     expect(await mongo.db(warehouse).listCollections().toArray()).toEqual([]);
+  });
+
+  async function seedPostgresOnly() {
+    const source = await createDataSource({
+      name: "Warehouse",
+      description: "",
+      config: { kind: "postgres", ...pgEndpoint, database: warehouse },
+      createdBy: admin.id,
+    });
+    const planned = await (await call("GET", { session }, { query: "?size=small" })).json();
+    expect((await call("POST", { session }, { body: { planId: planned.plan.planId, size: "small" } })).status).toBe(202);
+    return source;
+  }
+
+  async function fernwaySchemas(): Promise<string[]> {
+    const client = new pg.Client({ ...pgEndpoint, database: warehouse });
+    await client.connect();
+    try {
+      const rows = await client.query("SELECT schema_name FROM information_schema.schemata WHERE schema_name LIKE 'fernway_%' ORDER BY 1");
+      return rows.rows.map((row) => String(row.schema_name));
+    } finally {
+      await client.end();
+    }
+  }
+
+  it("keeps the removal record when a seeded source now points somewhere else", async () => {
+    const source = await seedPostgresOnly();
+    expect((await settled()).status).toBe("succeeded");
+    const seeded = await fernwaySchemas();
+    expect(seeded).toHaveLength(7);
+
+    await updateDataSource(source.id, { config: { kind: "postgres", ...pgEndpoint, database: `${warehouse}_moved` } });
+    expect((await call("DELETE", { session })).status).toBe(202);
+    const blocked = await settled();
+    expect(blocked.status).toBe("failed");
+    expect(blocked.steps.every((step) => step.status === "failed" && step.error?.includes("points somewhere else"))).toBe(true);
+    expect(blocked.hasSeedData).toBe(true);
+    expect(await fernwaySchemas()).toEqual(seeded);
+
+    await updateDataSource(source.id, { config: { kind: "postgres", ...pgEndpoint, database: warehouse } });
+    expect((await call("DELETE", { session })).status).toBe(202);
+    const removed = await settled();
+    expect(removed.status).toBe("succeeded");
+    expect(removed.hasSeedData).toBe(false);
+    expect(await fernwaySchemas()).toEqual([]);
+  });
+
+  it("tracks the workspace and each dashboard when a dashboard write fails", async () => {
+    const insertOne = Collection.prototype.insertOne;
+    let dashboardsWritten = 0;
+    const spy = vi.spyOn(Collection.prototype, "insertOne").mockImplementation(function (this: Collection, ...args) {
+      if (this.collectionName === "dashboards" && ++dashboardsWritten === 2) {
+        return Promise.reject(new Error("Dashboard write failed"));
+      }
+      return insertOne.apply(this, args);
+    });
+    let state: DevSeedState;
+    try {
+      await seedPostgresOnly();
+      state = await settled();
+    } finally {
+      spy.mockRestore();
+    }
+    expect(state.status).toBe("failed");
+    expect(state.error).toBe("Dashboard write failed");
+    expect(state.workspaceId).not.toBeNull();
+    expect(state.dashboards).toHaveLength(1);
+    expect(await listDashboards(state.workspaceId!)).toHaveLength(1);
+
+    expect((await call("DELETE", { session })).status).toBe(202);
+    const removed = await settled();
+    expect(removed.status).toBe("succeeded");
+    expect(await listDashboards(state.workspaceId!)).toEqual([]);
+    expect(await fernwaySchemas()).toEqual([]);
   });
 });

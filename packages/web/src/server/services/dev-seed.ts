@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import type { ConnectionConfig, MongoConnectionConfig, PublicUser } from "@dash/core";
 import { resolveMongoTarget } from "@dash/adapter-mongodb";
 import { ConnectionString } from "mongodb-connection-string-url";
@@ -23,6 +24,9 @@ export const DEV_SEED_WORKSPACE = "Fernway";
 /** A run whose heartbeat is older than this is treated as stopped. */
 const STALE_MS = 5 * 60_000;
 
+/** A running task refreshes its heartbeat this often, apart from progress. */
+const HEARTBEAT_MS = 30_000;
+
 export type DevSeedStatus = "idle" | "running" | "succeeded" | "failed";
 export type DevSeedAction = "seed" | "remove";
 export type DevSeedStepStatus = "pending" | "running" | "done" | "failed" | "skipped";
@@ -46,10 +50,14 @@ interface OwnedTarget {
   domain: SeedDomainKey;
   label: string;
   namespace: string;
+  /** Engine, host, and database at seed time, with no credentials. */
+  target: string | null;
 }
 
 interface DevSeedDoc {
   _id: "dev-seed";
+  /** The run that holds the claim. A state write from another run is ignored. */
+  runId: string | null;
   status: DevSeedStatus;
   action: DevSeedAction | null;
   size: SeedSize | null;
@@ -111,6 +119,7 @@ async function stateCollection() {
 function emptyDoc(): DevSeedDoc {
   return {
     _id: "dev-seed",
+    runId: null,
     status: "idle",
     action: null,
     size: null,
@@ -158,7 +167,8 @@ export async function getDevSeedState(): Promise<DevSeedState> {
 }
 
 function normalizeHost(host: string): string {
-  const lower = host.toLowerCase();
+  // `localhost.` and `db.internal.` name the same hosts without the final dot.
+  const lower = host.toLowerCase().replace(/\.(?=:\d+$|$)/, "");
   const withPort = /:\d+$/.test(lower) ? lower : `${lower}:27017`;
   return withPort.replace(/^(localhost|\[::1\]):/, "127.0.0.1:");
 }
@@ -228,8 +238,13 @@ onServerClose(async () => {
   await currentRun?.catch(() => undefined);
 });
 
-/** Claims the state document for a new run. Returns null when a run is active. */
+/**
+ * Claims the state document for a new run. Returns null when a run is
+ * active. A run in this process is never taken over, even when its
+ * heartbeat looks old.
+ */
 async function claim(action: DevSeedAction, user: PublicUser, patch: Partial<DevSeedDoc>): Promise<DevSeedDoc | null> {
+  if (currentRun) return null;
   const collection = await stateCollection();
   const { _id: _ignored, ...initial } = emptyDoc();
   await collection.updateOne({ _id: "dev-seed" }, { $setOnInsert: initial }, { upsert: true });
@@ -239,6 +254,7 @@ async function claim(action: DevSeedAction, user: PublicUser, patch: Partial<Dev
     { _id: "dev-seed", $or: [{ status: { $ne: "running" } }, { heartbeatAt: { $lt: staleBefore } }] },
     {
       $set: {
+        runId: randomUUID(),
         status: "running",
         action,
         startedBy: user.id,
@@ -253,22 +269,35 @@ async function claim(action: DevSeedAction, user: PublicUser, patch: Partial<Dev
   );
 }
 
-async function update(set: Record<string, unknown>): Promise<void> {
-  await (await stateCollection()).updateOne({ _id: "dev-seed" }, { $set: { ...set, heartbeatAt: new Date().toISOString() } });
+type Update = (set: Record<string, unknown>) => Promise<void>;
+
+/** State writes for one run. They match nothing after another run takes over. */
+function updater(runId: string): Update {
+  return async (set) => {
+    await (await stateCollection()).updateOne(
+      { _id: "dev-seed", runId },
+      { $set: { ...set, heartbeatAt: new Date().toISOString() } },
+    );
+  };
 }
 
 function message(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-function launch(task: (signal: AbortSignal) => Promise<void>): void {
+function launch(runId: string, task: (signal: AbortSignal, update: Update) => Promise<void>): void {
   const controller = new AbortController();
+  const update = updater(runId);
+  // A long table load sends no progress, so the heartbeat has its own timer.
+  const heartbeat = setInterval(() => void update({}).catch(() => undefined), HEARTBEAT_MS);
+  heartbeat.unref?.();
   currentAbort = controller;
-  currentRun = task(controller.signal)
+  currentRun = task(controller.signal, update)
     .catch(async (error: unknown) => {
       await update({ status: "failed", error: message(error), finishedAt: new Date().toISOString() }).catch(() => undefined);
     })
     .finally(() => {
+      clearInterval(heartbeat);
       if (currentAbort === controller) {
         currentAbort = undefined;
         currentRun = undefined;
@@ -304,9 +333,9 @@ export async function startDevSeed(user: PublicUser, planId: string, size: SeedS
     error: null,
   }));
   const claimed = await claim("seed", user, { size, asOf: asOf.toISOString().slice(0, 10), steps });
-  if (!claimed) throw new DevSeedError(409, "busy", "A seed run is already in progress.");
+  if (!claimed?.runId) throw new DevSeedError(409, "busy", "A seed run is already in progress.");
 
-  launch(async (signal) => {
+  launch(claimed.runId, async (signal, update) => {
     const dataset = seed.generateDataset({ asOf, size });
     const writers = new Map<string, NonNullable<ReturnType<SeedModule["createSeedWriter"]>>>();
     try {
@@ -332,9 +361,10 @@ export async function startDevSeed(user: PublicUser, planId: string, size: SeedS
       for (const [index, item] of plan.assignments.entries()) {
         if (signal.aborted) throw signal.reason;
         const domain = dataset.domains.find((entry) => entry.key === item.domain)!;
+        const target = seed.seedTarget(configs.get(item.sourceId)!);
         await update({ [`steps.${index}.status`]: "running" });
-        if (!owned.some((entry) => entry.sourceId === item.sourceId && entry.domain === item.domain)) {
-          owned.push({ sourceId: item.sourceId, sourceName: item.sourceName, kind: item.kind, domain: item.domain, label: item.label, namespace: item.namespace });
+        if (!owned.some((entry) => entry.sourceId === item.sourceId && entry.domain === item.domain && entry.target === target)) {
+          owned.push({ sourceId: item.sourceId, sourceName: item.sourceName, kind: item.kind, domain: item.domain, label: item.label, namespace: item.namespace, target });
           await update({ owned });
         }
         try {
@@ -347,7 +377,6 @@ export async function startDevSeed(user: PublicUser, planId: string, size: SeedS
             onTable: (_table, count) => {
               rows += count;
               const total = rows;
-              // Each table write also refreshes the heartbeat.
               progress = progress.then(() => update({ [`steps.${index}.rows`]: total })).catch(() => undefined);
             },
           });
@@ -360,7 +389,8 @@ export async function startDevSeed(user: PublicUser, planId: string, size: SeedS
         }
       }
 
-      // Dashboards on the domains that were written.
+      // Dashboards on the domains that were written. Each id is saved as soon
+      // as it exists, so a failure part way leaves nothing untracked.
       const targets = new Map(plan.assignments.filter((item) => done.has(item.domain)).map((item) => [item.domain, item]));
       const specs = seed.buildDashboards(asOf, (domain, table) => {
         const item = targets.get(domain);
@@ -369,9 +399,14 @@ export async function startDevSeed(user: PublicUser, planId: string, size: SeedS
       let workspaceId = claimed.workspaceId;
       if (!workspaceId || !(await (await workspaces()).findOne({ _id: workspaceId, kind: "shared" }))) {
         workspaceId = (await createWorkspace(user, DEV_SEED_WORKSPACE)).id;
+        await update({ workspaceId });
       }
-      for (const id of claimed.dashboardIds) await deleteDashboard(claimed.workspaceId ?? workspaceId, id);
-      const dashboardIds: string[] = [];
+      const dashboardIds = [...claimed.dashboardIds];
+      for (const id of claimed.dashboardIds) {
+        await deleteDashboard(claimed.workspaceId ?? workspaceId, id);
+        dashboardIds.splice(dashboardIds.indexOf(id), 1);
+        await update({ dashboardIds });
+      }
       for (const dashboard of specs) {
         const created = await createDashboard({
           workspaceId,
@@ -381,13 +416,12 @@ export async function startDevSeed(user: PublicUser, planId: string, size: SeedS
           createdBy: user.id,
         });
         dashboardIds.push(created.id);
+        await update({ dashboardIds });
       }
       const failed = done.size < plan.assignments.length;
       await update({
         status: failed ? "failed" : "succeeded",
         error: failed ? "Some domains failed. The dashboards show the domains that were written." : null,
-        workspaceId,
-        dashboardIds,
         finishedAt: new Date().toISOString(),
       });
     } finally {
@@ -401,18 +435,40 @@ export async function startDevSeed(user: PublicUser, planId: string, size: SeedS
 export async function startDevSeedRemoval(user: PublicUser): Promise<DevSeedState> {
   if (isServerClosing()) throw new ServerClosingError();
   const current = await readDoc();
-  const steps: DevSeedStep[] = current.owned.map((item) => ({ ...item, status: "pending", rows: 0, error: null }));
+  const steps: DevSeedStep[] = current.owned.map((item) => ({
+    domain: item.domain,
+    label: item.label,
+    sourceId: item.sourceId,
+    sourceName: item.sourceName,
+    kind: item.kind,
+    namespace: item.namespace,
+    status: "pending",
+    rows: 0,
+    error: null,
+  }));
   const claimed = await claim("remove", user, { steps });
-  if (!claimed) throw new DevSeedError(409, "busy", "A seed run is already in progress.");
+  if (!claimed?.runId) throw new DevSeedError(409, "busy", "A seed run is already in progress.");
   const seed = await loadSeed();
 
-  launch(async () => {
+  launch(claimed.runId, async (_signal, update) => {
     const remaining: OwnedTarget[] = [];
     for (const [index, item] of claimed.owned.entries()) {
       await update({ [`steps.${index}.status`]: "running" });
       const config = await getDataSourceConfig(item.sourceId);
       if (!config) {
-        await update({ [`steps.${index}.status`]: "skipped", [`steps.${index}.error`]: "The data source no longer exists." });
+        await update({
+          [`steps.${index}.status`]: "skipped",
+          [`steps.${index}.error`]: `The data source no longer exists. Drop ${item.namespace} in ${item.target ?? item.sourceName} by hand.`,
+        });
+        continue;
+      }
+      // Act only on the target that received the data.
+      if (seed.seedTarget(config) !== item.target) {
+        remaining.push(item);
+        await update({
+          [`steps.${index}.status`]: "failed",
+          [`steps.${index}.error`]: `This data source now points somewhere else. Restore its connection to ${item.target ?? "the seeded target"}, then remove again.`,
+        });
         continue;
       }
       const writer = seed.createSeedWriter(config);
@@ -427,14 +483,18 @@ export async function startDevSeedRemoval(user: PublicUser): Promise<DevSeedStat
         await writer?.close().catch(() => undefined);
       }
     }
+    const dashboardIds = [...claimed.dashboardIds];
     if (claimed.workspaceId) {
-      for (const id of claimed.dashboardIds) await deleteDashboard(claimed.workspaceId, id);
+      for (const id of claimed.dashboardIds) {
+        await deleteDashboard(claimed.workspaceId, id);
+        dashboardIds.splice(dashboardIds.indexOf(id), 1);
+        await update({ dashboardIds });
+      }
     }
     await update({
       status: remaining.length ? "failed" : "succeeded",
       error: remaining.length ? "Some targets could not be removed." : null,
       owned: remaining,
-      dashboardIds: [],
       finishedAt: new Date().toISOString(),
     });
   });

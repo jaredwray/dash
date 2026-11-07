@@ -85,7 +85,11 @@ export class MongoSeedWriter implements SeedWriter {
     const manifest = await this.#manifest(db, domain.key);
     if (manifest && manifest.seed !== SEED_NAME) return { state: "foreign", conflicts: [`${MANIFEST}.${domain.key}`] };
     const owned = new Set(manifest?.collections ?? []);
-    const conflicts = names.filter((name) => existing.has(name) && !owned.has(name));
+    // A temporary collection is the seeder's only when its final name is.
+    const conflicts = names
+      .flatMap((name) => [name, `${name}${TEMP_SUFFIX}`].map((target) => ({ name, target })))
+      .filter(({ name, target }) => existing.has(target) && !owned.has(name))
+      .map(({ target }) => target);
     if (conflicts.length > 0) return { state: "foreign", conflicts };
     return { state: manifest ? "owned" : "absent", conflicts: [] };
   }

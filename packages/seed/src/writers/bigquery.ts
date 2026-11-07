@@ -10,7 +10,7 @@ import {
 } from "@dash/adapter-bigquery";
 import { SEED_NAME, SEED_VERSION } from "../company.ts";
 import { sqlNamespace } from "../plan.ts";
-import type { SeedColumn, SeedDomain, SeedDomainKey, SeedTable } from "../table.ts";
+import { IDENTIFIER, type SeedColumn, type SeedDomain, type SeedDomainKey, type SeedTable } from "../table.ts";
 import {
   ForeignNamespaceError,
   MANIFEST,
@@ -107,6 +107,12 @@ export class BigQuerySeedWriter implements SeedWriter {
     return sqlNamespace(domain);
   }
 
+  /** A quoted table path. The project id passed assertBigQueryConfig. */
+  #table(dataset: string, table: string): string {
+    if (!IDENTIFIER.test(dataset) || !IDENTIFIER.test(table)) throw new Error(`Unsafe BigQuery name: ${dataset}.${table}`);
+    return `\`${this.#projectId}.${dataset}.${table}\``;
+  }
+
   /**
    * Reads the manifest of a dataset. A table that has a seed name but is not
    * in the manifest is a conflict. Other tables are left alone.
@@ -116,7 +122,7 @@ export class BigQuerySeedWriter implements SeedWriter {
     if (!found) return { state: "absent", conflicts: [], tables: [] };
     if (!(await this.#client.getTable(dataset, MANIFEST))) return { state: "foreign", conflicts: [dataset], tables: [] };
     // Read the manifest row. Emulators do not always keep table descriptions.
-    const owner = await this.#client.query(`SELECT seed, tables FROM \`${this.#projectId}.${dataset}.${MANIFEST}\` LIMIT 1`, [], 30_000);
+    const owner = await this.#client.query(`SELECT seed, tables FROM ${this.#table(dataset, MANIFEST)} LIMIT 1`, [], 30_000);
     if (owner.rows[0]?.seed !== SEED_NAME) return { state: "foreign", conflicts: [dataset], tables: [] };
     let tables: string[] = [];
     try {
@@ -178,7 +184,7 @@ export class BigQuerySeedWriter implements SeedWriter {
     for (const table of domain.tables) {
       throwIfAborted(options.signal);
       await this.#write(dataset, table, table.rows, options.signal);
-      const counted = await this.#client.query(`SELECT COUNT(*) AS n FROM \`${this.#projectId}.${dataset}.${table.name}\``, [], 60_000);
+      const counted = await this.#client.query(`SELECT COUNT(*) AS n FROM ${this.#table(dataset, table.name)}`, [], 60_000);
       const actual = Number(counted.rows[0]?.n ?? -1);
       if (actual !== table.rows.length) throw new RowCountError(`${dataset}.${table.name}`, table.rows.length, actual);
       results.push({ table: table.name, rows: actual });

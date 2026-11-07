@@ -19,4 +19,5 @@ export function createSeedWriter(config: ConnectionConfig): SeedWriter | null {
 }
 
 export { BigQuerySeedWriter, MongoSeedWriter, PostgresSeedWriter };
+export { seedTarget } from "./target.ts";
 export * from "./types.ts";
