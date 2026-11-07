@@ -452,22 +452,24 @@ export async function startDevSeedRemoval(user: PublicUser): Promise<DevSeedStat
 
   launch(claimed.runId, async (_signal, update) => {
     const remaining: OwnedTarget[] = [];
+    const { configs } = await planSources();
     for (const [index, item] of claimed.owned.entries()) {
       await update({ [`steps.${index}.status`]: "running" });
-      const config = await getDataSourceConfig(item.sourceId);
+      // Act only on the target that received the data. The source that
+      // seeded it comes first. Another source with the same target also
+      // works, for example a source that someone deleted and added again.
+      const own = configs.get(item.sourceId);
+      const config =
+        own && seed.seedTarget(own) === item.target
+          ? own
+          : [...configs.values()].find((candidate) => item.target !== null && seed.seedTarget(candidate) === item.target);
       if (!config) {
-        await update({
-          [`steps.${index}.status`]: "skipped",
-          [`steps.${index}.error`]: `The data source no longer exists. Drop ${item.namespace} in ${item.target ?? item.sourceName} by hand.`,
-        });
-        continue;
-      }
-      // Act only on the target that received the data.
-      if (seed.seedTarget(config) !== item.target) {
         remaining.push(item);
         await update({
           [`steps.${index}.status`]: "failed",
-          [`steps.${index}.error`]: `This data source now points somewhere else. Restore its connection to ${item.target ?? "the seeded target"}, then remove again.`,
+          [`steps.${index}.error`]: own
+            ? `This data source now points somewhere else. Restore its connection to ${item.target ?? "the seeded target"}, then remove again.`
+            : `No data source points at ${item.target ?? "the seeded target"} now. Add one, then remove again.`,
         });
         continue;
       }

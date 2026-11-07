@@ -8,7 +8,7 @@ import { closeAdapters } from "./adapters/registry.ts";
 import { workspaces } from "./db.ts";
 import { destroyAppDatabase, useFreshAppDatabase } from "./test-db.ts";
 import { listDashboards } from "./services/dashboards.ts";
-import { createDataSource, updateDataSource } from "./services/data-sources.ts";
+import { createDataSource, deleteDataSource, updateDataSource } from "./services/data-sources.ts";
 import { DEV_SEED_WORKSPACE, getDevSeedState, type DevSeedState } from "./services/dev-seed.ts";
 import { queryDataSource } from "./services/query.ts";
 import { ensurePersonalWorkspace } from "./services/workspaces.ts";
@@ -208,7 +208,7 @@ describe("development seeding", () => {
     }
   }
 
-  it("keeps the removal record when a seeded source now points somewhere else", async () => {
+  it("keeps the removal record until a source points at the seeded target again", async () => {
     const source = await seedPostgresOnly();
     expect((await settled()).status).toBe("succeeded");
     const seeded = await fernwaySchemas();
@@ -222,7 +222,16 @@ describe("development seeding", () => {
     expect(blocked.hasSeedData).toBe(true);
     expect(await fernwaySchemas()).toEqual(seeded);
 
-    await updateDataSource(source.id, { config: { kind: "postgres", ...pgEndpoint, database: warehouse } });
+    // Deleted, the source leaves no way to the data, so the record stays.
+    await deleteDataSource(source.id);
+    expect((await call("DELETE", { session })).status).toBe(202);
+    const orphaned = await settled();
+    expect(orphaned.status).toBe("failed");
+    expect(orphaned.steps.every((step) => step.error?.includes("No data source points at"))).toBe(true);
+    expect(orphaned.hasSeedData).toBe(true);
+
+    // A new source with the original target can remove the data.
+    await createDataSource({ name: "Warehouse again", description: "", config: { kind: "postgres", ...pgEndpoint, database: warehouse }, createdBy: admin.id });
     expect((await call("DELETE", { session })).status).toBe(202);
     const removed = await settled();
     expect(removed.status).toBe("succeeded");
