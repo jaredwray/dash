@@ -122,6 +122,10 @@ export class BigQuerySeedWriter implements SeedWriter {
     const converted = rows.map((row) => toBigQueryRow(table, row));
     if (!this.#streaming) {
       try {
+        // Google replaces the table atomically with WRITE_TRUNCATE. The local
+        // emulator stopped on a truncating load into an existing table, so
+        // the table is dropped first there.
+        if (!this.#googleApi) await this.#client.deleteTable(dataset, table.name);
         await this.#client.loadRows(dataset, table.name, { schema, description: table.description, rows: converted });
         return;
       } catch (error) {
