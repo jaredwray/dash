@@ -7,6 +7,7 @@ import { PostgresAdapter } from "@dash/adapter-postgres";
 import { RedshiftAdapter } from "@dash/adapter-redshift";
 import { StripeAdapter } from "@dash/adapter-stripe";
 import { SnowflakeAdapter } from "@dash/adapter-snowflake";
+import { ServerClosingError, isServerClosing, onServerClose } from "../shutdown.ts";
 import { demoAdapter } from "./demo.ts";
 
 const cache = new Map<string, { fingerprint: string; adapter: DataAdapter }>();
@@ -16,6 +17,9 @@ function fingerprint(config: ConnectionConfig): string {
 }
 
 function createAdapter(config: ConnectionConfig): DataAdapter {
+  if (isServerClosing()) {
+    throw new ServerClosingError();
+  }
   switch (config.kind) {
     case "demo":
       return demoAdapter;
@@ -55,6 +59,24 @@ export function getAdapter(
   cache.set(dataSourceId, { fingerprint: mark, adapter });
   return adapter;
 }
+
+/**
+ * Close each cached adapter and empty the cache. Adapter pools keep sockets
+ * open, and an open socket stops Node from exiting after the HTTP server stops.
+ */
+export async function closeAdapters(): Promise<void> {
+  const open = [...cache.values()];
+  cache.clear();
+  const results = await Promise.allSettled(open.map(({ adapter }) => adapter.close()));
+  const reasons = results.flatMap((result) =>
+    result.status === "rejected" ? [result.reason] : [],
+  );
+  if (reasons.length > 0) {
+    throw new AggregateError(reasons, "Failed to close data source adapters");
+  }
+}
+
+onServerClose(closeAdapters);
 
 export async function testAdapter(
   config: ConnectionConfig,

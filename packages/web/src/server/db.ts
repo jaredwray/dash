@@ -3,6 +3,7 @@ import type { DashboardWidget, PublicUser, UserRole, WorkspaceMemberRole } from 
 import { MongoClient, type Collection, type Db } from "mongodb";
 import { getEnv } from "./env.ts";
 import { explainDatabaseError } from "./mongo-error.ts";
+import { ServerClosingError, isServerClosing, onServerClose } from "./shutdown.ts";
 
 export interface UserDoc {
   _id: string;
@@ -189,6 +190,9 @@ async function open(gen: number): Promise<Db> {
 }
 
 export function getDb(): Promise<Db> {
+  if (isServerClosing()) {
+    return Promise.reject(new ServerClosingError());
+  }
   if (database) {
     return Promise.resolve(database);
   }
@@ -220,6 +224,8 @@ export async function closeDb(): Promise<void> {
   connectTask = undefined;
   await current?.close();
 }
+
+onServerClose(closeDb);
 
 export type DatabaseCheck =
   | { ok: true }

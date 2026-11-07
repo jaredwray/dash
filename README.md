@@ -226,6 +226,7 @@ The Agent tokens page lists API tokens with the `mcp` scope. You can revoke thes
 | `pnpm dev` | Start `@dash/web` |
 | `pnpm test:services:start` | Start warehouse clusters (Docker Compose) |
 | `pnpm test:services:stop` | Stop clusters and delete their data |
+| `pnpm test:shutdown` | Send SIGTERM to the built `@dash/web` server and make sure that it exits. Run `pnpm --filter @dash/web build` and start the clusters first |
 | `pnpm test` | Run package tests. Adapter tests and `@dash/web` app-database tests use the clusters |
 | `pnpm typecheck` | TypeScript across workspaces |
 | `pnpm build` | Production build |
@@ -273,6 +274,8 @@ Override the Postgres endpoint with `DASH_TEST_POSTGRES_HOST`, `DASH_TEST_POSTGR
 Pushes to `main` run `.github/workflows/deploy-dev.yml`. Wrangler builds `Dockerfile`, pushes the image, and attaches the Worker to `https://dev.dash.io`. `workers.dev` is off.
 
 The container runs `node .output/server/index.mjs` from `@dash/web`. One instance named `dev` serves the host. Users, sessions, and saved data sources are stored in the MongoDB database named by `MONGODB_URI`, so they survive container sleep and the next image. The demo user is not seeded. Put Cloudflare Access in front of the hostname if the dev host should not be public.
+
+Cloudflare sends SIGTERM to the container when it sleeps and when a new image rolls out. The Node server then stops its listener and closes the MongoDB client and the cached data-source adapters, so the process exits. If a handle keeps the process alive for 10 seconds after the server closes, the server exits with code 1. A process that stays alive with no listener causes `Error proxying request to container` on each request.
 
 GitHub Actions secrets:
 
