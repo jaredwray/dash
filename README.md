@@ -141,7 +141,7 @@ To seed the local clusters:
    - BigQuery: project `dash`, API endpoint `http://127.0.0.1:9059`, and no default dataset
 5. Open **Settings**, go to **Sample company data**, select a size, and click **Seed data sources**.
 
-Do not point a source at the `dash` fixture database. The adapter tests expect only their fixture tables there. The Postgres cluster creates an empty `fernway` database for this purpose. Use the **Small** size with the BigQuery emulator, because the emulator has only 256 MiB of memory.
+Do not point a source at the `dash` fixture database. The adapter tests expect only their fixture tables there. The Postgres cluster creates an empty `fernway` database for this purpose. Use the **Small** size with the BigQuery emulator, because the emulator keeps all data in its 1 GiB of memory.
 
 The run continues in the background. The panel shows each domain and its row count. When the run is complete, the shared **Fernway** workspace has six dashboards: Executive overview, Revenue & billing, Sales pipeline, Product engagement, Marketing performance, and Customer support. **Remove sample data** drops the data that the seeder wrote and deletes those dashboards.
 

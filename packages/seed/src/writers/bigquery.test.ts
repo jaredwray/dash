@@ -7,6 +7,12 @@ import { ForeignNamespaceError } from "./types.ts";
 
 const AS_OF = new Date("2026-11-01T00:00:00.000Z");
 const dataset = generateDataset({ asOf: AS_OF, size: "small" });
+// The emulator keeps every loaded row and job in memory. The writer logic
+// does not depend on the row count, so each table keeps its first 200 rows.
+const trimmed = (key: string) => {
+  const domain = dataset.domains.find((item) => item.key === key)!;
+  return { ...domain, tables: domain.tables.map((table) => ({ ...table, rows: table.rows.slice(0, 200) })) };
+};
 const options = { size: "small", asOf: AS_OF };
 const config = bigQueryConfig();
 // The emulator holds one project, so the datasets have their real names.
@@ -35,7 +41,7 @@ afterAll(async () => {
 });
 
 describe("BigQuerySeedWriter", () => {
-  const marketing = dataset.domains.find((domain) => domain.key === "marketing")!;
+  const marketing = trimmed("marketing");
 
   it("writes a domain into its dataset, and Dash reads a mart through the adapter", async () => {
     expect(await writer.inspect(marketing)).toEqual({ state: "absent", conflicts: [] });
@@ -69,7 +75,7 @@ describe("BigQuerySeedWriter", () => {
 
   it("refuses a dataset that it did not create and leaves it in place", async () => {
     await admin.createDataset("fernway_finance", { description: "Team budget" });
-    const finance = dataset.domains.find((domain) => domain.key === "finance")!;
+    const finance = trimmed("finance");
     expect(await writer.inspect(finance)).toEqual({ state: "foreign", conflicts: ["fernway_finance"] });
     await expect(writer.replace(finance, options)).rejects.toBeInstanceOf(ForeignNamespaceError);
     await expect(writer.remove("finance")).rejects.toBeInstanceOf(ForeignNamespaceError);
