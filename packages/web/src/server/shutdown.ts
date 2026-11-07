@@ -6,22 +6,44 @@ export const FORCED_EXIT_MS = 10_000;
 
 type Closer = () => Promise<void>;
 
-const CLOSERS = Symbol.for("dash.server.closers");
+interface ShutdownState {
+  closing: boolean;
+  closers: Set<Closer>;
+}
+
+const STATE = Symbol.for("dash.server.shutdown");
 
 /**
- * The closer set is on `globalThis`. Nitro bundles its plugins apart from the
- * TanStack Start routes, so each bundle gets its own copy of this module. Only
- * the route copy of `db.ts` holds the live client.
+ * The shutdown state is on `globalThis`. Nitro bundles its plugins apart from
+ * the TanStack Start routes, so each bundle gets its own copy of this module.
+ * Only the route copy of `db.ts` holds the live client.
  */
-function closers(): Set<Closer> {
-  const store = globalThis as typeof globalThis & { [CLOSERS]?: Set<Closer> };
-  store[CLOSERS] ??= new Set();
-  return store[CLOSERS];
+function state(): ShutdownState {
+  const store = globalThis as typeof globalThis & { [STATE]?: ShutdownState };
+  store[STATE] ??= { closing: false, closers: new Set() };
+  return store[STATE];
+}
+
+/** The error for a request that tries to open a client after shutdown starts. */
+export class ServerClosingError extends Error {
+  constructor() {
+    super("The server is shutting down");
+    this.name = "ServerClosingError";
+  }
+}
+
+/**
+ * True after shutdown starts. A forced close destroys the sockets but does not
+ * stop handlers that are still running. Code that opens a client must check
+ * this value, so that no new socket opens after the closers run.
+ */
+export function isServerClosing(): boolean {
+  return state().closing;
 }
 
 /** Register a function that releases sockets or timers when the server stops. */
 export function onServerClose(closer: Closer): void {
-  closers().add(closer);
+  state().closers.add(closer);
 }
 
 /**
@@ -34,7 +56,9 @@ export function onServerClose(closer: Closer): void {
  * request, and the Worker logs "Error proxying request to container".
  */
 export async function closeServerResources(): Promise<void> {
-  const results = await Promise.allSettled([...closers()].map((close) => close()));
+  const current = state();
+  current.closing = true;
+  const results = await Promise.allSettled([...current.closers].map((close) => close()));
   for (const result of results) {
     if (result.status === "rejected") {
       console.error("[dash] shutdown: a client did not close:", result.reason);
