@@ -151,6 +151,7 @@ Safety rules:
 - Only an administrator with a browser session can start a run. API tokens and MCP cannot.
 - Dash writes only to `fernway_*` schemas and datasets, and to the MongoDB collections that its manifest records. Each target holds a `dash_seed_manifest` table or collection.
 - Dash refuses a target that exists without that manifest. It examines every target before the first write.
+- Dash replaces and drops only the tables that the manifest lists. It keeps any other table in a seeded schema or dataset, and it drops a schema or dataset only when it is empty.
 - Dash refuses a MongoDB source that points at the Dash app database.
 - Email addresses use the reserved `.example` domain, so no seeded address can reach a real mailbox.
 

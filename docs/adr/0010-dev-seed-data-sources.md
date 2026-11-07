@@ -24,6 +24,7 @@ A Dash query reads one resource. It has columns, filters, sort order, and a limi
 - Ownership:
   - Postgres and BigQuery receive one `fernway_<domain>` schema or dataset for each domain. MongoDB receives `<domain>_<table>` collections.
   - Each target holds a `dash_seed_manifest` table or collection. The seeder refuses a target that exists without that manifest. It examines every target before the first write.
+  - The manifest lists the tables that the seeder wrote. A replace or a removal touches only those tables. A table with a seed name that the manifest does not list is a conflict. Other tables stay in place, and a schema or dataset is dropped only when it is empty.
   - A Postgres domain is replaced in one transaction. A MongoDB table loads into a temporary collection, which a rename then swaps in. BigQuery uses load jobs with `WRITE_TRUNCATE`.
   - Each writer counts the rows of each table after the write. A count that does not agree fails the step.
 - BigQuery load jobs use a multipart upload. Real BigQuery accepts it, including sandbox projects, which refuse streaming inserts and DML. When a local emulator refuses the upload, the writer uses streaming inserts. A Google endpoint never falls back. Dataset and table management is on `BigQueryAdminClient` in `@dash/adapter-bigquery`. The read adapter does not use it.

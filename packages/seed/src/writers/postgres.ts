@@ -58,13 +58,30 @@ function value(column: SeedColumn, raw: unknown): unknown {
 
 type Queryable = Pick<pg.PoolClient, "query">;
 
-async function inspectWith(client: Queryable, schema: string): Promise<InspectResult> {
+interface Ownership extends InspectResult {
+  /** Tables that the manifest lists. The writer touches only these. */
+  tables: string[];
+}
+
+/**
+ * Reads the manifest of a schema. A table that has a seed name but is not in
+ * the manifest is a conflict. Other tables are left alone.
+ */
+async function inspectWith(client: Queryable, schema: string, names: readonly string[]): Promise<Ownership> {
   const present = await client.query("SELECT 1 FROM information_schema.schemata WHERE schema_name = $1", [schema]);
-  if (present.rowCount === 0) return { state: "absent", conflicts: [] };
+  if (present.rowCount === 0) return { state: "absent", conflicts: [], tables: [] };
   const manifest = await client.query("SELECT to_regclass($1) AS name", [`${quote(schema)}.${quote(MANIFEST)}`]);
-  if (!manifest.rows[0]?.name) return { state: "foreign", conflicts: [schema] };
-  const owner = await client.query(`SELECT seed FROM ${quote(schema)}.${quote(MANIFEST)} LIMIT 1`);
-  return owner.rows[0]?.seed === SEED_NAME ? { state: "owned", conflicts: [] } : { state: "foreign", conflicts: [schema] };
+  if (!manifest.rows[0]?.name) return { state: "foreign", conflicts: [schema], tables: [] };
+  const owner = await client.query(`SELECT seed, tables FROM ${quote(schema)}.${quote(MANIFEST)} LIMIT 1`);
+  if (owner.rows[0]?.seed !== SEED_NAME) return { state: "foreign", conflicts: [schema], tables: [] };
+  const listed = owner.rows[0]?.tables;
+  const tables = Array.isArray(listed) ? listed.map(String) : [];
+  const existing = await client.query("SELECT table_name FROM information_schema.tables WHERE table_schema = $1", [schema]);
+  const conflicts = existing.rows
+    .map((row) => String(row.table_name))
+    .filter((name) => names.includes(name) && !tables.includes(name))
+    .map((name) => `${schema}.${name}`);
+  return conflicts.length > 0 ? { state: "foreign", conflicts, tables } : { state: "owned", conflicts: [], tables };
 }
 
 async function createTable(client: Queryable, schema: string, table: SeedTable): Promise<void> {
@@ -109,8 +126,9 @@ export class PostgresSeedWriter implements SeedWriter {
     return sqlNamespace(domain);
   }
 
-  async inspect(domain: Pick<SeedDomain, "key">): Promise<InspectResult> {
-    return inspectWith(this.#pool, sqlNamespace(domain.key));
+  async inspect(domain: Pick<SeedDomain, "key" | "tables">): Promise<InspectResult> {
+    const { state, conflicts } = await inspectWith(this.#pool, sqlNamespace(domain.key), domain.tables.map((table) => table.name));
+    return { state, conflicts };
   }
 
   async replace(domain: SeedDomain, options: WriteOptions): Promise<TableResult[]> {
@@ -121,11 +139,18 @@ export class PostgresSeedWriter implements SeedWriter {
       await client.query("BEGIN");
       // Two runs at once must not both see an absent schema.
       await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [`dash-seed:${schema}`]);
-      const state = await inspectWith(client, schema);
+      const state = await inspectWith(client, schema, domain.tables.map((table) => table.name));
       if (state.state === "foreign") throw new ForeignNamespaceError(`Schema ${schema}`, state.conflicts);
-      if (state.state === "owned") await client.query(`DROP SCHEMA ${quote(schema)} CASCADE`);
-      await client.query(`CREATE SCHEMA ${quote(schema)}`);
-      await client.query(`COMMENT ON SCHEMA ${quote(schema)} IS ${literal(`${OWNER_NOTE} ${domain.label}.`)}`);
+      if (state.state === "owned") {
+        // Drop only the tables that the manifest lists. Without CASCADE, a
+        // view that someone built on a seed table stops the replace.
+        for (const name of [...state.tables, MANIFEST]) {
+          await client.query(`DROP TABLE IF EXISTS ${quote(schema)}.${quote(name)}`);
+        }
+      } else {
+        await client.query(`CREATE SCHEMA ${quote(schema)}`);
+        await client.query(`COMMENT ON SCHEMA ${quote(schema)} IS ${literal(`${OWNER_NOTE} ${domain.label}.`)}`);
+      }
       for (const table of domain.tables) {
         throwIfAborted(options.signal);
         await createTable(client, schema, table);
@@ -165,10 +190,24 @@ export class PostgresSeedWriter implements SeedWriter {
 
   async remove(domain: SeedDomainKey): Promise<boolean> {
     const schema = sqlNamespace(domain);
-    const state = await this.inspect({ key: domain });
+    const state = await inspectWith(this.#pool, schema, []);
     if (state.state === "absent") return false;
     if (state.state === "foreign") throw new ForeignNamespaceError(`Schema ${schema}`, state.conflicts);
-    await this.#pool.query(`DROP SCHEMA ${quote(schema)} CASCADE`);
+    const client = await this.#pool.connect();
+    try {
+      await client.query("BEGIN");
+      for (const name of [...state.tables, MANIFEST]) {
+        await client.query(`DROP TABLE IF EXISTS ${quote(schema)}.${quote(name)}`);
+      }
+      await client.query("COMMIT");
+    } catch (error) {
+      await client.query("ROLLBACK").catch(() => undefined);
+      throw error;
+    } finally {
+      client.release();
+    }
+    // Drop the schema only when nothing else is in it.
+    await this.#pool.query(`DROP SCHEMA IF EXISTS ${quote(schema)} RESTRICT`).catch(() => undefined);
     return true;
   }
 

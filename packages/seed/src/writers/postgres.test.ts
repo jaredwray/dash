@@ -93,4 +93,29 @@ describe("PostgresSeedWriter", () => {
     expect(await writer.remove("app")).toBe(false);
     expect(await schemas()).toEqual(["fernway_marketing"]);
   });
+
+  it("keeps a table that someone added to an owned schema", async () => {
+    const crm = dataset.domains.find((domain) => domain.key === "crm")!;
+    await writer.replace(crm, options);
+    await target.query("CREATE TABLE fernway_crm.territory_notes (id int)");
+    await target.query("INSERT INTO fernway_crm.territory_notes VALUES (7)");
+    await writer.replace(crm, options);
+    expect((await target.query("SELECT id FROM fernway_crm.territory_notes")).rows).toEqual([{ id: 7 }]);
+
+    expect(await writer.remove("crm")).toBe(true);
+    const left = await target.query("SELECT table_name FROM information_schema.tables WHERE table_schema = 'fernway_crm'");
+    expect(left.rows).toEqual([{ table_name: "territory_notes" }]);
+    // With the manifest gone, the schema is no longer the seeder's.
+    expect(await writer.inspect(crm)).toEqual({ state: "foreign", conflicts: ["fernway_crm"] });
+  });
+
+  it("refuses a table with a seed name that the manifest does not list", async () => {
+    const finance = dataset.domains.find((domain) => domain.key === "finance")!;
+    await writer.replace(finance, options);
+    await target.query("UPDATE fernway_finance.dash_seed_manifest SET tables = tables - 'kpi_monthly'");
+    expect(await writer.inspect(finance)).toEqual({ state: "foreign", conflicts: ["fernway_finance.kpi_monthly"] });
+    await expect(writer.replace(finance, options)).rejects.toBeInstanceOf(ForeignNamespaceError);
+    const kept = await target.query("SELECT count(*)::int AS n FROM fernway_finance.kpi_monthly");
+    expect(kept.rows[0]?.n).toBe(finance.tables.find((table) => table.name === "kpi_monthly")!.rows.length);
+  });
 });

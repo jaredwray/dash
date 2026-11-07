@@ -58,10 +58,13 @@ describe("BigQuerySeedWriter", () => {
     }
   });
 
-  it("replaces an owned domain without duplicate rows", async () => {
+  it("replaces an owned domain without duplicate rows, and keeps a table that someone added", async () => {
+    await admin.createTable("fernway_marketing", "budget_notes", { schema: [{ name: "note", type: "STRING", mode: "NULLABLE" }] });
     await writer.replace(marketing, options);
     const counted = await admin.query(`SELECT COUNT(*) AS n FROM \`${config.projectId}.fernway_marketing.campaigns\``);
     expect(Number(counted.rows[0]?.n)).toBe(marketing.tables.find((table) => table.name === "campaigns")!.rows.length);
+    expect(await admin.listTables("fernway_marketing")).toContain("budget_notes");
+    await admin.deleteTable("fernway_marketing", "budget_notes");
   });
 
   it("refuses a dataset that it did not create and leaves it in place", async () => {

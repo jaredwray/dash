@@ -107,14 +107,33 @@ export class BigQuerySeedWriter implements SeedWriter {
     return sqlNamespace(domain);
   }
 
-  async inspect(domain: Pick<SeedDomain, "key">): Promise<InspectResult> {
-    const dataset = sqlNamespace(domain.key);
+  /**
+   * Reads the manifest of a dataset. A table that has a seed name but is not
+   * in the manifest is a conflict. Other tables are left alone.
+   */
+  async #ownership(dataset: string, names: readonly string[]): Promise<InspectResult & { tables: string[] }> {
     const found = await this.#client.getDataset(dataset);
-    if (!found) return { state: "absent", conflicts: [] };
-    if (!(await this.#client.getTable(dataset, MANIFEST))) return { state: "foreign", conflicts: [dataset] };
+    if (!found) return { state: "absent", conflicts: [], tables: [] };
+    if (!(await this.#client.getTable(dataset, MANIFEST))) return { state: "foreign", conflicts: [dataset], tables: [] };
     // Read the manifest row. Emulators do not always keep table descriptions.
-    const owner = await this.#client.query(`SELECT seed FROM \`${this.#projectId}.${dataset}.${MANIFEST}\` LIMIT 1`, [], 30_000);
-    return owner.rows[0]?.seed === SEED_NAME ? { state: "owned", conflicts: [] } : { state: "foreign", conflicts: [dataset] };
+    const owner = await this.#client.query(`SELECT seed, tables FROM \`${this.#projectId}.${dataset}.${MANIFEST}\` LIMIT 1`, [], 30_000);
+    if (owner.rows[0]?.seed !== SEED_NAME) return { state: "foreign", conflicts: [dataset], tables: [] };
+    let tables: string[] = [];
+    try {
+      const parsed: unknown = JSON.parse(String(owner.rows[0]?.tables ?? "[]"));
+      if (Array.isArray(parsed)) tables = parsed.map(String);
+    } catch {
+      tables = [];
+    }
+    const conflicts = (await this.#client.listTables(dataset))
+      .filter((name) => names.includes(name) && !tables.includes(name))
+      .map((name) => `${dataset}.${name}`);
+    return conflicts.length > 0 ? { state: "foreign", conflicts, tables } : { state: "owned", conflicts: [], tables };
+  }
+
+  async inspect(domain: Pick<SeedDomain, "key" | "tables">): Promise<InspectResult> {
+    const { state, conflicts } = await this.#ownership(sqlNamespace(domain.key), domain.tables.map((table) => table.name));
+    return { state, conflicts };
   }
 
   async #write(dataset: string, table: Pick<SeedTable, "name" | "description" | "columns">, rows: Record<string, unknown>[], signal?: AbortSignal): Promise<void> {
@@ -144,15 +163,16 @@ export class BigQuerySeedWriter implements SeedWriter {
 
   async replace(domain: SeedDomain, options: WriteOptions): Promise<TableResult[]> {
     const dataset = sqlNamespace(domain.key);
-    const state = await this.inspect(domain);
+    const names = domain.tables.map((table) => table.name);
+    const state = await this.#ownership(dataset, names);
     if (state.state === "foreign") throw new ForeignNamespaceError(`Dataset ${dataset}`, state.conflicts);
     if (state.state === "absent") {
       await this.#client.createDataset(dataset, { description: `${OWNER_NOTE} ${domain.label}.` });
     }
     const manifest = manifestRow(domain, options, SEED_VERSION, SEED_NAME);
     const manifestTable = { name: MANIFEST, description: OWNER_NOTE, columns: MANIFEST_TABLE.columns };
-    // Claim the dataset first, so a failed run can be retried or removed.
-    await this.#write(dataset, manifestTable, [{ ...manifest, written_at: manifest.written_at }]);
+    // Claim the old and new tables first, so a failed run can be retried or removed.
+    await this.#write(dataset, manifestTable, [{ ...manifest, tables: [...new Set([...state.tables, ...names])] }]);
 
     const results: TableResult[] = [];
     for (const table of domain.tables) {
@@ -164,19 +184,26 @@ export class BigQuerySeedWriter implements SeedWriter {
       results.push({ table: table.name, rows: actual });
       options.onTable?.(table.name, actual);
     }
-    const keep = new Set([MANIFEST, ...domain.tables.map((table) => table.name)]);
-    for (const name of await this.#client.listTables(dataset)) {
-      if (!keep.has(name)) await this.#client.deleteTable(dataset, name);
+    // Drop tables that an earlier seed version wrote and this one does not.
+    for (const name of state.tables.filter((table) => !names.includes(table))) {
+      await this.#client.deleteTable(dataset, name);
     }
+    await this.#write(dataset, manifestTable, [manifest]);
     return results;
   }
 
   async remove(domain: SeedDomainKey): Promise<boolean> {
     const dataset = sqlNamespace(domain);
-    const state = await this.inspect({ key: domain });
+    const state = await this.#ownership(dataset, []);
     if (state.state === "absent") return false;
     if (state.state === "foreign") throw new ForeignNamespaceError(`Dataset ${dataset}`, state.conflicts);
-    await this.#client.deleteDataset(dataset);
+    for (const name of [...state.tables, MANIFEST]) {
+      await this.#client.deleteTable(dataset, name);
+    }
+    // Drop the dataset only when nothing else is in it.
+    if ((await this.#client.listTables(dataset)).length === 0) {
+      await this.#client.deleteDataset(dataset);
+    }
     return true;
   }
 
