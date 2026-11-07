@@ -1,17 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import {
-  EmailTakenError,
-  countUsers,
-  createSession,
-  createUser,
-  findUserByEmail,
-  grantInitialAdmin,
-} from "~/server/auth";
+import { EmailTakenError, createSession } from "~/server/auth";
 import { getEnv } from "~/server/env";
 import { error, json, readJson, sessionCookie } from "~/server/http";
 import { ensureSeeded } from "~/server/seed";
-import { getSettings } from "~/server/services/settings";
+import { RegistrationDeniedError, registerAccount } from "~/server/services/account-policy";
 
 const bodySchema = z.object({
   email: z.string().email(),
@@ -28,31 +21,21 @@ export const Route = createFileRoute("/api/auth/register")({
         if (!parsed.success) {
           return error(400, "Invalid registration payload", "invalid_body");
         }
-        const settings = await getSettings();
-        const email = parsed.data.email.trim().toLowerCase();
-        const userCount = await countUsers();
-        if (userCount > 0 && !settings.allowRegistration) {
-          return error(403, "Registration is closed", "registration_closed");
-        }
-        if (await findUserByEmail(email)) {
-          return error(409, "Email already registered", "email_taken");
-        }
         let user;
         try {
-          user = await createUser({
-            email,
-            name: parsed.data.name.trim(),
+          user = await registerAccount({
+            email: parsed.data.email,
+            name: parsed.data.name,
             password: parsed.data.password,
-            role: "member",
           });
         } catch (cause) {
           if (cause instanceof EmailTakenError) {
             return error(409, "Email already registered", "email_taken");
           }
+          if (cause instanceof RegistrationDeniedError) {
+            return error(403, cause.message, cause.code);
+          }
           throw cause;
-        }
-        if (userCount === 0 && (await grantInitialAdmin(user.id))) {
-          user = { ...user, role: "admin" };
         }
         const token = await createSession(user.id);
         return json(

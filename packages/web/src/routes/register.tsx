@@ -42,10 +42,34 @@ function RegisterPage() {
     );
   }
 
-  return <RegisterForm needsSetup={bootstrap.data.needsSetup} />;
+  return (
+    <RegisterForm
+      needsSetup={bootstrap.data.needsSetup}
+      allowedEmailDomains={
+        bootstrap.data.needsSetup ? [] : bootstrap.data.allowedEmailDomains
+      }
+    />
+  );
 }
 
-function RegisterForm({ needsSetup }: { needsSetup: boolean }) {
+function domainHint(domains: string[]): string | undefined {
+  const first = domains[0];
+  if (!first) {
+    return undefined;
+  }
+  if (domains.length === 1) {
+    return `Use an email at ${first}.`;
+  }
+  return `Use an email at one of these domains: ${domains.join(", ")}.`;
+}
+
+function RegisterForm({
+  needsSetup,
+  allowedEmailDomains,
+}: {
+  needsSetup: boolean;
+  allowedEmailDomains: string[];
+}) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [name, setName] = useState("");
@@ -53,6 +77,7 @@ function RegisterForm({ needsSetup }: { needsSetup: boolean }) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const hint = domainHint(allowedEmailDomains);
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
@@ -103,6 +128,7 @@ function RegisterForm({ needsSetup }: { needsSetup: boolean }) {
           required
         />
       </Field>
+      {hint ? <p className="text-sm text-mist">{hint}</p> : null}
       <Field label="Password">
         <TextInput
           type="password"

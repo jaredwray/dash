@@ -21,6 +21,7 @@ describe("auth bootstrap", () => {
       seedDemo: false,
       needsSetup: true,
       allowRegistration: true,
+      allowedEmailDomains: [],
       demoLogin: null,
     });
 

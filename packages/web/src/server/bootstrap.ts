@@ -14,6 +14,7 @@ export async function getAuthBootstrap(): Promise<AuthBootstrap> {
     seedDemo,
     needsSetup,
     allowRegistration: needsSetup || settings.allowRegistration,
+    allowedEmailDomains: settings.allowedEmailDomains,
     demoLogin: demoAccount ? { email: demoAccount.email, password: demoAccount.password } : null,
   };
 }

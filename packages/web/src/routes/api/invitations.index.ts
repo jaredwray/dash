@@ -4,6 +4,7 @@ import { USER_ROLES } from "@dash/core";
 import { EmailTakenError } from "~/server/auth";
 import { isResponse, requireAdminSession } from "~/server/guard";
 import { error, json, readJson } from "~/server/http";
+import { EmailDomainNotAllowedError } from "~/server/services/account-policy";
 import { createInvitation, listInvitations } from "~/server/services/team";
 
 const createSchema = z.object({
@@ -40,6 +41,9 @@ export const Route = createFileRoute("/api/invitations/")({
         } catch (cause) {
           if (cause instanceof EmailTakenError) {
             return error(409, "That email already belongs to a team member", "email_taken");
+          }
+          if (cause instanceof EmailDomainNotAllowedError) {
+            return error(403, cause.message, "domain_not_allowed");
           }
           throw cause;
         }

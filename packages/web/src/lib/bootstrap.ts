@@ -7,5 +7,6 @@ export interface AuthBootstrap {
   seedDemo: boolean;
   needsSetup: boolean;
   allowRegistration: boolean;
+  allowedEmailDomains: string[];
   demoLogin: DemoLogin | null;
 }

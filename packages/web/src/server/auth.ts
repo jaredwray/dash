@@ -42,8 +42,15 @@ export function toPublicUser(row: UserDoc): PublicUser {
   };
 }
 
+/** A pending account cannot sign in. Older documents have no state and stay active. */
+export function isActiveAccount(user: Pick<UserDoc, "accountState">): boolean {
+  return user.accountState !== "pending";
+}
+
 export function countUsers(): Promise<number> {
-  return users().then((collection) => collection.countDocuments());
+  return users().then((collection) =>
+    collection.countDocuments({ accountState: { $ne: "pending" } }),
+  );
 }
 
 export async function createUser(input: {
@@ -51,6 +58,7 @@ export async function createUser(input: {
   name: string;
   password: string;
   role: PublicUser["role"];
+  accountState?: "pending";
 }): Promise<PublicUser> {
   const id = randomId();
   const createdAt = nowIso();
@@ -65,6 +73,7 @@ export async function createUser(input: {
       role: input.role,
       passwordHash,
       createdAt,
+      ...(input.accountState === "pending" ? { accountState: "pending" as const } : {}),
     });
   } catch (error) {
     if (error instanceof MongoServerError && error.code === 11000) {
@@ -81,6 +90,71 @@ export async function createUser(input: {
   };
 }
 
+/** Replace the name and password on a pending account. An active account is left unchanged. */
+export async function revisePendingAccount(
+  userId: string,
+  input: { name: string; password: string },
+): Promise<boolean> {
+  const passwordHash = await hashPassword(input.password);
+  const result = await (
+    await users()
+  ).updateOne(
+    { _id: userId, accountState: "pending" },
+    { $set: { name: input.name, passwordHash } },
+  );
+  return result.matchedCount === 1;
+}
+
+/** Mark a pending account active and return it. */
+export async function activateAccount(userId: string): Promise<PublicUser> {
+  const row = await (
+    await users()
+  ).findOneAndUpdate(
+    { _id: userId },
+    { $set: { accountState: "active" } },
+    { returnDocument: "after" },
+  );
+  if (!row || !isActiveAccount(row)) {
+    throw new Error("User not found");
+  }
+  return toPublicUser(row);
+}
+
+async function bootstrapAdminId(): Promise<string | undefined> {
+  const settings = (await getDb()).collection<{ _id: string; adminUserId?: string }>("settings");
+  const doc = await settings.findOne({ _id: "bootstrap" });
+  return doc?.adminUserId;
+}
+
+/**
+ * Activate the account that already claimed the first admin.
+ * Return undefined when this account does not own that claim.
+ */
+export async function finishBootstrapAdmin(userId: string): Promise<PublicUser | undefined> {
+  if ((await bootstrapAdminId()) !== userId) {
+    return undefined;
+  }
+  const row = await (
+    await users()
+  ).findOneAndUpdate(
+    { _id: userId },
+    { $set: { role: "admin", accountState: "active", bootstrapClaim: true } },
+    { returnDocument: "after" },
+  );
+  return row ? toPublicUser(row) : undefined;
+}
+
+/** Remove a pending account. Skip an account that started the first-admin claim. */
+export async function releasePendingAccount(userId: string): Promise<void> {
+  await (
+    await users()
+  ).deleteOne({
+    _id: userId,
+    accountState: "pending",
+    bootstrapClaim: { $ne: true },
+  });
+}
+
 export async function findUserByEmail(email: string): Promise<UserDoc | undefined> {
   const row = await (await users()).findOne({ email });
   return row ?? undefined;
@@ -91,36 +165,64 @@ export async function findUserById(id: string): Promise<UserDoc | undefined> {
   return row ?? undefined;
 }
 
-/**
- * The first successful claim on an empty app database becomes admin.
- * Later callers are not promoted.
- */
-export async function grantInitialAdmin(userId: string): Promise<boolean> {
+async function writeBootstrapAdminId(userId: string): Promise<boolean> {
   const settings = (await getDb()).collection<{ _id: string; adminUserId?: string }>("settings");
-  let adminUserId: string | undefined;
   try {
     const doc = await settings.findOneAndUpdate(
       { _id: "bootstrap" },
       { $setOnInsert: { adminUserId: userId } },
       { upsert: true, returnDocument: "after" },
     );
-    adminUserId = doc?.adminUserId;
+    return doc?.adminUserId === userId;
   } catch (error) {
     if (!(error instanceof MongoServerError) || error.code !== 11000) {
       throw error;
     }
-    adminUserId = (await settings.findOne({ _id: "bootstrap" }))?.adminUserId;
+    return (await settings.findOne({ _id: "bootstrap" }))?.adminUserId === userId;
   }
-  if (adminUserId !== userId) {
+}
+
+async function clearBootstrapClaim(userId: string): Promise<void> {
+  await (
+    await users()
+  ).updateOne({ _id: userId, accountState: "pending" }, { $unset: { bootstrapClaim: "" } });
+}
+
+/**
+ * The first successful claim on an empty app database becomes admin.
+ * The user row records the claim before the bootstrap document is written.
+ * Later callers are not promoted.
+ */
+export async function grantInitialAdmin(userId: string): Promise<boolean> {
+  const marked = await (
+    await users()
+  ).updateOne({ _id: userId, bootstrapClaim: { $ne: true } }, { $set: { bootstrapClaim: true } });
+  if (marked.matchedCount !== 1) {
+    const user = await findUserById(userId);
+    if (!user?.bootstrapClaim) {
+      return false;
+    }
+  }
+  const won = await writeBootstrapAdminId(userId);
+  if (!won) {
+    await clearBootstrapClaim(userId);
     return false;
   }
-  await (await users()).updateOne({ _id: userId }, { $set: { role: "admin" } });
+  const result = await (
+    await users()
+  ).updateOne(
+    { _id: userId },
+    { $set: { role: "admin", accountState: "active", bootstrapClaim: true } },
+  );
+  if (result.matchedCount !== 1) {
+    throw new Error("The first account was not activated");
+  }
   return true;
 }
 
 export async function assertUserExists(userId: string): Promise<void> {
   const user = await findUserById(userId);
-  if (!user) {
+  if (!user || !isActiveAccount(user)) {
     throw new Error("User not found");
   }
 }
@@ -134,7 +236,7 @@ export async function authenticatePassword(
     return undefined;
   }
   const ok = await verifyPassword(password, user.passwordHash);
-  if (!ok) {
+  if (!ok || !isActiveAccount(user)) {
     return undefined;
   }
   return toPublicUser(user);
@@ -171,7 +273,7 @@ async function sessionUser(token: string): Promise<PublicUser | undefined> {
     return undefined;
   }
   const user = await findUserById(session.userId);
-  return user ? toPublicUser(user) : undefined;
+  return user && isActiveAccount(user) ? toPublicUser(user) : undefined;
 }
 
 function toPublicToken(row: ApiTokenDoc) {
@@ -252,7 +354,7 @@ async function tokenAuth(token: string): Promise<AuthContext | undefined> {
     return undefined;
   }
   const user = await findUserById(row.userId);
-  if (!user) {
+  if (!user || !isActiveAccount(user)) {
     return undefined;
   }
   await collection.updateOne({ _id: row._id }, { $set: { lastUsedAt: nowIso() } });

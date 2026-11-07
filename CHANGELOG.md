@@ -6,6 +6,10 @@ All notable changes to Dash are documented here.
 
 ### Fixed
 
+- A concurrent first registration does not keep an account when its email domain is not on the list. Only the account that claims the first user skips the list.
+- A rejected registration cannot sign in when removal of that account fails. The account stays pending, and a later attempt removes it or accepts it.
+- A later registration does not remove the pending account that claimed the first admin. That account becomes the administrator.
+- A pending account that has started the first-admin claim is not removed before that claim is stored.
 - [dev.dash.io](https://dev.dash.io) does not fail each request with `Error proxying request to container` after the container gets SIGTERM. The Node server stopped its listener but stayed alive, because the MongoDB client and the cached data-source adapters kept their sockets open. Cloudflare then saw a running container and did not start a new one. A Nitro `close` hook now closes those clients, so the process exits. After the hook starts, a request that is still running cannot open a new database client or adapter. If a handle keeps the process alive for 10 seconds, the server exits with code 1. CI runs `pnpm test:shutdown` on the built server.
 - Cloud setup installs Aikido Safe Chain 1.5.27. Version 1.5.15 exits on pnpm 12, so the environment build fails and agents boot the default image.
 - Sidebar sections use a subtle blue selected state with a left accent and brighter icon. Keyboard focus gets its own inset outline, and the current section is announced to screen readers.
@@ -15,6 +19,7 @@ All notable changes to Dash are documented here.
 
 ### Added
 
+- Administrators can save the email domains that can create accounts. An empty list allows every domain. Open registration and invitations both use the list. The first account does not use the list.
 - The Agent tokens page creates and revokes tokens for MCP access. The banner shows the full MCP URL from the current site address, with a copy button.
 - Each Dash instance serves one organization with multiple workspaces. Each user receives a personal workspace that they can share with existing organization members.
 - Organization admins can create shared workspaces and manage viewer or editor access. Dashboard API and MCP requests check workspace access.

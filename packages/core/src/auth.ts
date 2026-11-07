@@ -42,6 +42,8 @@ export interface InvitationPreview {
 export interface OrganizationSettings {
   name: string;
   allowRegistration: boolean;
+  /** Host names that can create accounts. An empty list allows every domain. */
+  allowedEmailDomains: string[];
 }
 
 export const API_TOKEN_SCOPES = ["read", "write", "mcp"] as const;

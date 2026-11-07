@@ -16,11 +16,11 @@ import {
 } from "./auth.ts";
 import { ensurePersonalWorkspace } from "./services/workspaces.ts";
 import { hashSecret } from "./crypto.ts";
-import { dashboards, sessions } from "./db.ts";
+import { dashboards, organizationSettings, sessions } from "./db.ts";
 import { SESSION_COOKIE } from "./http.ts";
 import { ensureSeeded, resetSeedForTests } from "./seed.ts";
 import { appendDashboardWidget, createDashboard, listDashboards, updateDashboard } from "./services/dashboards.ts";
-import { getSettings, updateSettings } from "./services/settings.ts";
+import { getSettings, InvalidEmailDomainError, updateSettings } from "./services/settings.ts";
 import { listDataSources } from "./services/data-sources.ts";
 import { destroyAppDatabase, useFreshAppDatabase } from "./test-db.ts";
 
@@ -96,12 +96,36 @@ describe("app database", () => {
   });
 
   it("round-trips organization settings and dashboards", async () => {
-    expect(await getSettings()).toEqual({ name: "Dash", allowRegistration: true });
+    expect(await getSettings()).toEqual({
+      name: "Dash",
+      allowRegistration: true,
+      allowedEmailDomains: [],
+    });
     await Promise.all([
       updateSettings({ name: "Acme" }),
       updateSettings({ allowRegistration: false }),
     ]);
-    expect(await getSettings()).toEqual({ name: "Acme", allowRegistration: false });
+    expect(await getSettings()).toEqual({
+      name: "Acme",
+      allowRegistration: false,
+      allowedEmailDomains: [],
+    });
+    expect(
+      await updateSettings({ allowedEmailDomains: ["@Acme.com", "acme.com"] }),
+    ).toMatchObject({ allowedEmailDomains: ["acme.com"] });
+    await expect(updateSettings({ allowedEmailDomains: ["not a domain"] })).rejects.toBeInstanceOf(
+      InvalidEmailDomainError,
+    );
+    expect((await getSettings()).allowedEmailDomains).toEqual(["acme.com"]);
+    await (await organizationSettings()).updateOne(
+      { _id: "organization" },
+      { $unset: { allowedEmailDomains: "" } },
+    );
+    expect(await getSettings()).toEqual({
+      name: "Acme",
+      allowRegistration: false,
+      allowedEmailDomains: [],
+    });
 
     const admin = await createUser({
       email: "admin@example.com",
