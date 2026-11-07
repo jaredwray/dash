@@ -36,6 +36,17 @@ export class BigQueryHttpError extends Error {
   }
 }
 
+/**
+ * A local emulator did not accept a load-job upload. The caller can use
+ * streaming inserts instead. Google endpoints never raise this error.
+ */
+export class BigQueryUploadUnsupportedError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "BigQueryUploadUnsupportedError";
+  }
+}
+
 export interface BigQueryClient {
   query(text: string, params?: BigQueryParam[], timeoutMs?: number): Promise<BigQueryQueryResult>;
   listDatasets(): Promise<string[]>;
@@ -52,7 +63,9 @@ export interface BigQueryAdminClient extends BigQueryClient {
   deleteDataset(datasetId: string): Promise<void>;
   getTable(datasetId: string, tableId: string): Promise<{ description: string | null } | null>;
   listTables(datasetId: string): Promise<string[]>;
+  createTable(datasetId: string, tableId: string, input: BigQueryTableInput): Promise<void>;
   deleteTable(datasetId: string, tableId: string): Promise<void>;
+  insertRows(datasetId: string, tableId: string, rows: Record<string, unknown>[], insertIdPrefix: string): Promise<void>;
   loadRows(
     datasetId: string,
     tableId: string,
@@ -659,8 +672,34 @@ export function createBigQueryClient(config: BigQueryClientConfig): BigQueryAdmi
       } while (pageToken);
       return ids;
     },
+    async createTable(datasetId, tableId, input) {
+      await send(
+        new URL(`${datasetPath(datasetId)}/tables`, origin),
+        jsonInit("POST", {
+          tableReference: { projectId: config.projectId, datasetId, tableId },
+          schema: { fields: input.schema },
+          ...(input.description ? { description: input.description } : {}),
+        }),
+        15_000,
+      );
+    },
     async deleteTable(datasetId, tableId) {
       await send(new URL(tablePath(datasetId, tableId), origin), { method: "DELETE" }, 15_000, true);
+    },
+    async insertRows(datasetId, tableId, rows, insertIdPrefix) {
+      const sent = await send(
+        new URL(`${tablePath(datasetId, tableId)}/insertAll`, origin),
+        jsonInit("POST", {
+          skipInvalidRows: false,
+          ignoreUnknownValues: false,
+          rows: rows.map((json, index) => ({ insertId: `${insertIdPrefix}_${index}`, json })),
+        }),
+        60_000,
+      );
+      const errors = (sent.payload?.insertErrors ?? []) as Array<{ errors?: Array<{ message?: string }> }>;
+      if (errors.length > 0) {
+        throw new Error(`BigQuery insert failed: ${errors[0]?.errors?.[0]?.message ?? "invalid row"}`);
+      }
     },
     async loadRows(datasetId, tableId, input, timeoutMs = 300_000) {
       const deadline = Date.now() + timeoutMs;
@@ -693,15 +732,23 @@ export function createBigQueryClient(config: BigQueryClientConfig): BigQueryAdmi
       ].join("\r\n");
       const url = new URL(`/upload${projectPath}/jobs`, origin);
       url.searchParams.set("uploadType", "multipart");
-      const sent = await send(
-        url,
-        { method: "POST", headers: { "Content-Type": `multipart/related; boundary=${boundary}` }, body },
-        remaining(deadline),
-      );
+      let sent: { status: number; payload: Record<string, unknown> | null };
+      try {
+        sent = await send(
+          url,
+          { method: "POST", headers: { "Content-Type": `multipart/related; boundary=${boundary}` }, body },
+          remaining(deadline),
+        );
+      } catch (error) {
+        if (!googleApi && error instanceof BigQueryHttpError && [400, 404, 405, 500, 501].includes(error.status)) {
+          throw new BigQueryUploadUnsupportedError(error.message);
+        }
+        throw error;
+      }
       type JobStatus = { state?: string; errorResult?: { message?: string } };
       let status = sent.payload?.status as JobStatus | undefined;
-      if (!status) {
-        throw new Error("BigQuery did not return a load job");
+      if (!status && !googleApi) {
+        throw new BigQueryUploadUnsupportedError("BigQuery emulator did not return a load job");
       }
       const location = (sent.payload?.jobReference as { location?: string } | undefined)?.location ?? config.location;
       while (status?.state !== "DONE") {

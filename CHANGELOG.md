@@ -24,7 +24,7 @@ All notable changes to Dash are documented here.
 ### Added
 
 - Development seed for data sources. When `DASH_SEED_DEV_SOURCES` is `true` outside production, **Settings** shows **Sample company data**. An administrator can write the Fernway sample company into the configured Postgres, MongoDB, and BigQuery sources. The run adds six dashboards in a shared **Fernway** workspace. The numbers agree across sources: finance MRR equals the subscriptions, and collections equal the charges. Dash refuses a schema, dataset, or collection that it did not create. New endpoint: `GET/POST/DELETE /api/dev-seed`, for an admin session only. The generator is the new `@dash/seed` package, with `@faker-js/faker` 10.6.0. See [ADR 0010](docs/adr/0010-dev-seed-data-sources.md).
-- `@dash/adapter-bigquery` exports `BigQueryAdminClient` for dataset and table management and for load jobs by multipart upload. Only the seed writer uses it. `@dash/adapter-postgres` exports `postgresPoolConfig`.
+- `@dash/adapter-bigquery` exports `BigQueryAdminClient` for dataset and table management, streaming inserts, and load jobs by multipart upload. Only the seed writer uses it. `@dash/adapter-postgres` exports `postgresPoolConfig`.
 - The Postgres test cluster creates an empty `fernway` database for development seeding.
 - Administrators can save the email domains that can create accounts. An empty list allows every domain. Open registration and invitations both use the list. The first account does not use the list.
 - The Agent tokens page creates and revokes tokens for MCP access. The banner shows the full MCP URL from the current site address, with a copy button.

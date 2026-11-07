@@ -1,7 +1,10 @@
 import type { BigQueryConnectionConfig } from "@dash/core";
 import {
+  BigQueryUploadUnsupportedError,
   assertBigQueryConfig,
+  bigQueryEndpoint,
   createBigQueryClient,
+  isGoogleApiHost,
   type BigQueryAdminClient,
   type BigQueryTableField,
 } from "@dash/adapter-bigquery";
@@ -20,6 +23,8 @@ import {
   type TableResult,
   type WriteOptions,
 } from "./types.ts";
+
+const INSERT_BATCH = 500;
 
 function fieldType(column: SeedColumn): string {
   switch (column.type) {
@@ -82,10 +87,13 @@ export class BigQuerySeedWriter implements SeedWriter {
   readonly kind = "bigquery" as const;
   readonly #client: BigQueryAdminClient;
   readonly #projectId: string;
+  readonly #googleApi: boolean;
+  #streaming = false;
 
   constructor(config: BigQueryConnectionConfig) {
     assertBigQueryConfig(config);
     this.#projectId = config.projectId;
+    this.#googleApi = isGoogleApiHost(bigQueryEndpoint(config.apiEndpoint));
     // No default dataset: the seeder names each dataset.
     this.#client = createBigQueryClient({
       projectId: config.projectId,
@@ -114,7 +122,7 @@ export class BigQuerySeedWriter implements SeedWriter {
     if (!found) return { state: "absent", conflicts: [], tables: [] };
     if (!(await this.#client.getTable(dataset, MANIFEST))) return { state: "foreign", conflicts: [dataset], tables: [] };
     // Read the manifest row. Emulators do not always keep table descriptions.
-    const owner = await this.#client.query(`SELECT seed, tables FROM ${this.#table(dataset, MANIFEST)} LIMIT 1`, [], 30_000);
+    const owner = await this.#client.query(`SELECT seed, tables FROM ${this.#table(dataset, MANIFEST)} ORDER BY written_at DESC LIMIT 1`, [], 30_000);
     if (owner.rows[0]?.seed !== SEED_NAME) return { state: "foreign", conflicts: [dataset], tables: [] };
     let tables: string[] = [];
     try {
@@ -134,13 +142,46 @@ export class BigQuerySeedWriter implements SeedWriter {
     return { state, conflicts };
   }
 
-  /** Replaces a table with a WRITE_TRUNCATE load job. A failed load leaves the old table. */
-  async #write(dataset: string, table: Pick<SeedTable, "name" | "description" | "columns">, rows: Record<string, unknown>[]): Promise<void> {
-    await this.#client.loadRows(dataset, table.name, {
-      schema: bigQuerySchema(table),
-      description: table.description,
-      rows: rows.map((row) => toBigQueryRow(table, row)),
-    });
+  /**
+   * Replaces a table. Google gets a WRITE_TRUNCATE load job, so a failed
+   * load leaves the old table. The pinned emulator returns no job for an
+   * upload, so there the writer uses streaming inserts. With `append`, the
+   * streaming path adds rows and never drops the table. The manifest uses
+   * it, so a failed write cannot leave a dataset without its owner record.
+   */
+  async #write(
+    dataset: string,
+    table: Pick<SeedTable, "name" | "description" | "columns">,
+    rows: Record<string, unknown>[],
+    options: { signal?: AbortSignal; append?: boolean } = {},
+  ): Promise<void> {
+    const schema = bigQuerySchema(table);
+    const converted = rows.map((row) => toBigQueryRow(table, row));
+    if (!this.#streaming) {
+      try {
+        await this.#client.loadRows(dataset, table.name, { schema, description: table.description, rows: converted });
+        return;
+      } catch (error) {
+        if (this.#googleApi || !(error instanceof BigQueryUploadUnsupportedError)) throw error;
+        // A local emulator without upload support: use streaming inserts from now on.
+        this.#streaming = true;
+      }
+    }
+    if (options.append) {
+      if (!(await this.#client.getTable(dataset, table.name))) {
+        await this.#client.createTable(dataset, table.name, { schema, description: table.description });
+      }
+    } else {
+      await this.#client.deleteTable(dataset, table.name);
+      await this.#client.createTable(dataset, table.name, { schema, description: table.description });
+    }
+    // Insert ids must differ between writes, or a deduplicating endpoint
+    // drops the second manifest row.
+    const batch = `${table.name}_${Date.now().toString(36)}`;
+    for (let start = 0; start < converted.length; start += INSERT_BATCH) {
+      throwIfAborted(options.signal);
+      await this.#client.insertRows(dataset, table.name, converted.slice(start, start + INSERT_BATCH), `${batch}_${start}`);
+    }
   }
 
   async replace(domain: SeedDomain, options: WriteOptions): Promise<TableResult[]> {
@@ -154,12 +195,12 @@ export class BigQuerySeedWriter implements SeedWriter {
     const manifest = manifestRow(domain, options, SEED_VERSION, SEED_NAME);
     const manifestTable = { name: MANIFEST, description: OWNER_NOTE, columns: MANIFEST_TABLE.columns };
     // Claim the old and new tables first, so a failed run can be retried or removed.
-    await this.#write(dataset, manifestTable, [{ ...manifest, tables: [...new Set([...state.tables, ...names])] }]);
+    await this.#write(dataset, manifestTable, [{ ...manifest, tables: [...new Set([...state.tables, ...names])] }], { append: true });
 
     const results: TableResult[] = [];
     for (const table of domain.tables) {
       throwIfAborted(options.signal);
-      await this.#write(dataset, table, table.rows);
+      await this.#write(dataset, table, table.rows, { signal: options.signal });
       const counted = await this.#client.query(`SELECT COUNT(*) AS n FROM ${this.#table(dataset, table.name)}`, [], 60_000);
       const actual = Number(counted.rows[0]?.n ?? -1);
       if (actual !== table.rows.length) throw new RowCountError(`${dataset}.${table.name}`, table.rows.length, actual);
@@ -170,7 +211,7 @@ export class BigQuerySeedWriter implements SeedWriter {
     for (const name of state.tables.filter((table) => !names.includes(table))) {
       await this.#client.deleteTable(dataset, name);
     }
-    await this.#write(dataset, manifestTable, [manifest]);
+    await this.#write(dataset, manifestTable, [{ ...manifest, written_at: new Date() }], { append: true });
     return results;
   }
 

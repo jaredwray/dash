@@ -1,6 +1,6 @@
 import { createVerify, generateKeyPairSync } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
-import { createBigQueryClient, signServiceAccountJwt } from "./http.ts";
+import { BigQueryUploadUnsupportedError, createBigQueryClient, signServiceAccountJwt } from "./http.ts";
 
 const { privateKey, publicKey } = generateKeyPairSync("rsa", {
   modulusLength: 2048,
@@ -326,6 +326,25 @@ describe("BigQuery HTTP client", () => {
     ).rejects.toThrow("BigQuery load job failed: Provided Schema does not match");
   });
 
+  it("asks for streaming inserts when an emulator refuses the upload, and never for Google", async () => {
+    const refuse = vi.fn<typeof fetch>(async () => new Response("not found", { status: 404 }));
+    const emulator = createBigQueryClient({ projectId: "dash", apiEndpoint: "http://127.0.0.1:9059", fetchImpl: refuse, env: {} });
+    await expect(emulator.loadRows("d", "t", { schema: [], rows: [] })).rejects.toBeInstanceOf(BigQueryUploadUnsupportedError);
+
+    const google = vi.fn<typeof fetch>(async (url) =>
+      String(url).includes("oauth2") ? jsonResponse({ access_token: "ya29.x", expires_in: 3600 }) : new Response("not found", { status: 404 }),
+    );
+    const client = createBigQueryClient({
+      projectId: "dash",
+      credentials: { client_email: "dash@example.iam.gserviceaccount.com", private_key: privateKey },
+      fetchImpl: google,
+      env: {},
+    });
+    const failure = await client.loadRows("d", "t", { schema: [], rows: [] }).catch((error: unknown) => error);
+    expect(failure).not.toBeInstanceOf(BigQueryUploadUnsupportedError);
+    expect(String(failure)).toContain("BigQuery request failed (404)");
+  });
+
   it("reads a missing dataset or table as null and treats a missing delete target as done", async () => {
     const fetchImpl = vi.fn<typeof fetch>(async (url, init) => {
       if (init?.method === "DELETE") return new Response(null, { status: 404 });
@@ -341,4 +360,13 @@ describe("BigQuery HTTP client", () => {
     expect(deleteUrl.searchParams.get("deleteContents")).toBe("true");
   });
 
+  it("raises the first row error from a streaming insert", async () => {
+    const fetchImpl = vi.fn<typeof fetch>(async () =>
+      jsonResponse({ insertErrors: [{ index: 0, errors: [{ message: "no such field: extra" }] }] }),
+    );
+    const client = createBigQueryClient({ projectId: "dash", apiEndpoint: "http://127.0.0.1:9059", fetchImpl, env: {} });
+    await expect(client.insertRows("d", "t", [{ extra: 1 }], "t_0")).rejects.toThrow("BigQuery insert failed: no such field: extra");
+    const body = JSON.parse(String(requestInit(fetchImpl, 0).body)) as { rows: Array<{ insertId: string }> };
+    expect(body.rows[0]?.insertId).toBe("t_0_0");
+  });
 });
