@@ -452,9 +452,10 @@ export async function startDevSeedRemoval(user: PublicUser): Promise<DevSeedStat
 
   launch(claimed.runId, async (_signal, update) => {
     const remaining: OwnedTarget[] = [];
-    const { configs } = await planSources();
     for (const [index, item] of claimed.owned.entries()) {
       await update({ [`steps.${index}.status`]: "running" });
+      // Read the sources again for each step, so an edit during the run is seen.
+      const { configs } = await planSources();
       // Act only on the target that received the data. The source that
       // seeded it comes first. Another source with the same target also
       // works, for example a source that someone deleted and added again.
