@@ -6,7 +6,7 @@ Dash is a modern Tableau / Looker-style workspace. Agents can list warehouses, r
 
 ## Screenshots
 
-These screenshots come from an earlier build with a built-in sample warehouse. That warehouse is removed. To get realistic dashboards now, seed the Fernway sample company. See [Sample company data](#sample-company-data-development).
+The screenshots show the Fernway sample company in Postgres, BigQuery, and MongoDB. To get the same dashboards, see [Sample company data](#sample-company-data-development). The Claude Code screenshot comes from an earlier build with a built-in sample warehouse.
 
 ### Sign in
 
@@ -16,19 +16,19 @@ These screenshots come from an earlier build with a built-in sample warehouse. T
 
 ### Dashboards
 
-<img alt="Dashboards list showing Growth overview and Regional revenue review" src="docs/screenshots/dashboards.png" width="880">
+<img alt="Dashboards list in the Fernway workspace with six dashboards" src="docs/screenshots/dashboards.png" width="880">
 
-### Growth overview
+### Executive overview
 
-KPI tiles, a stacked revenue area chart, product mix, signups versus churn, units by product, and a filterable product table.
+ARR, net revenue retention, paying customers, and gross margin. Charts show ARR by segment, new logos by region, MRR movements, and the burn multiple. A table lists the top 25 customers. The data comes from the finance warehouse in BigQuery, and from the product database and the billing export in Postgres.
 
-<img alt="Growth overview dashboard with KPI cards, charts, and a product table" src="docs/screenshots/growth-overview.png" width="880">
+<img alt="Executive overview dashboard with KPI cards, ARR and MRR charts, and a top customers table" src="docs/screenshots/executive-overview.png" width="880">
 
-### Regional revenue review
+### Customer support
 
-A custom page: product revenue, share of sales, the regional stack for the last 12 months, and net new accounts.
+Open tickets, first response time, CSAT, and NPS. Charts show ticket volume, categories, response time by priority, and survey results. The data comes from the support collections in MongoDB.
 
-<img alt="Custom Regional revenue review dashboard" src="docs/screenshots/regional-revenue.png" width="880">
+<img alt="Customer support dashboard with KPI cards, ticket charts, and a table of open tickets" src="docs/screenshots/customer-support.png" width="880">
 
 ### In Claude Code
 
@@ -38,7 +38,7 @@ The same product-revenue chart, drawn in the session after a Dash MCP query agai
 
 ### Data sources
 
-<img alt="Data sources page with the built-in sample warehouse" src="docs/screenshots/data-sources.png" width="880">
+<img alt="Data sources page with the Fernway Postgres, BigQuery, and MongoDB sources" src="docs/screenshots/data-sources.png" width="880">
 
 ### API tokens
 
@@ -52,7 +52,7 @@ Everyone in the organization with their role. Administrators invite people with 
 
 ### Settings
 
-<img alt="Organization settings and the Dash MCP endpoint note" src="docs/screenshots/settings.png" width="880">
+<img alt="Organization settings, the Sample company data panel after a seed run, and the Dash MCP endpoint" src="docs/screenshots/settings.png" width="880">
 
 ### Profile
 

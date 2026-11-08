@@ -56,8 +56,9 @@ export function DataTable({
   });
 
   return (
-    <div>
-      <div className="mb-3">
+    // The table fills its widget card. Rows scroll inside the card, and the header stays in view.
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="mb-3 shrink-0">
         <input
           value={globalFilter}
           onChange={(event) => setGlobalFilter(event.target.value)}
@@ -65,11 +66,11 @@ export function DataTable({
           className="w-full rounded-xl border border-line bg-ink px-3 py-2 text-sm outline-none focus:border-accent/60"
         />
       </div>
-      <div className="overflow-auto rounded-xl border border-line">
+      <div className="min-h-0 flex-1 overflow-auto rounded-xl border border-line">
         <table className="min-w-full text-left text-sm">
-          <thead className="bg-white/4 text-mist">
+          <thead className="sticky top-0 z-10 bg-panel text-mist">
             {table.getHeaderGroups().map((group) => (
-              <tr key={group.id}>
+              <tr key={group.id} className="bg-white/4">
                 {group.headers.map((header) => (
                   <th key={header.id} className="px-3 py-2 font-medium">
                     {header.isPlaceholder ? null : (
