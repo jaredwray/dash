@@ -34,7 +34,6 @@ describe("data source kinds", () => {
   it("includes shipping adapters and reserved future kinds", () => {
     expect(DATA_SOURCE_KINDS).toContain("postgres");
     expect(DATA_SOURCE_KINDS).toContain("snowflake");
-    expect(DATA_SOURCE_KINDS).toContain("demo");
     expect(DATA_SOURCE_KINDS).toContain("mysql");
     expect(DATA_SOURCE_KINDS).toContain("mongodb");
     expect(DATA_SOURCE_KINDS).toContain("bigquery");

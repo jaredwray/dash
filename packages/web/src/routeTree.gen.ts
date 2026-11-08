@@ -24,6 +24,7 @@ import { Route as AuthedSettingsRouteImport } from './routes/_authed/settings'
 import { Route as AuthedTeamRouteImport } from './routes/_authed/team'
 import { Route as AuthedTokensRouteImport } from './routes/_authed/tokens'
 import { Route as AuthedWorkspacesRouteImport } from './routes/_authed/workspaces'
+import { Route as ApiDevSeedRouteImport } from './routes/api/dev-seed'
 import { Route as ApiSettingsRouteImport } from './routes/api/settings'
 import { Route as AuthedDashboardsIndexRouteImport } from './routes/_authed/dashboards.index'
 import { Route as AuthedDashboardsDashboardIdRouteImport } from './routes/_authed/dashboards.$dashboardId'
@@ -125,6 +126,11 @@ const AuthedWorkspacesRoute = AuthedWorkspacesRouteImport.update({
   id: '/workspaces',
   path: '/workspaces',
   getParentRoute: () => AuthedRoute,
+} as any)
+const ApiDevSeedRoute = ApiDevSeedRouteImport.update({
+  id: '/api/dev-seed',
+  path: '/api/dev-seed',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ApiSettingsRoute = ApiSettingsRouteImport.update({
   id: '/api/settings',
@@ -278,6 +284,7 @@ export interface FileRoutesByFullPath {
   '/team': typeof AuthedTeamRoute
   '/tokens': typeof AuthedTokensRoute
   '/workspaces': typeof AuthedWorkspacesRoute
+  '/api/dev-seed': typeof ApiDevSeedRoute
   '/api/settings': typeof ApiSettingsRoute
   '/dashboards/$dashboardId': typeof AuthedDashboardsDashboardIdRoute
   '/api/auth/bootstrap': typeof ApiAuthBootstrapRoute
@@ -321,6 +328,7 @@ export interface FileRoutesByTo {
   '/team': typeof AuthedTeamRoute
   '/tokens': typeof AuthedTokensRoute
   '/workspaces': typeof AuthedWorkspacesRoute
+  '/api/dev-seed': typeof ApiDevSeedRoute
   '/api/settings': typeof ApiSettingsRoute
   '/dashboards/$dashboardId': typeof AuthedDashboardsDashboardIdRoute
   '/api/auth/bootstrap': typeof ApiAuthBootstrapRoute
@@ -366,6 +374,7 @@ export interface FileRoutesById {
   '/_authed/team': typeof AuthedTeamRoute
   '/_authed/tokens': typeof AuthedTokensRoute
   '/_authed/workspaces': typeof AuthedWorkspacesRoute
+  '/api/dev-seed': typeof ApiDevSeedRoute
   '/api/settings': typeof ApiSettingsRoute
   '/_authed/dashboards/$dashboardId': typeof AuthedDashboardsDashboardIdRoute
   '/api/auth/bootstrap': typeof ApiAuthBootstrapRoute
@@ -411,6 +420,7 @@ export interface FileRouteTypes {
     | '/team'
     | '/tokens'
     | '/workspaces'
+    | '/api/dev-seed'
     | '/api/settings'
     | '/dashboards/$dashboardId'
     | '/api/auth/bootstrap'
@@ -454,6 +464,7 @@ export interface FileRouteTypes {
     | '/team'
     | '/tokens'
     | '/workspaces'
+    | '/api/dev-seed'
     | '/api/settings'
     | '/dashboards/$dashboardId'
     | '/api/auth/bootstrap'
@@ -498,6 +509,7 @@ export interface FileRouteTypes {
     | '/_authed/team'
     | '/_authed/tokens'
     | '/_authed/workspaces'
+    | '/api/dev-seed'
     | '/api/settings'
     | '/_authed/dashboards/$dashboardId'
     | '/api/auth/bootstrap'
@@ -536,6 +548,7 @@ export interface RootRouteChildren {
   McpRoute: typeof McpRoute
   PingRoute: typeof PingRoute
   RegisterRoute: typeof RegisterRoute
+  ApiDevSeedRoute: typeof ApiDevSeedRoute
   ApiSettingsRoute: typeof ApiSettingsRoute
   ApiAuthBootstrapRoute: typeof ApiAuthBootstrapRoute
   ApiAuthInvitationRoute: typeof ApiAuthInvitationRouteWithChildren
@@ -664,6 +677,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/workspaces'
       preLoaderRoute: typeof AuthedWorkspacesRouteImport
       parentRoute: typeof AuthedRoute
+    }
+    '/api/dev-seed': {
+      id: '/api/dev-seed'
+      path: '/api/dev-seed'
+      fullPath: '/api/dev-seed'
+      preLoaderRoute: typeof ApiDevSeedRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/settings': {
       id: '/api/settings'
@@ -931,6 +951,7 @@ const rootRouteChildren: RootRouteChildren = {
   McpRoute: McpRoute,
   PingRoute: PingRoute,
   RegisterRoute: RegisterRoute,
+  ApiDevSeedRoute: ApiDevSeedRoute,
   ApiSettingsRoute: ApiSettingsRoute,
   ApiAuthBootstrapRoute: ApiAuthBootstrapRoute,
   ApiAuthInvitationRoute: ApiAuthInvitationRouteWithChildren,

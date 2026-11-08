@@ -22,9 +22,6 @@ function databaseFromMongoUri(uri: string): string {
 }
 
 function summarize(config: ConnectionConfig): DataSourceRecord["summary"] {
-  if (config.kind === "demo") {
-    return { warehouse: "built-in sample data" };
-  }
   if (config.kind === "snowflake") {
     return {
       account: config.account ?? (config.connectionString ? "(connection string)" : ""),

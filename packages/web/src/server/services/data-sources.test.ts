@@ -22,7 +22,7 @@ describe("data source records", () => {
     const created = await createDataSource({
       name: "Finance warehouse",
       description: "Quarterly metrics",
-      config: { kind: "demo" },
+      config: { kind: "postgres", host: "127.0.0.1", database: "finance", user: "analyst" },
       createdBy: admin.id,
     });
     expect(created.name).toBe("Finance warehouse");

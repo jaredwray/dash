@@ -207,12 +207,16 @@ function requiredMongoUri(): { mongoUri: string; databaseName: string; authSourc
 export function getEnv() {
   const { mongoUri, databaseName, authSource } = requiredMongoUri();
   const seedDemo = (process.env.DASH_SEED_DEMO ?? "true").toLowerCase() !== "false";
+  const isProduction = process.env.NODE_ENV === "production";
+  // Seeding writes into data sources, so production never turns it on.
+  const seedDevSources = !isProduction && (process.env.DASH_SEED_DEV_SOURCES ?? "").trim().toLowerCase() === "true";
   return {
     secret: requiredSecret(),
     mongoUri,
     databaseName,
     authSource,
     seedDemo,
-    isProduction: process.env.NODE_ENV === "production",
+    seedDevSources,
+    isProduction,
   };
 }

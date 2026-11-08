@@ -114,8 +114,9 @@ services:
   bigquery:
     image: ghcr.io/goccy/bigquery-emulator:0.8.1@sha256:f4e428d265a93dc5ce36c294e1c584c7c9b384117d47ab8ddbb63d8d50b7f393
     container_name: dash-test-bigquery
-    # In-memory emulator capped like a micro instance: 256 MiB and half a CPU.
-    # The image entrypoint is the emulator binary; replace it so the fixture
+    # In-memory emulator with 1 GiB and half a CPU. It keeps every job and
+    # loaded row in memory. At 256 MiB, a second development seed load
+    # stopped the process. The image entrypoint is the emulator binary; replace it so the fixture
     # view can be created after the YAML seed is loaded.
     entrypoint: ["bash", "/opt/dash/entrypoint.sh"]
     ports:
@@ -124,10 +125,10 @@ services:
       - ./docker/bigquery/seed.yaml:/seed/analytics.yaml:ro
       - ./docker/bigquery/entrypoint.sh:/opt/dash/entrypoint.sh:ro
       - ./docker/bigquery/healthcheck.sh:/opt/dash/healthcheck.sh:ro
-    mem_limit: 256m
+    mem_limit: 1g
     cpus: 0.5
-    # The emulator retains every jobs.query. A 2s probe filled this 256 MiB
-    # cap in about 15 minutes and the process was OOM-killed. Probe quickly
+    # The emulator retains every jobs.query. A 2s probe filled a 256 MiB cap
+    # in about 15 minutes and the process was OOM-killed. Probe quickly
     # during startup, then every 30s.
     healthcheck:
       test: ["CMD", "bash", "/opt/dash/healthcheck.sh", "view"]

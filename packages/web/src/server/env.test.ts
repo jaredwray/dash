@@ -63,8 +63,11 @@ describe("getEnv", () => {
   const previousUri = process.env.MONGODB_URI;
   const previousSecret = process.env.DASH_SECRET;
   const previousNodeEnv = process.env.NODE_ENV;
+  const previousSeed = process.env.DASH_SEED_DEV_SOURCES;
 
   afterEach(() => {
+    if (previousSeed === undefined) delete process.env.DASH_SEED_DEV_SOURCES;
+    else process.env.DASH_SEED_DEV_SOURCES = previousSeed;
     if (previousUri === undefined) delete process.env.MONGODB_URI;
     else process.env.MONGODB_URI = previousUri;
     if (previousSecret === undefined) delete process.env.DASH_SECRET;
@@ -105,5 +108,19 @@ describe("getEnv", () => {
     expect(getEnv().databaseName).toBe("dash");
     process.env.MONGODB_URI = "mongodb://db.example.com:27017/dash";
     expect(() => getEnv()).toThrow(/TLS/);
+  });
+
+  it("turns on data source seeding only for true, and never in production", () => {
+    process.env.MONGODB_URI = "mongodb://127.0.0.1:27017/dash";
+    process.env.DASH_SECRET = "a-real-secret";
+    delete process.env.NODE_ENV;
+    delete process.env.DASH_SEED_DEV_SOURCES;
+    expect(getEnv().seedDevSources).toBe(false);
+    process.env.DASH_SEED_DEV_SOURCES = "yes";
+    expect(getEnv().seedDevSources).toBe(false);
+    process.env.DASH_SEED_DEV_SOURCES = " TRUE ";
+    expect(getEnv().seedDevSources).toBe(true);
+    process.env.NODE_ENV = "production";
+    expect(getEnv().seedDevSources).toBe(false);
   });
 });

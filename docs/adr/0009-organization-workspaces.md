@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Accepted. The demo data source and the demo dashboard are removed. See [ADR 0010](0010-dev-seed-data-sources.md).
 
 ## Context
 

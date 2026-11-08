@@ -9,7 +9,6 @@ import {
 import { testConnectionConfig } from "~/server/services/query";
 
 const configSchema = z.discriminatedUnion("kind", [
-  z.object({ kind: z.literal("demo") }),
   z.object({
     kind: z.literal("postgres"),
     connectionString: z.string().optional(),

@@ -25,8 +25,10 @@ Each warehouse adapter is its own package under `packages/` and implements
 | `@dash/adapter-stripe` | `packages/stripe-adapter` | `stripe` | MVP |
 | — | — | `clickhouse` | Planned |
 
-The web app also ships a built-in `demo` adapter so the product is usable
-without an external warehouse. The demo adapter stays in-process.
+The web app does not ship a built-in sample adapter. To get realistic data in
+development, seed the configured sources from **Settings** (see the README).
+The seed writers are in `packages/seed`: Postgres, MongoDB, and BigQuery. Put a
+new writer in `packages/seed/src/writers` and add its kind to `SEEDABLE_KINDS`.
 
 ## Testing
 

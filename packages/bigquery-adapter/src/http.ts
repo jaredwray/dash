@@ -1,4 +1,4 @@
-import { createSign } from "node:crypto";
+import { createSign, randomBytes } from "node:crypto";
 import { readFileSync } from "node:fs";
 import type { BigQueryParam, BigQueryParamType } from "./sql.ts";
 
@@ -13,10 +13,65 @@ export interface BigQueryQueryResult {
   fields: BigQueryField[];
 }
 
+export interface BigQueryTableField {
+  name: string;
+  type: string;
+  mode?: "NULLABLE" | "REQUIRED";
+  description?: string;
+}
+
+export interface BigQueryTableInput {
+  schema: BigQueryTableField[];
+  description?: string;
+}
+
+/** A BigQuery API response with a status other than 2xx. */
+export class BigQueryHttpError extends Error {
+  readonly status: number;
+
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = "BigQueryHttpError";
+    this.status = status;
+  }
+}
+
+/**
+ * A local emulator did not accept a load-job upload. The caller can use
+ * streaming inserts instead. Google endpoints never raise this error.
+ */
+export class BigQueryUploadUnsupportedError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "BigQueryUploadUnsupportedError";
+  }
+}
+
 export interface BigQueryClient {
   query(text: string, params?: BigQueryParam[], timeoutMs?: number): Promise<BigQueryQueryResult>;
   listDatasets(): Promise<string[]>;
   end(): Promise<void>;
+}
+
+/**
+ * Dataset and table management on top of the read client. Only the
+ * development seed writer uses these methods. The adapter does not.
+ */
+export interface BigQueryAdminClient extends BigQueryClient {
+  getDataset(datasetId: string): Promise<{ description: string | null } | null>;
+  createDataset(datasetId: string, options?: { description?: string }): Promise<void>;
+  deleteDataset(datasetId: string): Promise<void>;
+  getTable(datasetId: string, tableId: string): Promise<{ description: string | null } | null>;
+  listTables(datasetId: string): Promise<string[]>;
+  createTable(datasetId: string, tableId: string, input: BigQueryTableInput): Promise<void>;
+  deleteTable(datasetId: string, tableId: string): Promise<void>;
+  insertRows(datasetId: string, tableId: string, rows: Record<string, unknown>[], insertIdPrefix: string): Promise<void>;
+  loadRows(
+    datasetId: string,
+    tableId: string,
+    input: BigQueryTableInput & { rows: Record<string, unknown>[] },
+    timeoutMs?: number,
+  ): Promise<void>;
 }
 
 export interface BigQueryClientConfig {
@@ -232,7 +287,7 @@ function apiMessage(payload: QueryResponse, status: number): string {
 const CREDENTIALS_REQUIRED =
   "BigQuery credentials are required: provide a service account key, GOOGLE_APPLICATION_CREDENTIALS, or run on GCE";
 
-export function createBigQueryClient(config: BigQueryClientConfig): BigQueryClient {
+export function createBigQueryClient(config: BigQueryClientConfig): BigQueryAdminClient {
   const origin = bigQueryEndpoint(config.apiEndpoint);
   const googleApi = isGoogleApiHost(origin);
   const fetchImpl = config.fetchImpl ?? fetch;
@@ -381,6 +436,67 @@ export function createBigQueryClient(config: BigQueryClientConfig): BigQueryClie
     return payload;
   }
 
+  async function send(
+    url: URL,
+    init: RequestInit,
+    timeoutMs: number,
+    allowNotFound = false,
+  ): Promise<{ status: number; payload: Record<string, unknown> | null }> {
+    assertOpen();
+    const headers = new Headers(init.headers);
+    headers.set("Accept", "application/json");
+    const token = await authorization(timeoutMs);
+    if (token) {
+      headers.set("Authorization", `Bearer ${token}`);
+    }
+    let response: Response;
+    try {
+      response = await fetchImpl(url, {
+        ...init,
+        headers,
+        redirect: "error",
+        signal: AbortSignal.timeout(timeoutMs),
+      });
+    } catch (error) {
+      if (error instanceof Error && error.name === "TimeoutError") {
+        throw new Error(`BigQuery request timed out after ${timeoutMs} ms`);
+      }
+      throw error;
+    }
+    const text = await response.text();
+    let payload: Record<string, unknown> | null = null;
+    if (text) {
+      try {
+        payload = JSON.parse(text) as Record<string, unknown>;
+      } catch {
+        payload = null;
+      }
+    }
+    if (allowNotFound && response.status === 404) {
+      return { status: 404, payload };
+    }
+    if (!response.ok) {
+      const message = (payload?.error as { message?: string } | undefined)?.message;
+      throw new BigQueryHttpError(
+        response.status,
+        message ? `BigQuery API: ${message}` : `BigQuery request failed (${response.status})`,
+      );
+    }
+    return { status: response.status, payload };
+  }
+
+  const projectPath = `/bigquery/v2/projects/${encodeURIComponent(config.projectId)}`;
+  const datasetPath = (datasetId: string) => `${projectPath}/datasets/${encodeURIComponent(datasetId)}`;
+  const tablePath = (datasetId: string, tableId: string) =>
+    `${datasetPath(datasetId)}/tables/${encodeURIComponent(tableId)}`;
+  const jsonInit = (method: string, body: unknown): RequestInit => ({
+    method,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const description = (payload: Record<string, unknown> | null) =>
+    typeof payload?.description === "string" ? payload.description : null;
+
   function remaining(deadline: number): number {
     const left = deadline - Date.now();
     if (left <= 0) {
@@ -515,6 +631,136 @@ export function createBigQueryClient(config: BigQueryClientConfig): BigQueryClie
         }
       } while (pageToken);
       return ids;
+    },
+    async getDataset(datasetId) {
+      const sent = await send(new URL(datasetPath(datasetId), origin), { method: "GET" }, 10_000, true);
+      return sent.status === 404 ? null : { description: description(sent.payload) };
+    },
+    async createDataset(datasetId, options = {}) {
+      await send(
+        new URL(`${projectPath}/datasets`, origin),
+        jsonInit("POST", {
+          datasetReference: { projectId: config.projectId, datasetId },
+          ...(options.description ? { description: options.description } : {}),
+          ...(config.location ? { location: config.location } : {}),
+        }),
+        15_000,
+      );
+    },
+    async deleteDataset(datasetId) {
+      const url = new URL(datasetPath(datasetId), origin);
+      url.searchParams.set("deleteContents", "true");
+      await send(url, { method: "DELETE" }, 30_000, true);
+    },
+    async getTable(datasetId, tableId) {
+      const sent = await send(new URL(tablePath(datasetId, tableId), origin), { method: "GET" }, 10_000, true);
+      return sent.status === 404 ? null : { description: description(sent.payload) };
+    },
+    async listTables(datasetId) {
+      const ids: string[] = [];
+      let pageToken: string | undefined;
+      do {
+        const url = new URL(`${datasetPath(datasetId)}/tables`, origin);
+        url.searchParams.set("maxResults", "1000");
+        if (pageToken) url.searchParams.set("pageToken", pageToken);
+        const sent = await send(url, { method: "GET" }, 10_000);
+        const tables = (sent.payload?.tables ?? []) as Array<{ tableReference?: { tableId?: string } }>;
+        for (const table of tables) {
+          if (table.tableReference?.tableId) ids.push(table.tableReference.tableId);
+        }
+        pageToken = typeof sent.payload?.nextPageToken === "string" ? sent.payload.nextPageToken : undefined;
+      } while (pageToken);
+      return ids;
+    },
+    async createTable(datasetId, tableId, input) {
+      await send(
+        new URL(`${datasetPath(datasetId)}/tables`, origin),
+        jsonInit("POST", {
+          tableReference: { projectId: config.projectId, datasetId, tableId },
+          schema: { fields: input.schema },
+          ...(input.description ? { description: input.description } : {}),
+        }),
+        15_000,
+      );
+    },
+    async deleteTable(datasetId, tableId) {
+      await send(new URL(tablePath(datasetId, tableId), origin), { method: "DELETE" }, 15_000, true);
+    },
+    async insertRows(datasetId, tableId, rows, insertIdPrefix) {
+      const sent = await send(
+        new URL(`${tablePath(datasetId, tableId)}/insertAll`, origin),
+        jsonInit("POST", {
+          skipInvalidRows: false,
+          ignoreUnknownValues: false,
+          rows: rows.map((json, index) => ({ insertId: `${insertIdPrefix}_${index}`, json })),
+        }),
+        60_000,
+      );
+      const errors = (sent.payload?.insertErrors ?? []) as Array<{ errors?: Array<{ message?: string }> }>;
+      if (errors.length > 0) {
+        throw new Error(`BigQuery insert failed: ${errors[0]?.errors?.[0]?.message ?? "invalid row"}`);
+      }
+    },
+    async loadRows(datasetId, tableId, input, timeoutMs = 300_000) {
+      const deadline = Date.now() + timeoutMs;
+      const jobId = `dash_seed_${tableId}_${randomBytes(6).toString("hex")}`;
+      const job = {
+        jobReference: { projectId: config.projectId, jobId, ...(config.location ? { location: config.location } : {}) },
+        configuration: {
+          load: {
+            destinationTable: { projectId: config.projectId, datasetId, tableId },
+            ...(input.description ? { destinationTableProperties: { description: input.description } } : {}),
+            schema: { fields: input.schema },
+            sourceFormat: "NEWLINE_DELIMITED_JSON",
+            writeDisposition: "WRITE_TRUNCATE",
+            createDisposition: "CREATE_IF_NEEDED",
+          },
+        },
+      };
+      const boundary = `dash_seed_${randomBytes(12).toString("hex")}`;
+      const body = [
+        `--${boundary}`,
+        "Content-Type: application/json; charset=UTF-8",
+        "",
+        JSON.stringify(job),
+        `--${boundary}`,
+        "Content-Type: application/octet-stream",
+        "",
+        input.rows.map((row) => JSON.stringify(row)).join("\n"),
+        `--${boundary}--`,
+        "",
+      ].join("\r\n");
+      const url = new URL(`/upload${projectPath}/jobs`, origin);
+      url.searchParams.set("uploadType", "multipart");
+      let sent: { status: number; payload: Record<string, unknown> | null };
+      try {
+        sent = await send(
+          url,
+          { method: "POST", headers: { "Content-Type": `multipart/related; boundary=${boundary}` }, body },
+          remaining(deadline),
+        );
+      } catch (error) {
+        if (!googleApi && error instanceof BigQueryHttpError && [400, 404, 405, 500, 501].includes(error.status)) {
+          throw new BigQueryUploadUnsupportedError(error.message);
+        }
+        throw error;
+      }
+      type JobStatus = { state?: string; errorResult?: { message?: string } };
+      let status = sent.payload?.status as JobStatus | undefined;
+      if (!status && !googleApi) {
+        throw new BigQueryUploadUnsupportedError("BigQuery emulator did not return a load job");
+      }
+      const location = (sent.payload?.jobReference as { location?: string } | undefined)?.location ?? config.location;
+      while (status?.state !== "DONE") {
+        await new Promise((resolve) => setTimeout(resolve, 400));
+        const poll = new URL(`${projectPath}/jobs/${encodeURIComponent(jobId)}`, origin);
+        if (location) poll.searchParams.set("location", location);
+        const next = await send(poll, { method: "GET" }, remaining(deadline));
+        status = next.payload?.status as JobStatus | undefined;
+      }
+      if (status.errorResult) {
+        throw new Error(`BigQuery load job failed: ${status.errorResult.message ?? "unknown error"}`);
+      }
     },
     async end() {
       closed = true;

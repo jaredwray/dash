@@ -1,10 +1,7 @@
-import type { DashboardWidget } from "@dash/core";
 import { EmailTakenError, countUsers, createUser, findUserByEmail, grantInitialAdmin } from "./auth.ts";
 import { ensurePersonalWorkspace } from "./services/workspaces.ts";
-import { getDb } from "./db.ts";
+import { dashboards, getDb, nowIso } from "./db.ts";
 import { getEnv } from "./env.ts";
-import { createDashboard, listDashboards } from "./services/dashboards.ts";
-import { createDataSource, listDataSources } from "./services/data-sources.ts";
 import { getSettings, updateSettings } from "./services/settings.ts";
 
 export const DEMO_LOGIN = {
@@ -12,122 +9,31 @@ export const DEMO_LOGIN = {
   password: "dashadmin",
 } as const;
 
-function demoWidgets(dataSourceId: string): DashboardWidget[] {
-  return [
-    {
-      id: "kpi-revenue",
-      type: "kpi",
-      title: "Trailing revenue",
-      layout: { x: 0, y: 0, w: 3, h: 2 },
-      dataSourceId,
-      query: { resource: "monthly_revenue", columns: ["revenue"] },
-      kpi: { aggregation: "sum", column: "revenue", format: "currency" },
-    },
-    {
-      id: "kpi-orders",
-      type: "kpi",
-      title: "Orders",
-      layout: { x: 3, y: 0, w: 3, h: 2 },
-      dataSourceId,
-      query: { resource: "monthly_revenue", columns: ["orders"] },
-      kpi: { aggregation: "sum", column: "orders", format: "number" },
-    },
-    {
-      id: "kpi-net",
-      type: "kpi",
-      title: "Net new accounts",
-      layout: { x: 6, y: 0, w: 3, h: 2 },
-      dataSourceId,
-      query: { resource: "monthly_signups", columns: ["net"] },
-      kpi: { aggregation: "sum", column: "net", format: "number" },
-    },
-    {
-      id: "kpi-arpu",
-      type: "kpi",
-      title: "Top SKU revenue",
-      layout: { x: 9, y: 0, w: 3, h: 2 },
-      dataSourceId,
-      query: { resource: "product_sales", columns: ["revenue"] },
-      kpi: { aggregation: "max", column: "revenue", format: "currency" },
-    },
-    {
-      id: "chart-revenue",
-      type: "chart",
-      title: "Revenue by region",
-      layout: { x: 0, y: 2, w: 8, h: 5 },
-      dataSourceId,
-      query: {
-        resource: "monthly_revenue",
-        columns: ["month", "region", "revenue"],
-        orderBy: [{ column: "month", direction: "asc" }],
-      },
-      chart: {
-        type: "area",
-        encode: { x: "month", y: "revenue", color: "region" },
-        smooth: true,
-        stacked: true,
-      },
-    },
-    {
-      id: "chart-mix",
-      type: "chart",
-      title: "Product mix",
-      layout: { x: 8, y: 2, w: 4, h: 5 },
-      dataSourceId,
-      query: {
-        resource: "product_sales",
-        columns: ["name", "revenue"],
-      },
-      chart: {
-        type: "donut",
-        encode: { name: "name", value: "revenue" },
-      },
-    },
-    {
-      id: "chart-signups",
-      type: "chart",
-      title: "Signups vs churn",
-      layout: { x: 0, y: 7, w: 6, h: 4 },
-      dataSourceId,
-      query: {
-        resource: "monthly_signups",
-        columns: ["month", "signups", "churned"],
-        orderBy: [{ column: "month", direction: "asc" }],
-      },
-      chart: {
-        type: "line",
-        encode: { x: "month", y: ["signups", "churned"] },
-        smooth: true,
-      },
-    },
-    {
-      id: "chart-products",
-      type: "chart",
-      title: "Units by product",
-      layout: { x: 6, y: 7, w: 6, h: 4 },
-      dataSourceId,
-      query: {
-        resource: "product_sales",
-        columns: ["name", "units"],
-        orderBy: [{ column: "units", direction: "desc" }],
-      },
-      chart: {
-        type: "bar",
-        encode: { x: "name", y: "units" },
-      },
-    },
-    {
-      id: "table-products",
-      type: "table",
-      title: "Product performance",
-      layout: { x: 0, y: 11, w: 12, h: 5 },
-      dataSourceId,
-      query: {
-        resource: "product_sales",
-        orderBy: [{ column: "revenue", direction: "desc" }],
-      },
-    },
-  ];
+/**
+ * The built-in sample warehouse (`kind: "demo"`) is gone. Older app databases
+ * can still hold one, and its config has no adapter now. This step runs once:
+ * it deletes those sources and the widgets that read them. A dashboard with
+ * no widget left is deleted too. The demo source held no data of its own.
+ */
+async function retireDemoSources(): Promise<void> {
+  const db = await getDb();
+  const marker = db.collection<{ _id: string; complete: boolean }>("settings");
+  if (await marker.findOne({ _id: "demo-retired" })) return;
+  const sources = db.collection<{ _id: string; kind: string }>("data_sources");
+  const ids = (await sources.find({ kind: "demo" }).project<{ _id: string }>({ _id: 1 }).toArray()).map((row) => row._id);
+  if (ids.length > 0) {
+    const boards = await dashboards();
+    for (const board of await boards.find({ "widgets.dataSourceId": { $in: ids } }).toArray()) {
+      const widgets = board.widgets.filter((widget) => !ids.includes(widget.dataSourceId));
+      if (widgets.length === 0) {
+        await boards.deleteOne({ _id: board._id });
+      } else {
+        await boards.updateOne({ _id: board._id }, { $set: { widgets, updatedAt: nowIso() } });
+      }
+    }
+    await sources.deleteMany({ _id: { $in: ids } });
+  }
+  await marker.updateOne({ _id: "demo-retired" }, { $set: { complete: true } }, { upsert: true });
 }
 
 let seedTask: Promise<void> | undefined;
@@ -139,6 +45,7 @@ export function resetSeedForTests(): void {
 async function seedOnce(): Promise<void> {
   const db = await getDb();
   await getSettings();
+  await retireDemoSources();
   if (!getEnv().seedDemo) return;
   const progress = db.collection<{ _id: string; complete: boolean }>("settings");
   let state = await progress.findOne({ _id: "demo-seed" });
@@ -170,26 +77,8 @@ async function seedOnce(): Promise<void> {
   }
   if (!admin) throw new Error("Demo account not found");
   await grantInitialAdmin(admin._id);
-  const workspaceId = await ensurePersonalWorkspace(admin._id);
+  await ensurePersonalWorkspace(admin._id);
   await updateSettings({ name: "Dash", allowRegistration: true });
-  const source =
-    (await listDataSources()).find((item) => item.kind === "demo") ??
-    (await createDataSource({
-      name: "Sample warehouse",
-      description: "Built-in product analytics for trying Dash without a database.",
-      config: { kind: "demo" },
-      createdBy: admin._id,
-    }));
-  if ((await listDashboards(workspaceId)).length === 0) {
-    await createDashboard({
-      workspaceId,
-      name: "Growth overview",
-      description:
-        "Revenue, acquisition, and product mix from the sample warehouse. Duplicate it or ask Dash MCP to add charts.",
-      widgets: demoWidgets(source.id),
-      createdBy: admin._id,
-    });
-  }
   await progress.updateOne({ _id: "demo-seed" }, { $set: { complete: true } });
 }
 

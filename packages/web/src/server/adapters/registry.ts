@@ -8,7 +8,6 @@ import { RedshiftAdapter } from "@dash/adapter-redshift";
 import { StripeAdapter } from "@dash/adapter-stripe";
 import { SnowflakeAdapter } from "@dash/adapter-snowflake";
 import { ServerClosingError, isServerClosing, onServerClose } from "../shutdown.ts";
-import { demoAdapter } from "./demo.ts";
 
 const cache = new Map<string, { fingerprint: string; adapter: DataAdapter }>();
 
@@ -21,8 +20,6 @@ function createAdapter(config: ConnectionConfig): DataAdapter {
     throw new ServerClosingError();
   }
   switch (config.kind) {
-    case "demo":
-      return demoAdapter;
     case "snowflake":
       return SnowflakeAdapter.fromConfig(config);
     case "postgres":
@@ -46,9 +43,6 @@ export function getAdapter(
   dataSourceId: string,
   config: ConnectionConfig,
 ): DataAdapter {
-  if (config.kind === "demo") {
-    return demoAdapter;
-  }
   const existing = cache.get(dataSourceId);
   const mark = fingerprint(config);
   if (existing && existing.fingerprint === mark) {
