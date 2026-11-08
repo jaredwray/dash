@@ -68,6 +68,7 @@ Everyone in the organization with their role. Administrators invite people with 
 
 ```text
 packages/web/                @dash/web              UX + REST API + MCP (TanStack Start)
+packages/site/               @dash/site             Public website (Next.js, static export)
 packages/core/               @dash/core             Shared types and adapter interfaces
 packages/seed/               @dash/seed             Development seed: Fernway sample company and writers
 packages/postgres-adapter/   @dash/adapter-postgres
@@ -98,6 +99,22 @@ Open [http://localhost:3000](http://localhost:3000). With `DASH_SEED_DEMO=true` 
 | Password | `dashadmin` |
 
 Set `MONGODB_URI` in `.env` or the environment before starting the app. `pnpm dev` reads the repo `.env`; a variable already set in the environment wins. The path is the database name (`/dash`). Dash creates that database the first time it connects. A username without `authSource` authenticates against `admin`, where Atlas stores SCRAM users, and that user needs the `readWrite` role on the database. Change `DASH_SECRET` before exposing the app.
+
+## Public website
+
+`packages/site` (`@dash/site`) is the public website. It tells visitors that Dash is open source and free to host, and it describes the paid Dash Cloud service. The stack is Next.js, Tailwind CSS, Biome, and Vitest.
+
+```bash
+pnpm dev:site
+```
+
+Open [http://localhost:3001](http://localhost:3001). `pnpm --filter @dash/site build` writes static files to `packages/site/out/`. Any static host can serve that directory.
+
+- Repository, Dash Cloud, and contact links are in `packages/site/src/lib/site.ts`.
+- Plan names, prices, and features are in one data file. Change a price there, not in a component.
+- The prices and the `app.dash.io` and `hello@dash.io` addresses are placeholders until launch.
+
+See [ADR 0011](docs/adr/0011-public-website.md).
 
 ## First account
 
@@ -180,6 +197,7 @@ Keep this list in sync as PRs land. Checked items are in the tree today.
 - [x] Redshift adapter (`@dash/adapter-redshift`)
 - [x] Stripe adapter (`@dash/adapter-stripe`)
 - [ ] ClickHouse adapter
+- [x] Public website (`@dash/site`): open source and Dash Cloud pages, pricing
 
 ### UX
 
@@ -274,6 +292,8 @@ The Agent tokens page lists API tokens with the `mcp` scope. You can revoke thes
 | Command | |
 | --- | --- |
 | `pnpm dev` | Start `@dash/web` |
+| `pnpm dev:site` | Start the public website (`@dash/site`) on port 3001 |
+| `pnpm lint` | Biome lint and format check (`@dash/site`) |
 | `pnpm test:services:start` | Start warehouse clusters (Docker Compose) |
 | `pnpm test:services:stop` | Stop clusters and delete their data |
 | `pnpm test:shutdown` | Send SIGTERM to the built `@dash/web` server and make sure that it exits. Run `pnpm --filter @dash/web build` and start the clusters first |
@@ -318,6 +338,7 @@ Override the Postgres endpoint with `DASH_TEST_POSTGRES_HOST`, `DASH_TEST_POSTGR
 - [ADR 0006](docs/adr/0006-dev-workers-container.md) — dev.dash.io Worker and container
 - [ADR 0007](docs/adr/0007-mongodb-app-state.md) — app state in MongoDB
 - [ADR 0008](docs/adr/0008-team-invitations.md) — team members and invitations
+- [ADR 0011](docs/adr/0011-public-website.md) — public website (Next.js static export)
 
 ## Dev deploy
 

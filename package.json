@@ -8,13 +8,15 @@
   },
   "scripts": {
     "dev": "pnpm --filter @dash/web dev",
+    "dev:site": "pnpm --filter @dash/site dev",
     "build": "pnpm -r --if-present build",
     "test": "pnpm -r --if-present test",
     "test:services:start": "bash ./scripts/test-services.sh start",
     "test:services:stop": "bash ./scripts/test-services.sh stop",
     "test:shutdown": "node ./scripts/shutdown-smoke.mjs",
     "typecheck": "pnpm -r --if-present typecheck",
-    "deploy:dev": "wrangler deploy"
+    "deploy:dev": "wrangler deploy",
+    "lint": "pnpm -r --if-present lint"
   },
   "devDependencies": {
     "wrangler": "4.152.0"
