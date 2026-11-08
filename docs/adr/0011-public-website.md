@@ -23,7 +23,7 @@ The product app (`@dash/web`) is a TanStack Start server. It needs MongoDB and a
 - `pnpm typecheck` runs `next typegen` before `tsc --noEmit`, because `next-env.d.ts` imports the generated route types. `next-env.d.ts` is not in Git.
 - Links to the repository, to Dash Cloud, and to the contact address are constants in `src/lib/site.ts`. Plan names, prices, and features are typed data in one file, so a price change does not touch a component.
 - The website uses the app color tokens and the Outfit font, so the website and the product look like one brand.
-- The website uses copies of the README screenshots in `packages/site/public/screenshots/`.
+- The website uses WebP copies of five README screenshots in `packages/site/public/screenshots/`. The copies are 2400 pixels wide. The four screenshots on the home page are about 0.5 MB, not 1.9 MB.
 - CI runs `pnpm lint` and `pnpm --filter @dash/site build`. `pnpm typecheck` and `pnpm test` already include the new package.
 
 ## Consequences
@@ -31,4 +31,4 @@ The product app (`@dash/web`) is a TanStack Start server. It needs MongoDB and a
 - The website builds and deploys apart from the app. A website change cannot break the app container.
 - This change does not add a deploy for the website. A later change selects the host and adds a workflow.
 - The Dash Cloud prices and the `app.dash.io` and `hello@dash.io` addresses are placeholders. The owner must confirm them before launch.
-- The screenshot copies do not update when the README screenshots change. Copy them again after a new README capture.
+- The screenshot copies do not update when the README screenshots change. Convert them again after a new README capture.
