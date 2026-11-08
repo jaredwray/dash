@@ -29,7 +29,7 @@ export const pricingFaq: readonly FaqItem[] = [
     id: "agents",
     question: "How do agents connect to Dash?",
     answer:
-      "Dash includes an MCP server at POST /mcp. Issue an API token with the mcp scope and add the endpoint to Claude Code or another MCP client. The agent can then read schemas, run queries, and add chart widgets.",
+      "Dash includes an MCP server at POST /mcp. Issue an API token with the read and mcp scopes. Add the endpoint to Claude Code or another MCP client. The agent can then read schemas and run queries. To let it create dashboards and add chart widgets, add the write scope. The token owner also needs editor access to the workspace.",
   },
   {
     id: "sources",

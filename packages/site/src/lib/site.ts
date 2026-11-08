@@ -10,6 +10,7 @@ export const site = {
   github: "https://github.com/jaredwray/dash",
   githubIssues: "https://github.com/jaredwray/dash/issues",
   contributing: "https://github.com/jaredwray/dash/blob/main/CONTRIBUTING.md",
+  adapterGuide: "https://github.com/jaredwray/dash/blob/main/docs/data-adapters.md",
   licenseUrl: "https://github.com/jaredwray/dash/blob/main/LICENSE",
   cloudSignUp: "https://app.dash.io/register",
   cloudSignIn: "https://app.dash.io/login",

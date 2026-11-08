@@ -236,7 +236,15 @@ export default function OpenSourcePage() {
             <div className="surface flex flex-col rounded-3xl p-7 lg:col-span-5">
               <h3 className="text-sm font-semibold text-paper">Adapter packages</h3>
               <p className="mt-2 text-sm leading-6 text-mist">
-                Each data source lives in its own package. Add one, and the UI and MCP pick it up.
+                Each data source lives in its own package. To add one, write the package and
+                register its kind in the web app.{" "}
+                <a
+                  href={site.adapterGuide}
+                  className="font-medium text-paper underline decoration-white/30 underline-offset-4 hover:decoration-accent"
+                >
+                  Read the adapter guide
+                </a>
+                .
               </p>
               <ul className="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
                 {adapters.map((adapter) => (

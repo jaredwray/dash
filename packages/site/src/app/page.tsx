@@ -156,8 +156,10 @@ export default function HomePage() {
                 ))}
               </ul>
               <p className="mt-6 text-sm leading-6 text-mist">
-                Tokens are hashed and scoped. Issue one with the{" "}
-                <code className="font-mono text-paper">mcp</code> scope, and revoke it at any time.
+                Issue a token with the <code className="font-mono text-paper">read</code> and{" "}
+                <code className="font-mono text-paper">mcp</code> scopes. Add the{" "}
+                <code className="font-mono text-paper">write</code> scope and editor access to let
+                the agent create dashboards and add chart widgets.
               </p>
             </div>
 
@@ -198,7 +200,7 @@ export default function HomePage() {
             eyebrow="Product"
             id="product-title"
             title="Everything a modern analytics workspace needs."
-            description="Dashboards, data sources, workspaces, and access control. Each feature works from the UI, the REST API, and MCP."
+            description="Manage dashboards, data sources, workspaces, and access control from the UI or the REST API. Agents query data and build dashboards over MCP."
           />
           <div className="mt-14">
             <FeatureGrid />
