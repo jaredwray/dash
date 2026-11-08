@@ -277,8 +277,8 @@ export function dashboardSpecs(asOf: Date): DashboardSpec[] {
         },
         {
           id: "sup-priority", type: "chart", title: "First response by priority (minutes)", layout: at(0, 7, 4, 5), domain: "support", table: "mart_first_response_by_priority",
-          query: { columns: ["priority", "median_first_response_minutes", "sla_target_minutes"], orderBy: [{ column: "priority_order", direction: "asc" }] },
-          chart: { type: "column", encode: { x: "priority", y: ["median_first_response_minutes", "sla_target_minutes"] } },
+          query: { columns: ["priority", "median_minutes", "sla_minutes"], orderBy: [{ column: "priority_order", direction: "asc" }] },
+          chart: { type: "column", encode: { x: "priority", y: ["median_minutes", "sla_minutes"] } },
         },
         {
           id: "sup-csat-trend", type: "chart", title: "CSAT by month", layout: at(4, 7, 4, 5), domain: "support", table: "mart_csat_monthly",

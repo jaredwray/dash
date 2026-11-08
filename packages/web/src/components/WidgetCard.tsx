@@ -31,7 +31,7 @@ export function WidgetCard({ widget }: { widget: DashboardWidget }) {
       {widget.type !== "kpi" ? (
         <h2 className="mb-3 text-sm font-medium text-paper">{widget.title}</h2>
       ) : null}
-      <div className="min-h-0 flex-1">
+      <div className="flex min-h-0 flex-1 flex-col">
         {query.isLoading ? (
           <div className="grid h-full place-items-center text-sm text-mist">Loading…</div>
         ) : query.isError ? (

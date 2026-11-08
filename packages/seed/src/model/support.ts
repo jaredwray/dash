@@ -449,8 +449,8 @@ export function buildSupport(world: World): { domain: SeedDomain; facts: Support
       priority,
       priority_order: index + 1,
       tickets: rows.length,
-      median_first_response_minutes: frt === null ? null : Math.round(frt),
-      sla_target_minutes: SLA_TARGET[priority]!,
+      median_minutes: frt === null ? null : Math.round(frt),
+      sla_minutes: SLA_TARGET[priority]!,
       sla_breach_rate: rows.length ? ratio(rows.filter((ticket) => ticket.sla_breached).length / rows.length) : 0,
     };
   });
@@ -628,8 +628,8 @@ export function buildSupport(world: World): { domain: SeedDomain; facts: Support
           column("priority", "string", "Ticket priority."),
           column("priority_order", "integer", "Sort order, urgent first."),
           column("tickets", "integer", "Tickets with a reply."),
-          column("median_first_response_minutes", "integer", "Median minutes to the first reply.", { nullable: true }),
-          column("sla_target_minutes", "integer", "SLA target in minutes."),
+          column("median_minutes", "integer", "Median minutes to the first reply.", { nullable: true }),
+          column("sla_minutes", "integer", "SLA target in minutes for the first reply."),
           column("sla_breach_rate", "decimal", "Share of tickets that missed the target.", { scale: 4 }),
         ],
         rows: priorityRows,
