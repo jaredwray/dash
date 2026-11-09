@@ -108,13 +108,22 @@ Set `MONGODB_URI` in `.env` or the environment before starting the app. `pnpm de
 pnpm dev:site
 ```
 
-Open [http://localhost:3001](http://localhost:3001). `pnpm --filter @dash/site build` writes static files to `packages/site/out/`. Any static host can serve that directory.
+Open [http://localhost:3001](http://localhost:3001). The marketing pages need no database. Dash Cloud accounts need MongoDB:
+
+1. Start the clusters with `pnpm test:services:start`, or use a different MongoDB server.
+2. Copy `packages/site/.env.example` to `packages/site/.env.local`.
+3. Set `DASH_CLOUD_MONGODB_URI`. The path is the database name, for example `mongodb://dash:dash@127.0.0.1:27029/dash_cloud?authSource=admin`.
+
+`pnpm --filter @dash/site build` makes a Node.js server, and `pnpm --filter @dash/site start` runs it on port 3001.
 
 - Repository, Dash Cloud, and contact links are in `packages/site/src/lib/site.ts`.
 - Plan names, prices, and features are in one data file. Change a price there, not in a component.
-- The prices and the `app.dash.io` and `hello@dash.io` addresses are placeholders until launch.
+- Dash Cloud runs in this website, not on a separate host. Sign-up at `/register/` creates an account and an organization on the Cloud plan. Sign-in is at `/login/`, and `/account/` shows the account. Search engines do not index these pages.
+- Passwords use scrypt. A session lasts 30 days in an `HttpOnly` cookie. After 10 failed sign-ins for one email, sign-in for that email stops for 15 minutes.
+- Password reset, email verification, billing, and the hosted Dash workspace are not built yet.
+- The prices and the `hello@dash.io` address are placeholders until launch.
 
-See [ADR 0011](docs/adr/0011-public-website.md).
+See [ADR 0011](docs/adr/0011-public-website.md) and [ADR 0012](docs/adr/0012-dash-cloud-accounts.md).
 
 ## First account
 
@@ -198,6 +207,8 @@ Keep this list in sync as PRs land. Checked items are in the tree today.
 - [x] Stripe adapter (`@dash/adapter-stripe`)
 - [ ] ClickHouse adapter
 - [x] Public website (`@dash/site`): open source and Dash Cloud pages, pricing
+- [x] Dash Cloud accounts in `@dash/site`: sign-up, sign-in, sessions, account page
+- [ ] Dash Cloud billing and hosted workspaces
 
 ### UX
 
@@ -338,7 +349,8 @@ Override the Postgres endpoint with `DASH_TEST_POSTGRES_HOST`, `DASH_TEST_POSTGR
 - [ADR 0006](docs/adr/0006-dev-workers-container.md) — dev.dash.io Worker and container
 - [ADR 0007](docs/adr/0007-mongodb-app-state.md) — app state in MongoDB
 - [ADR 0008](docs/adr/0008-team-invitations.md) — team members and invitations
-- [ADR 0011](docs/adr/0011-public-website.md) — public website (Next.js static export)
+- [ADR 0011](docs/adr/0011-public-website.md) — public website (Next.js)
+- [ADR 0012](docs/adr/0012-dash-cloud-accounts.md) — Dash Cloud accounts in the public website
 
 ## Dev deploy
 

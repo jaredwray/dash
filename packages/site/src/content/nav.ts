@@ -1,4 +1,4 @@
-import { contactHref, site } from "~/lib/site";
+import { contactHref, cta, site } from "~/lib/site";
 
 export type NavLink = {
   label: string;
@@ -51,8 +51,8 @@ export const footerGroups: readonly FooterGroup[] = [
   {
     title: "Dash Cloud",
     links: [
-      { label: "Sign in", href: site.cloudSignIn, external: true },
-      { label: "Create an account", href: site.cloudSignUp, external: true },
+      { label: "Sign in", href: cta.signIn.href },
+      { label: "Create an account", href: cta.cloud.href },
       { label: "Contact", href: contactHref, external: true },
     ],
   },

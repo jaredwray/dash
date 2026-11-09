@@ -6,9 +6,9 @@ export type PlanId = "open-source" | "cloud" | "enterprise";
 export type Plan = {
   id: PlanId;
   name: string;
-  /** Monthly price in USD. `null` means custom pricing. */
+  /** Price in USD for one `priceUnit`. `null` means custom pricing. */
   price: number | null;
-  /** Unit that follows the price, for example "per user / month". */
+  /** Unit that follows the price, for example "per compute hour". */
   priceUnit: string;
   /** Text to show when `price` is null, or a short note under the price. */
   priceLabel: string;
@@ -44,12 +44,14 @@ export const plans: readonly Plan[] = [
   {
     id: "cloud",
     name: "Cloud",
-    price: 20,
-    priceUnit: "per user / month",
-    priceLabel: "Billed monthly",
+    // Placeholder rate. The owner will set the real rate per compute hour.
+    price: 0.1,
+    priceUnit: "per compute hour",
+    priceLabel: "Billed monthly for the hours you use",
     description: "The same product, fully managed by the team that builds Dash.",
     features: [
       "All product features",
+      "No charge for each user",
       "Fully managed hosting",
       "Automatic upgrades",
       "Daily backups",
@@ -86,10 +88,21 @@ function planById(id: PlanId): Plan {
 /** The paid hosted plan. The home page shows its price. */
 export const cloudPlan = planById("cloud");
 
-/** Formats a plan price for display, for example "$20" or "Custom". */
+const usd = (fractionDigits: number) =>
+  new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: fractionDigits,
+    maximumFractionDigits: fractionDigits,
+  });
+
+/**
+ * Formats a plan price for display: "$0" for a whole dollar amount, "$0.10" for a
+ * fractional amount, and the price label (for example "Custom") for a custom price.
+ */
 export function formatPrice(plan: Plan): string {
   if (plan.price === null) return plan.priceLabel;
-  return `$${plan.price}`;
+  return usd(Number.isInteger(plan.price) ? 0 : 2).format(plan.price);
 }
 
 export type ComparisonValue = boolean | string;
@@ -134,8 +147,12 @@ export const comparisonGroups: readonly ComparisonGroup[] = [
         values: { "open-source": true, cloud: true, enterprise: true },
       },
       {
-        label: "Users",
-        values: { "open-source": "Unlimited", cloud: "Per user", enterprise: "Custom" },
+        label: "Price",
+        values: {
+          "open-source": "Free",
+          cloud: `${formatPrice(cloudPlan)} ${cloudPlan.priceUnit}`,
+          enterprise: "Custom",
+        },
       },
     ],
   },
