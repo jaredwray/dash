@@ -73,6 +73,22 @@ describe("verifyCredentials", () => {
     );
   });
 
+  test("concurrent attempts cannot try more passwords than the limit", async () => {
+    await createAccount(ada);
+    const burst = await Promise.allSettled(
+      Array.from({ length: MAX_FAILED_SIGN_INS * 2 }, () =>
+        verifyCredentials(ada.email, "wrong password"),
+      ),
+    );
+
+    const checked = burst.filter((result) => result.status === "fulfilled");
+    const refused = burst.filter(
+      (result) => result.status === "rejected" && result.reason instanceof TooManyAttemptsError,
+    );
+    expect(checked).toHaveLength(MAX_FAILED_SIGN_INS);
+    expect(refused).toHaveLength(MAX_FAILED_SIGN_INS);
+  });
+
   test("a correct sign-in before the limit resets the failure count", async () => {
     const { accountId } = await createAccount(ada);
     for (let attempt = 0; attempt < MAX_FAILED_SIGN_INS - 1; attempt++) {

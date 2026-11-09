@@ -34,7 +34,8 @@ export type SessionDoc = {
 export type LoginThrottleDoc = {
   /** The normalized email. */
   _id: string;
-  failures: number;
+  /** Sign-in attempts in the window. A correct sign-in deletes the record. */
+  attempts: number;
   /** A TTL index deletes the record 15 minutes after this time. */
   windowStartedAt: Date;
 };

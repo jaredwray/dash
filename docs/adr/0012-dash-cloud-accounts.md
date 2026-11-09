@@ -20,10 +20,10 @@ The product app (`@dash/web`) already has accounts. It hashes passwords with scr
   - `accounts`: name, lowercase email with a unique index, password hash, organization id, and role `owner`.
   - `organizations`: name, plan `cloud`, and the owner account id.
   - `sessions`: SHA-256 of the token, account id, and expiry. A TTL index removes expired sessions.
-  - `login_throttle`: failed sign-ins for each email. A TTL index removes a record after 15 minutes.
+  - `login_throttle`: sign-in attempts for each email. A TTL index removes a record after 15 minutes.
 - Passwords use scrypt in the format of `@dash/web` (`scrypt$N$r$p$salt$hash`). The website calls the async `scrypt`, so a hash does not block other requests. A password has 8 to 200 characters.
 - A sign-in with an unknown email compares the password against a dummy hash. The time of the response then does not show if an account exists. Both failures show the same message.
-- After 10 failed sign-ins for one email in 15 minutes, Dash Cloud refuses sign-in for that email until the window ends.
+- Each sign-in reserves one of 10 attempts for its email in a 15-minute window, before the password check. The reservation is one conditional MongoDB update, so concurrent requests cannot get more attempts. A correct sign-in resets the count. After 10 failures in a row, Dash Cloud refuses sign-in for that email until the window ends.
 - The session token is 32 random bytes in the `dash_cloud_session` cookie. The cookie is `HttpOnly` and `SameSite=Lax`, and it is `Secure` in production. A session lasts 30 days.
 - The forms call Next.js server actions. zod validates the input on the server. Next.js compares the `Origin` header with the host for each server action, which blocks cross-site form posts.
 - MongoDB on a single node has no transactions. Sign-up writes the account and then the organization. If the organization write fails, sign-up deletes the account.
