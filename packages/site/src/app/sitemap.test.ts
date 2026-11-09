@@ -1,7 +1,7 @@
 import { readdirSync } from "node:fs";
 import { dirname, join, sep } from "node:path";
 import { expect, test } from "vitest";
-import { site } from "~/lib/site";
+import { accountPaths, site } from "~/lib/site";
 import sitemap from "./sitemap";
 
 /** Returns the route of each `page.tsx` below `src/app`, with a trailing slash. */
@@ -16,9 +16,16 @@ function pageRoutes(): string[] {
     .sort();
 }
 
-test("the sitemap lists each page once, with an absolute URL and a trailing slash", () => {
+test("each account path has a page", () => {
+  expect(pageRoutes()).toEqual(expect.arrayContaining([...accountPaths]));
+});
+
+test("the sitemap lists each public page once, with an absolute URL and a trailing slash", () => {
+  const accounts: readonly string[] = accountPaths;
   const urls = sitemap().map((entry) => entry.url);
-  const expected = pageRoutes().map((route) => `${site.url}${route}`);
+  const expected = pageRoutes()
+    .filter((route) => !accounts.includes(route))
+    .map((route) => `${site.url}${route}`);
 
   expect(expected.length).toBeGreaterThan(1);
   expect([...urls].sort()).toEqual(expected);

@@ -25,10 +25,13 @@ The product app (`@dash/web`) is a TanStack Start server. It needs MongoDB and a
 - The website uses the app color tokens and the Outfit font, so the website and the product look like one brand.
 - The website uses WebP copies of five README screenshots in `packages/site/public/screenshots/`. The copies are 2400 pixels wide. The four screenshots on the home page are about 0.5 MB, not 1.9 MB.
 - CI runs `pnpm lint` and `pnpm --filter @dash/site build`. `pnpm typecheck` and `pnpm test` already include the new package.
+- Dash Cloud runs in this website. There is no separate app host. Sign-up is at `/register/` and sign-in is at `/login/`.
+- Until the account system exists, `/register/` and `/login/` are placeholder pages. They ask visitors to write for early access or to host Dash themselves. Search engines do not index them, and the sitemap does not list them.
 
 ## Consequences
 
 - The website builds and deploys apart from the app. A website change cannot break the app container.
 - This change does not add a deploy for the website. A later change selects the host and adds a workflow.
-- The Dash Cloud prices and the `app.dash.io` and `hello@dash.io` addresses are placeholders. The owner must confirm them before launch.
+- The Dash Cloud prices and the `hello@dash.io` address are placeholders. The owner must confirm them before launch.
+- The account system needs server code. When it arrives, the website must stop using `output: "export"`, and a plain static host cannot serve it.
 - The screenshot copies do not update when the README screenshots change. Convert them again after a new README capture.

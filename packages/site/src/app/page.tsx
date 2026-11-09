@@ -98,7 +98,7 @@ export default function HomePage() {
               height={2940}
               aspect="16 / 9.5"
               priority
-              url="app.dash.io/dashboards"
+              url="dash.io/dashboards"
               className="relative"
             />
           </div>

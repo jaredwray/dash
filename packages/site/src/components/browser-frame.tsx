@@ -23,7 +23,7 @@ export function BrowserFrame({
   alt,
   width,
   height,
-  url = "app.dash.io",
+  url = "dash.io",
   aspect = "16 / 10",
   priority = false,
   className = "",

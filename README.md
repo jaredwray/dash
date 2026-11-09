@@ -112,7 +112,8 @@ Open [http://localhost:3001](http://localhost:3001). `pnpm --filter @dash/site b
 
 - Repository, Dash Cloud, and contact links are in `packages/site/src/lib/site.ts`.
 - Plan names, prices, and features are in one data file. Change a price there, not in a component.
-- The prices and the `app.dash.io` and `hello@dash.io` addresses are placeholders until launch.
+- Dash Cloud runs in this website, not on a separate host. Sign-up is at `/register/` and sign-in is at `/login/`. Until the account system exists, those pages ask visitors to write for early access. Search engines do not index them.
+- The prices and the `hello@dash.io` address are placeholders until launch.
 
 See [ADR 0011](docs/adr/0011-public-website.md).
 
