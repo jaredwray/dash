@@ -10,7 +10,7 @@ import { pageMetadata } from "~/lib/metadata";
 import { site } from "~/lib/site";
 
 const description =
-  "Self-host Dash for free under the MIT license, or pay per user on Dash Cloud. Each plan has all product features.";
+  "Self-host Dash for free under the MIT license, or pay for compute hours on Dash Cloud. Each plan has all product features.";
 
 export const metadata: Metadata = pageMetadata({
   title: "Pricing",
@@ -36,7 +36,7 @@ export default function PricingPage() {
             eyebrow="Pricing"
             id="pricing-title"
             title="Simple pricing. Same product."
-            description="Self-host Dash for free, or pay per user on Dash Cloud. Each plan has all product features."
+            description="Self-host Dash for free, or pay only for the compute hours that you use on Dash Cloud. Each plan has all product features."
             align="center"
           />
 

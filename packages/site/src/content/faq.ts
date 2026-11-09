@@ -6,7 +6,7 @@ export type FaqItem = {
   answer: string;
 };
 
-/** Questions on the pricing page. The owner will confirm the answers about users and migration. */
+/** Questions on the pricing page. The owner will confirm the answers about billing and migration. */
 export const pricingFaq: readonly FaqItem[] = [
   {
     id: "limited",
@@ -15,10 +15,10 @@ export const pricingFaq: readonly FaqItem[] = [
       "No. The open source build and Dash Cloud run the same product with the same features. The MIT license covers the full code base. There are no feature gates and no usage caps.",
   },
   {
-    id: "user",
-    question: "What counts as a user on Dash Cloud?",
+    id: "billing",
+    question: "How does Dash Cloud billing work?",
     answer:
-      "A user is a person who can sign in to your organization. Viewers and editors both count. An agent that connects with an API token is not a user.",
+      "Dash Cloud bills by compute hour. A compute hour is one hour of server time that your workspace uses. Each month, Dash Cloud adds up the hours and bills the total. There is no charge for each user, so you can invite your full team.",
   },
   {
     id: "move",
