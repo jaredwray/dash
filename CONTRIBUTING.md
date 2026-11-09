@@ -14,6 +14,7 @@ You can contribute changes to this repo by opening a pull request:
 	- `pnpm test:services:start` (Docker Compose clusters for adapter tests)
 	- `pnpm test`
 	- `pnpm typecheck`
+	- `pnpm lint` (Biome, for `packages/site`)
 	- `pnpm test:services:stop`
 	- If you changed the feature set, update the checklist in [README.md](README.md).
 3) Commit your changes and push them to your forked repository.
