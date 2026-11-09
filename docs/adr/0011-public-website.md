@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted.
+Accepted. [ADR 0012](0012-dash-cloud-accounts.md) replaces the static export: the website now runs as a Node.js server for Dash Cloud accounts.
 
 ## Context
 

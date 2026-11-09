@@ -1,22 +1,24 @@
+"use client";
+
 import Link from "next/link";
+import { useActionState } from "react";
 import { cta } from "~/lib/site";
+import { type AuthFormState, registerAction } from "~/server/actions";
 import { Field } from "./field";
 import { FormError } from "./form-error";
 import { SubmitButton } from "./submit-button";
 
-type RegisterFormProps = {
-  /** A form-level error message from the last submit. */
-  error?: string;
-};
+const initialState: AuthFormState = {};
 
 /**
- * The sign-up form for Dash Cloud. The form posts its fields and keeps no client state.
- * Do not rename a field: the server action reads the fields by these names.
+ * The sign-up form for Dash Cloud. It calls `registerAction`, which reads the fields by name.
+ * After a refused submit, the fields show the typed values again, but not the password.
  */
-export function RegisterForm({ error }: RegisterFormProps) {
+export function RegisterForm() {
+  const [state, formAction] = useActionState(registerAction, initialState);
   return (
-    <form method="post" aria-label="Create account" className="flex flex-col gap-5">
-      <FormError message={error} />
+    <form action={formAction} aria-label="Create account" className="flex flex-col gap-5">
+      <FormError message={state.error} />
       <Field
         name="name"
         label="Full name"
@@ -24,6 +26,7 @@ export function RegisterForm({ error }: RegisterFormProps) {
         autoComplete="name"
         required
         maxLength={80}
+        defaultValue={state.values?.name}
       />
       <Field
         name="email"
@@ -32,6 +35,7 @@ export function RegisterForm({ error }: RegisterFormProps) {
         autoComplete="email"
         required
         maxLength={254}
+        defaultValue={state.values?.email}
       />
       <Field
         name="organization"
@@ -41,6 +45,7 @@ export function RegisterForm({ error }: RegisterFormProps) {
         required
         maxLength={80}
         hint="Your team's name in Dash Cloud."
+        defaultValue={state.values?.organization}
       />
       <Field
         name="password"

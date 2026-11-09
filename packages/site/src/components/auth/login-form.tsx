@@ -1,23 +1,32 @@
+"use client";
+
 import Link from "next/link";
+import { useActionState } from "react";
 import { cta } from "~/lib/site";
+import { type AuthFormState, loginAction } from "~/server/actions";
 import { Field } from "./field";
 import { FormError } from "./form-error";
 import { SubmitButton } from "./submit-button";
 
-type LoginFormProps = {
-  /** A form-level error message from the last submit. */
-  error?: string;
-};
+const initialState: AuthFormState = {};
 
 /**
- * The sign-in form for Dash Cloud. The form posts its fields and keeps no client state.
- * Do not rename a field: the server action reads the fields by these names.
+ * The sign-in form for Dash Cloud. It calls `loginAction`, which reads the fields by name.
+ * After a refused submit, the email field shows the typed value again.
  */
-export function LoginForm({ error }: LoginFormProps) {
+export function LoginForm() {
+  const [state, formAction] = useActionState(loginAction, initialState);
   return (
-    <form method="post" aria-label="Sign in" className="flex flex-col gap-5">
-      <FormError message={error} />
-      <Field name="email" label="Email" type="email" autoComplete="email" required />
+    <form action={formAction} aria-label="Sign in" className="flex flex-col gap-5">
+      <FormError message={state.error} />
+      <Field
+        name="email"
+        label="Email"
+        type="email"
+        autoComplete="email"
+        required
+        defaultValue={state.values?.email}
+      />
       <Field
         name="password"
         label="Password"

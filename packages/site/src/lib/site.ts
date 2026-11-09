@@ -34,3 +34,6 @@ export const sitePaths = ["/", "/pricing/", "/open-source/"] as const;
  * Search engines do not index these pages, so the sitemap does not list them.
  */
 export const accountPaths = [cta.signIn.href, cta.cloud.href] as const;
+
+/** Pages for a signed-in Dash Cloud account. Search engines do not index them. */
+export const signedInPaths = ["/account/"] as const;
