@@ -26,7 +26,7 @@ The product app (`@dash/web`) is a TanStack Start server. It needs MongoDB and a
 - The website uses WebP copies of five README screenshots in `packages/site/public/screenshots/`. The copies are 2400 pixels wide. The four screenshots on the home page are about 0.5 MB, not 1.9 MB.
 - CI runs `pnpm lint` and `pnpm --filter @dash/site build`. `pnpm typecheck` and `pnpm test` already include the new package.
 - Dash Cloud runs in this website. There is no separate app host. Sign-up is at `/register/` and sign-in is at `/login/`.
-- Until the account system exists, `/register/` and `/login/` are placeholder pages. They ask visitors to write for early access or to host Dash themselves. Search engines do not index them, and the sitemap does not list them.
+- `/register/` and `/login/` have the sign-up and sign-in forms. The forms use `method="post"`, so a password never goes into a URL. A later change connects them to the account system. Search engines do not index these pages, and the sitemap does not list them.
 
 ## Consequences
 

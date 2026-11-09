@@ -24,10 +24,6 @@ export const cta = {
   cloud: { label: "Start on Dash Cloud", href: "/register/" },
   signIn: { label: "Sign in", href: "/login/" },
   contact: { label: "Contact us", href: contactHref },
-  earlyAccess: {
-    label: "Ask for early access",
-    href: `${contactHref}?subject=${encodeURIComponent("Dash Cloud early access")}`,
-  },
 } as const;
 
 /** Public pages of the site. Each path ends with a slash to match `trailingSlash: true`. */

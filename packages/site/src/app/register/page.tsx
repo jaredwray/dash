@@ -1,18 +1,15 @@
-import { ArrowRight, Check, Cloud, Mail } from "lucide-react";
+import { ArrowRight, Check, Cloud } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ButtonLink } from "~/components/button-link";
-import { GitHubIcon } from "~/components/icons";
-import { SectionHeading } from "~/components/section-heading";
+import { RegisterForm } from "~/components/auth/register-form";
 import { cloudPlan, formatPrice } from "~/content/plans";
 import { pageMetadata } from "~/lib/metadata";
-import { cta } from "~/lib/site";
 
 const description =
-  "Dash Cloud is not open for sign-up yet. Ask for early access by email, or self-host Dash today for free.";
+  "Create a Dash Cloud account for your team. Dash Cloud is the managed Dash, with automatic upgrades and daily backups.";
 
 export const metadata: Metadata = pageMetadata({
-  title: "Start on Dash Cloud",
+  title: "Create your Dash Cloud account",
   description,
   path: "/register/",
   index: false,
@@ -29,55 +26,47 @@ export default function RegisterPage() {
         aria-hidden="true"
         className="bg-grid pointer-events-none absolute inset-x-0 top-0 h-[30rem]"
       />
-      <div className="container-x relative flex flex-col items-center pt-20 pb-20 sm:pt-28 sm:pb-28">
-        <SectionHeading
-          as="h1"
-          eyebrow="Dash Cloud"
-          id="register-title"
-          title="Dash Cloud is on the way."
-          description="Sign-up is not open yet. Ask for early access, or self-host Dash today for free."
-          align="center"
-        />
-
-        <div className="mt-9 flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
-          <ButtonLink href={cta.earlyAccess.href} size="lg" icon={<Mail />}>
-            {cta.earlyAccess.label}
-          </ButtonLink>
-          <ButtonLink href={cta.selfHost.href} size="lg" variant="secondary" icon={<GitHubIcon />}>
-            {cta.selfHost.label}
-          </ButtonLink>
+      <div className="container-x relative grid grid-cols-1 gap-10 pt-16 pb-20 sm:pt-20 sm:pb-28 lg:grid-cols-[minmax(0,1fr)_minmax(0,30rem)] lg:grid-rows-[auto_1fr] lg:gap-x-16 lg:gap-y-12 lg:pt-24">
+        <div className="flex max-w-xl flex-col lg:col-start-1 lg:row-start-1">
+          <p className="eyebrow mb-4">Dash Cloud</p>
+          <h1
+            id="register-title"
+            className="text-shine font-display text-[2.5rem] leading-[1.02] font-semibold tracking-[-0.03em] text-balance sm:text-5xl lg:text-6xl"
+          >
+            Create your Dash Cloud account.
+          </h1>
+          <p className="mt-5 text-lg leading-8 text-mist text-pretty">
+            Dash Cloud is the managed Dash. Complete the form to create the account for your team.
+          </p>
         </div>
 
-        <article
-          aria-labelledby="cloud-plan-title"
-          className="relative mt-16 w-full max-w-3xl overflow-hidden rounded-3xl bg-[linear-gradient(180deg,rgb(94_234_212/0.09),rgb(94_234_212/0.02)_40%),var(--color-panel)] p-7 shadow-glow ring-1 ring-accent/35 motion-safe:animate-rise-slow sm:p-9"
-        >
+        <div className="relative lg:col-start-2 lg:row-span-2 lg:row-start-1 motion-safe:animate-rise">
           <div
             aria-hidden="true"
-            className="pointer-events-none absolute -top-24 -right-24 size-64 rounded-full bg-accent/15 blur-3xl"
+            className="pointer-events-none absolute -inset-6 rounded-[2.5rem] bg-accent/10 blur-3xl"
           />
-          <div className="relative grid grid-cols-1 gap-8 sm:grid-cols-[1fr_auto] sm:items-start">
-            <div className="flex items-center gap-3">
-              <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-accent/15 text-accent ring-1 ring-inset ring-accent/30">
-                <Cloud className="size-5" aria-hidden="true" />
-              </span>
-              <div>
-                <p className="eyebrow">Managed</p>
-                <h2 id="cloud-plan-title" className="text-xl font-semibold text-paper">
-                  What Dash Cloud will include
-                </h2>
-              </div>
+          <div className="relative rounded-3xl bg-[linear-gradient(180deg,rgb(94_234_212/0.09),rgb(94_234_212/0.02)_40%),var(--color-panel)] p-6 shadow-glow ring-1 ring-accent/35 sm:p-9">
+            <RegisterForm />
+          </div>
+        </div>
+
+        <aside
+          aria-labelledby="cloud-plan-title"
+          className="surface max-w-xl rounded-3xl p-6 sm:p-8 lg:col-start-1 lg:row-start-2 lg:self-start motion-safe:animate-rise-slow"
+        >
+          <div className="flex items-center gap-3">
+            <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-accent/15 text-accent ring-1 ring-inset ring-accent/30">
+              <Cloud className="size-5" aria-hidden="true" />
+            </span>
+            <div>
+              <p className="eyebrow">Managed</p>
+              <h2 id="cloud-plan-title" className="text-lg font-semibold text-paper">
+                What your account includes
+              </h2>
             </div>
-            <p className="inline-flex items-center gap-2 self-start justify-self-start rounded-full bg-white/[0.06] px-3 py-1.5 font-mono text-[0.68rem] font-medium uppercase tracking-[0.16em] text-mist-2 ring-1 ring-inset ring-white/10">
-              <span
-                aria-hidden="true"
-                className="size-1.5 rounded-full bg-warn motion-safe:animate-pulse-dot"
-              />
-              Sign-up not open
-            </p>
           </div>
 
-          <div className="relative mt-8 grid grid-cols-1 gap-8 sm:grid-cols-2">
+          <div className="mt-7 grid grid-cols-1 gap-7 sm:grid-cols-[auto_1fr] sm:gap-8">
             <div>
               <p className="flex items-baseline gap-2">
                 <span className="font-display text-5xl font-semibold tracking-tight text-paper">
@@ -86,7 +75,6 @@ export default function RegisterPage() {
                 <span className="text-sm text-mist">{cloudPlan.priceUnit}</span>
               </p>
               <p className="mt-1 text-sm text-mist">{cloudPlan.priceLabel}. Prices are in USD.</p>
-              <p className="mt-5 text-[0.95rem] leading-6 text-mist">{cloudPlan.description}</p>
               <Link
                 href="/pricing/"
                 className="mt-5 inline-flex items-center gap-1.5 text-sm font-medium text-mist-2 hover:text-paper"
@@ -95,7 +83,7 @@ export default function RegisterPage() {
                 <ArrowRight className="size-4" aria-hidden="true" />
               </Link>
             </div>
-            <ul className="space-y-3 border-t border-line pt-7 sm:border-t-0 sm:border-l sm:pt-0 sm:pl-8">
+            <ul className="space-y-2.5 border-t border-line pt-6 sm:border-t-0 sm:border-l sm:pt-0 sm:pl-8">
               {cloudPlan.features.map((feature) => (
                 <li key={feature} className="flex items-start gap-3 text-[0.95rem] text-mist-2">
                   <Check className="mt-1 size-4 shrink-0 text-accent" aria-hidden="true" />
@@ -104,12 +92,7 @@ export default function RegisterPage() {
               ))}
             </ul>
           </div>
-        </article>
-
-        <p className="mt-8 max-w-md text-center text-sm leading-6 text-mist text-pretty">
-          The code on GitHub is the code that will run Dash Cloud. You can self-host it now and move
-          to Dash Cloud later.
-        </p>
+        </aside>
       </div>
     </section>
   );
