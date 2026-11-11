@@ -58,6 +58,8 @@ All notable changes to Dash are documented here.
 
 ### Changed
 
+- Security: the lockfile resolves `vite` 8.3.7 in place of 8.3.5. This release fixes GHSA-p4f5-76q4-ffq7. Vite 8.3.5 lets a network dev server read a file or run code. Vite 8.3.7 closes that path. The workspace file excludes 17 versions from the 7-day cooldown. Jared must approve that list.
+
 - The README screenshots show the Fernway sample company. The Executive overview and Customer support dashboards replace Growth overview and Regional revenue review.
 
 - The button to copy the MCP URL uses an icon and an accessible label.
