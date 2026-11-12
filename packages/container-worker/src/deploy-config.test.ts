@@ -97,6 +97,7 @@ describe("demo.dash.io deploy config", () => {
     expect(workflow).not.toContain("--secrets-file");
     expect(workflow).not.toContain("pull_request");
     expect(workflow).toContain("package-manager-cache: false");
+    expect(workflow).toContain("if: github.ref == 'refs/heads/main'");
     expect(workflow).toContain("group: deploy-demo");
     expect(workflow).toContain("cancel-in-progress: false");
     expect(workflow).toContain("persist-credentials: false");
@@ -160,6 +161,7 @@ describe("dev.dash.io deploy config", () => {
     expect(workflow).toContain("pnpm exec wrangler deploy --config wrangler.site.jsonc");
     expect(workflow).not.toContain("MONGODB_URI");
     expect(workflow).not.toContain("pull_request");
+    expect(workflow).toContain("if: github.ref == 'refs/heads/main'");
     expect(workflow).toContain("group: deploy-dev");
     expect(workflow).toContain("cancel-in-progress: false");
     expect(workflow).toContain("persist-credentials: false");

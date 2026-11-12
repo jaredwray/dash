@@ -357,7 +357,7 @@ Override the Postgres endpoint with `DASH_TEST_POSTGRES_HOST`, `DASH_TEST_POSTGR
 
 ## Deploys
 
-A push to `main` starts two deploys. Each deploy is a Cloudflare Worker in front of one container.
+A push to `main` starts two deploys. Each deploy is a Cloudflare Worker in front of one container. You can also start a workflow manually. The deploy job runs only when the ref is `main`.
 
 | Host | Package | Workflow | Wrangler config | Worker |
 | --- | --- | --- | --- | --- |

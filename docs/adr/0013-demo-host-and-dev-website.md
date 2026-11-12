@@ -21,7 +21,7 @@ The website is a Next.js server on Node.js ([ADR 0012](0012-dash-cloud-accounts.
 - The Worker adds `X-Robots-Tag: noindex, nofollow` to each response. Search engines then do not index the development copy of the website.
 - Next.js exits with code 143 after SIGTERM. The Worker logs that exit as `container stopped`. A different non-zero exit code is `container crashed`.
 - Cloudflare logs are on for the Worker and the container, as for the app.
-- There are two workflows. `deploy-demo` deploys the app, and `deploy-dev` deploys the website. Each workflow runs on a push to `main` and on `workflow_dispatch`. The scripts are `pnpm deploy:demo` and `pnpm deploy:dev`.
+- There are two workflows. `deploy-demo` deploys the app, and `deploy-dev` deploys the website. Each workflow runs on a push to `main` and on `workflow_dispatch`. A manual run can select a branch, so the deploy job runs only when the ref is `main`. The scripts are `pnpm deploy:demo` and `pnpm deploy:dev`.
 
 ## Consequences
 

@@ -60,7 +60,7 @@ All notable changes to Dash are documented here.
 
 ### Changed
 
-- **Breaking:** the app deploy moved from `dev.dash.io` to [demo.dash.io](https://demo.dash.io). The `dash-development` Worker keeps its name, its container, and its secrets. The app workflow is now `deploy-demo`, and the app script is now `pnpm deploy:demo`. `dev.dash.io` shows the website. Each app user signs in again on the new host.
+- **Breaking:** the app deploy moved from `dev.dash.io` to [demo.dash.io](https://demo.dash.io). The `dash-development` Worker keeps its name, its container, and its secrets. The app workflow is now `deploy-demo`, and the app script is now `pnpm deploy:demo`. `dev.dash.io` shows the website. Each app user signs in again on the new host. A manual run of a deploy workflow now deploys only from `main`.
 
 - Security: `@dash/site` depends on `next` 16.4.5. The previous pin was 16.4.3. This release fixes AIKIDO-2026-922418. It also fixes GHSA-mfr8-8qww-v76h, GHSA-vc7v-qv4w-wrv8, GHSA-rhh4-g77r-r9qj, GHSA-vvgp-ww4w-46vf, GHSA-pc58-hwjq-p385, GHSA-f3mh-rxg3-f5g2, and GHSA-7qx7-33qx-rqx2. npm published 16.4.5 on 2026-11-03. The 7-day cooldown applies. This change adds no exclude.
 - Security: the lockfile resolves `vite` 8.3.7 in place of 8.3.5. This release fixes GHSA-p4f5-76q4-ffq7. Vite 8.3.5 lets a network dev server read a file or run code. Vite 8.3.7 closes that path. The workspace file excludes 17 versions from the 7-day cooldown. Jared must approve that list.
