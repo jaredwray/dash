@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted. Changes the static export in [ADR 0011](0011-public-website.md).
+Accepted. Changes the static export in [ADR 0011](0011-public-website.md). [ADR 0013](0013-demo-host-and-dev-website.md) adds the deploy to `dev.dash.io`.
 
 ## Context
 

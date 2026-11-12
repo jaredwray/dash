@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted. App state no longer lives in a SQLite file on the container disk. See [ADR 0007](0007-mongodb-app-state.md).
+Accepted. App state no longer lives in a SQLite file on the container disk. See [ADR 0007](0007-mongodb-app-state.md). The app host is now `demo.dash.io`, and `dev.dash.io` shows the website. See [ADR 0013](0013-demo-host-and-dev-website.md).
 
 ## Context
 

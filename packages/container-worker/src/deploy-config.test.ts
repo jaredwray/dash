@@ -16,8 +16,8 @@ function parseJsonc(text: string): unknown {
   return JSON.parse(withoutLines);
 }
 
-describe("dev.dash.io deploy config", () => {
-  it("routes the Worker at dev.dash.io to one container", () => {
+describe("demo.dash.io deploy config", () => {
+  it("routes the Worker at demo.dash.io to one container", () => {
     const config = parseJsonc(readRepo("wrangler.jsonc")) as {
       name: string;
       main: string;
@@ -41,7 +41,7 @@ describe("dev.dash.io deploy config", () => {
     expect(config.name).toBe("dash-development");
     expect(config.main).toBe("packages/container-worker/src/index.ts");
     expect(config.workers_dev).toBe(false);
-    expect(config.routes).toEqual([{ pattern: "dev.dash.io", custom_domain: true }]);
+    expect(config.routes).toEqual([{ pattern: "demo.dash.io", custom_domain: true }]);
     expect(config.containers).toEqual([
       {
         class_name: "DashContainer",
@@ -89,14 +89,79 @@ describe("dev.dash.io deploy config", () => {
   });
 
   it("deploys with the repo's wrangler on pushes to main", () => {
-    const workflow = readRepo(".github/workflows/deploy-dev.yml");
-    expect(workflow).toContain("name: deploy-dev");
-    expect(workflow).toContain("pnpm exec wrangler deploy");
+    const workflow = readRepo(".github/workflows/deploy-demo.yml");
+    expect(workflow).toContain("name: deploy-demo");
+    expect(workflow).toMatch(/pnpm exec wrangler deploy$/m);
     expect(workflow).not.toContain("DASH_SECRET");
     expect(workflow).not.toContain("MONGODB_URI");
     expect(workflow).not.toContain("--secrets-file");
     expect(workflow).not.toContain("pull_request");
     expect(workflow).toContain("package-manager-cache: false");
+    expect(workflow).toContain("if: github.ref == 'refs/heads/main'");
+    expect(workflow).toContain("group: deploy-demo");
+    expect(workflow).toContain("cancel-in-progress: false");
+    expect(workflow).toContain("persist-credentials: false");
+    expect(workflow).toContain("sfw pnpm install --frozen-lockfile");
+  });
+});
+
+describe("dev.dash.io deploy config", () => {
+  it("routes the website Worker at dev.dash.io to one container", () => {
+    const config = parseJsonc(readRepo("wrangler.site.jsonc")) as {
+      name: string;
+      main: string;
+      workers_dev: boolean;
+      routes: Array<{ pattern: string; custom_domain: boolean }>;
+      containers: Array<{ class_name: string; image: string; max_instances: number }>;
+      durable_objects: { bindings: Array<{ name: string; class_name: string }> };
+      exports: Record<string, { type: string; storage: string }>;
+      vars?: unknown;
+    };
+
+    // The app Worker keeps its name, so the two deploys cannot replace each other.
+    expect(config.name).toBe("dash-site-development");
+    expect(config.main).toBe("packages/container-worker/src/site.ts");
+    expect(config.workers_dev).toBe(false);
+    expect(config.routes).toEqual([{ pattern: "dev.dash.io", custom_domain: true }]);
+    expect(config.containers).toMatchObject([
+      { class_name: "SiteContainer", image: "./Dockerfile.site", max_instances: 1 },
+    ]);
+    expect(config.durable_objects.bindings).toEqual([
+      { name: "SITE_CONTAINER", class_name: "SiteContainer" },
+    ]);
+    expect(config.exports.SiteContainer).toEqual({ type: "durable-object", storage: "sqlite" });
+    // The database URI is a Worker secret. It must not be a plain var in this file.
+    expect(config.vars).toBeUndefined();
+
+    const worker = readRepo(config.main);
+    expect(worker).toContain("export class SiteContainer ");
+    expect(worker).toContain("env.SITE_CONTAINER");
+  });
+
+  it("builds the website into a container that runs the standalone server on port 3000", () => {
+    const dockerfile = readRepo("Dockerfile.site");
+    expect(dockerfile).toContain("pnpm --filter @dash/site build");
+    expect(dockerfile).toContain("EXPOSE 3000");
+    expect(dockerfile).toContain('CMD ["node", "packages/site/server.js"]');
+    // The standalone server does not include these directories.
+    expect(dockerfile).toContain("/app/packages/site/.next/static ./packages/site/.next/static");
+    expect(dockerfile).toContain("/app/packages/site/public ./packages/site/public");
+    expect(dockerfile).toContain("@sha256:");
+    // `next build` writes the standalone server only when this variable is set.
+    expect(dockerfile).toContain("DASH_SITE_OUTPUT=standalone");
+    expect(readRepo("packages/site/next.config.ts")).toContain(
+      'process.env.DASH_SITE_OUTPUT === "standalone"',
+    );
+    expect(readRepo(".dockerignore")).toContain("**/.next");
+  });
+
+  it("deploys the website with its own Wrangler config on pushes to main", () => {
+    const workflow = readRepo(".github/workflows/deploy-dev.yml");
+    expect(workflow).toContain("name: deploy-dev");
+    expect(workflow).toContain("pnpm exec wrangler deploy --config wrangler.site.jsonc");
+    expect(workflow).not.toContain("MONGODB_URI");
+    expect(workflow).not.toContain("pull_request");
+    expect(workflow).toContain("if: github.ref == 'refs/heads/main'");
     expect(workflow).toContain("group: deploy-dev");
     expect(workflow).toContain("cancel-in-progress: false");
     expect(workflow).toContain("persist-credentials: false");

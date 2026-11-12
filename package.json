@@ -15,7 +15,8 @@
     "test:services:stop": "bash ./scripts/test-services.sh stop",
     "test:shutdown": "node ./scripts/shutdown-smoke.mjs",
     "typecheck": "pnpm -r --if-present typecheck",
-    "deploy:dev": "wrangler deploy",
+    "deploy:demo": "wrangler deploy",
+    "deploy:dev": "wrangler deploy --config wrangler.site.jsonc",
     "lint": "pnpm -r --if-present lint"
   },
   "devDependencies": {
