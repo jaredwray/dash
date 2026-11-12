@@ -1,0 +1,35 @@
+# Image of the public website (`@dash/site`) for dev.dash.io.
+# `wrangler deploy --config wrangler.site.jsonc` builds and pushes this image.
+# Cloudflare Containers run linux/amd64.
+# Both stages pin the index digest of node:24.22.3-bookworm-slim.
+
+FROM node:24.22.3-bookworm-slim@sha256:4d897dfbf2bed5e4e09128f8b8da96a2bdf36e3cace084a32c9c4e637ec0ff81 AS build
+
+WORKDIR /app
+ENV CI=true \
+    NEXT_TELEMETRY_DISABLED=1 \
+    DASH_SITE_OUTPUT=standalone
+
+COPY package.json ./
+RUN corepack enable && corepack install
+
+COPY . .
+RUN pnpm install --frozen-lockfile --filter @dash/site...
+RUN pnpm --filter @dash/site build
+
+FROM node:24.22.3-bookworm-slim@sha256:4d897dfbf2bed5e4e09128f8b8da96a2bdf36e3cace084a32c9c4e637ec0ff81 AS runtime
+
+WORKDIR /app
+ENV NODE_ENV=production \
+    HOSTNAME=0.0.0.0 \
+    PORT=3000 \
+    NEXT_TELEMETRY_DISABLED=1
+
+# The standalone server does not include the static assets or `public/`.
+COPY --from=build --chown=node:node /app/packages/site/.next/standalone ./
+COPY --from=build --chown=node:node /app/packages/site/.next/static ./packages/site/.next/static
+COPY --from=build --chown=node:node /app/packages/site/public ./packages/site/public
+
+USER node
+EXPOSE 3000
+CMD ["node", "packages/site/server.js"]

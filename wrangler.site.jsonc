@@ -1,0 +1,52 @@
+{
+  // Public website (`@dash/site`) on dev.dash.io. The app Worker is in wrangler.jsonc.
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "dash-site-development",
+  "main": "packages/container-worker/src/site.ts",
+  "compatibility_date": "2026-10-19",
+  "workers_dev": false,
+  "upload_source_maps": true,
+  // Workers Logs: console output and one invocation log per request, kept in the dashboard.
+  "observability": {
+    "enabled": true,
+    "logs": {
+      "enabled": true,
+      "invocation_logs": true
+    }
+  },
+  "routes": [
+    {
+      "pattern": "dev.dash.io",
+      "custom_domain": true
+    }
+  ],
+  "containers": [
+    {
+      "class_name": "SiteContainer",
+      "image": "./Dockerfile.site",
+      "max_instances": 1,
+      "instance_type": "basic",
+      "rollout_step_percentage": 100,
+      // Container stdout and stderr from the Next.js server.
+      "observability": {
+        "logs": {
+          "enabled": true
+        }
+      }
+    }
+  ],
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "SITE_CONTAINER",
+        "class_name": "SiteContainer"
+      }
+    ]
+  },
+  "exports": {
+    "SiteContainer": {
+      "type": "durable-object",
+      "storage": "sqlite"
+    }
+  }
+}

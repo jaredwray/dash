@@ -197,7 +197,8 @@ Keep this list in sync as PRs land. Checked items are in the tree today.
 - [x] Data adapter interface (`DataAdapter`)
 - [x] Postgres adapter (`@dash/adapter-postgres`)
 - [x] Local Docker Compose clusters for adapter tests (`pnpm test:services:start` / `test:services:stop`)
-- [x] Dev deploy to `dev.dash.io` (Cloudflare Worker + container, GitHub Actions)
+- [x] App deploy to `demo.dash.io` (Cloudflare Worker + container, GitHub Actions)
+- [x] Website deploy to `dev.dash.io` (Cloudflare Worker + container, GitHub Actions)
 - [x] MySQL adapter (`@dash/adapter-mysql`)
 - [x] MongoDB adapter (`@dash/adapter-mongodb`)
 - [x] Google BigQuery adapter (`@dash/adapter-bigquery`)
@@ -311,7 +312,8 @@ The Agent tokens page lists API tokens with the `mcp` scope. You can revoke thes
 | `pnpm test` | Run package tests. Adapter tests and `@dash/web` app-database tests use the clusters |
 | `pnpm typecheck` | TypeScript across workspaces |
 | `pnpm build` | Production build |
-| `pnpm deploy:dev` | `wrangler deploy` of the dev Worker and container (`dev.dash.io`) |
+| `pnpm deploy:demo` | `wrangler deploy` of the app Worker and container (`demo.dash.io`) |
+| `pnpm deploy:dev` | `wrangler deploy` of the website Worker and container (`dev.dash.io`) |
 
 ## Adapter test clusters
 
@@ -346,26 +348,38 @@ Override the Postgres endpoint with `DASH_TEST_POSTGRES_HOST`, `DASH_TEST_POSTGR
 - [ADR 0003](docs/adr/0003-api-tokens.md) — sessions, tokens, encryption
 - [ADR 0004](docs/adr/0004-tanstack-charts.md) — TanStack Charts + `ChartSpec`
 - [ADR 0005](docs/adr/0005-adapter-test-clusters.md) — adapter tests use local clusters
-- [ADR 0006](docs/adr/0006-dev-workers-container.md) — dev.dash.io Worker and container
+- [ADR 0006](docs/adr/0006-dev-workers-container.md) — app Worker and container
 - [ADR 0007](docs/adr/0007-mongodb-app-state.md) — app state in MongoDB
 - [ADR 0008](docs/adr/0008-team-invitations.md) — team members and invitations
 - [ADR 0011](docs/adr/0011-public-website.md) — public website (Next.js)
 - [ADR 0012](docs/adr/0012-dash-cloud-accounts.md) — Dash Cloud accounts in the public website
+- [ADR 0013](docs/adr/0013-demo-host-and-dev-website.md) — the app on demo.dash.io, the website on dev.dash.io
 
-## Dev deploy
+## Deploys
 
-Pushes to `main` run `.github/workflows/deploy-dev.yml`. Wrangler builds `Dockerfile`, pushes the image, and attaches the Worker to `https://dev.dash.io`. `workers.dev` is off.
+A push to `main` starts two deploys. Each deploy is a Cloudflare Worker in front of one container.
 
-The container runs `node .output/server/index.mjs` from `@dash/web`. One instance named `dev` serves the host. Users, sessions, and saved data sources are stored in the MongoDB database named by `MONGODB_URI`, so they survive container sleep and the next image. The demo user is not seeded. Put Cloudflare Access in front of the hostname if the dev host should not be public.
+| Host | Package | Workflow | Wrangler config | Worker |
+| --- | --- | --- | --- | --- |
+| `demo.dash.io` | `@dash/web` (the app) | `deploy-demo.yml` | `wrangler.jsonc` | `dash-development` |
+| `dev.dash.io` | `@dash/site` (the website) | `deploy-dev.yml` | `wrangler.site.jsonc` | `dash-site-development` |
 
-Cloudflare sends SIGTERM to the container when it sleeps and when a new image rolls out. The Node server then stops its listener and closes the MongoDB client and the cached data-source adapters, so the process exits. If a handle keeps the process alive for 10 seconds after the server closes, the server exits with code 1. A process that stays alive with no listener causes `Error proxying request to container` on each request.
-
-GitHub Actions secrets:
+The two workflows use the same GitHub Actions secrets:
 
 | Secret | |
 | --- | --- |
 | `CLOUDFLARE_API_TOKEN` | Workers Scripts edit, Containers edit, and DNS edit on the `dash.io` zone |
-| `CLOUDFLARE_ACCOUNT_ID` | Account that owns the Worker |
+| `CLOUDFLARE_ACCOUNT_ID` | Account that owns the Workers |
+
+`pnpm deploy:demo` and `pnpm deploy:dev` run the same deploys from your computer. `pnpm deploy` is pnpm's own command and does not run these scripts. Docker has to be running. See [ADR 0013](docs/adr/0013-demo-host-and-dev-website.md).
+
+### App on demo.dash.io
+
+`.github/workflows/deploy-demo.yml` runs `wrangler deploy`. Wrangler builds `Dockerfile`, pushes the image, and attaches the Worker to `https://demo.dash.io`. `workers.dev` is off.
+
+The container runs `node .output/server/index.mjs` from `@dash/web`. One instance named `dev` serves the host. Users, sessions, and saved data sources are stored in the MongoDB database named by `MONGODB_URI`, so they survive container sleep and the next image. The demo user is not seeded. Put Cloudflare Access in front of the hostname if the demo host should not be public.
+
+Cloudflare sends SIGTERM to the container when it sleeps and when a new image rolls out. The Node server then stops its listener and closes the MongoDB client and the cached data-source adapters, so the process exits. If a handle keeps the process alive for 10 seconds after the server closes, the server exits with code 1. A process that stays alive with no listener causes `Error proxying request to container` on each request.
 
 The workflow deploys the `dash-development` Worker without `DASH_SECRET` or `MONGODB_URI`. After that first deploy, set both on that Worker:
 
@@ -374,7 +388,7 @@ pnpm exec wrangler secret put DASH_SECRET
 pnpm exec wrangler secret put MONGODB_URI
 ```
 
-Until either is set, requests to `dev.dash.io` return 500. Later deploys leave the secrets in place. `DASH_SECRET` encrypts saved data-source credentials and must not be `change-me-in-production`. `MONGODB_URI` is the MongoDB connection string for app state and must name a database (`mongodb://…/dash` or `mongodb+srv://…/dash`). Atlas SCRAM users live in `admin`; omit `authSource` and Dash authenticates there. Grant that user `readWrite` on the named database.
+Until either is set, requests to `demo.dash.io` return 500. Later deploys leave the secrets in place. `DASH_SECRET` encrypts saved data-source credentials and must not be `change-me-in-production`. `MONGODB_URI` is the MongoDB connection string for app state and must name a database (`mongodb://…/dash` or `mongodb+srv://…/dash`). Atlas SCRAM users live in `admin`; omit `authSource` and Dash authenticates there. Grant that user `readWrite` on the named database.
 
 Cloudflare logging is on for the Worker and the container. The Worker sends Workers Logs: one invocation log per request (method, URL, status, and headers) and its own structured lines. Those are `request blocked` with the reason when a secret is missing, `container started`, and `container stopped` or `container crashed` with the exit code. The container sends whatever the Node server writes to stdout and stderr. In the Cloudflare dashboard, Worker logs are under Workers & Pages → `dash-development` → Logs. Container logs are under Containers → `dash-development-dashcontainer`. Stream the Worker's logs live with:
 
@@ -382,7 +396,21 @@ Cloudflare logging is on for the Worker and the container. The Worker sends Work
 pnpm exec wrangler tail dash-development
 ```
 
-`pnpm deploy:dev` runs `wrangler deploy` locally. `pnpm deploy` is pnpm's own command and does not run this script. Docker has to be running.
+### Website on dev.dash.io
+
+`.github/workflows/deploy-dev.yml` runs `wrangler deploy --config wrangler.site.jsonc`. Wrangler builds `Dockerfile.site`, pushes the image, and attaches the Worker to `https://dev.dash.io`. `workers.dev` is off.
+
+The container runs the standalone Next.js server of `@dash/site` (`node packages/site/server.js`). One instance named `dev` serves the host. The Worker adds `X-Robots-Tag: noindex, nofollow` to each response, so search engines do not index this copy of the website.
+
+The marketing pages work immediately after the first deploy. Sign-up and sign-in need the Dash Cloud database. Set it on the `dash-site-development` Worker:
+
+```bash
+pnpm exec wrangler secret put DASH_CLOUD_MONGODB_URI --config wrangler.site.jsonc
+```
+
+`DASH_CLOUD_MONGODB_URI` must name a database (`mongodb+srv://…/dash_cloud`). Use a database that is not the app database of a Dash instance. Later deploys do not remove the secret.
+
+Cloudflare logs are on for this Worker and its container also. Worker logs are under Workers & Pages → `dash-site-development` → Logs. Container logs are under Containers → `dash-site-development-sitecontainer`. Next.js exits with code 143 when Cloudflare stops the instance, and the Worker logs that exit as `container stopped`.
 
 ## License
 

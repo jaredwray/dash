@@ -18,7 +18,7 @@
   },
   "routes": [
     {
-      "pattern": "dev.dash.io",
+      "pattern": "demo.dash.io",
       "custom_domain": true
     }
   ],
