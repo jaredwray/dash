@@ -49,6 +49,12 @@ trustPolicy: no-downgrade # fail if a later version has weaker trust evidence
 # Wrangler 4.152.0 depends on that miniflare release.
 # undici 7.30.1 fixes CVE-2026-109829, CVE-2026-87018, CVE-2026-109869, and CVE-2026-109383.
 # npm published 7.30.1 on 2026-10-15. The 7-day cooldown covers that release.
+# AIKIDO-2026-363572 affects seroval-plugins below 1.7.5.
+# Parents depend on seroval-plugins@^1.6.7 and seroval@^1.6.7.
+# No parent release requires 1.7.5 or later.
+# 1.7.7 is the newest release of each package outside the 7-day cooldown.
 overrides:
   semver@6.3.1: 7.8.5
   undici@7.29.1: 7.30.1
+  "seroval-plugins@<1.7.5": 1.7.7
+  "seroval@<1.7.7": 1.7.7
