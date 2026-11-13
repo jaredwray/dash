@@ -60,6 +60,9 @@ All notable changes to Dash are documented here.
 
 ### Changed
 
+- Security: `@dash/web`, `@dash/site`, `@dash/seed`, and `@dash/adapter-mongodb` pin `mongodb` 7.8.0. The previous pin is 7.7.0. Release 7.8.0 fixes CVE-2026-126837. A forged DNS SRV answer can send a `mongodb+srv://` client to another host.
+- npm published 7.8.0 on 2026-10-30. That date is outside the 7-day cooldown. The workspace file keeps the current cooldown list. Rebuild the app image and the website image. Redeploy both services.
+
 - **Breaking:** the app deploy moved from `dev.dash.io` to [demo.dash.io](https://demo.dash.io). The `dash-development` Worker keeps its name, its container, and its secrets. The app workflow is now `deploy-demo`, and the app script is now `pnpm deploy:demo`. `dev.dash.io` shows the website. Each app user signs in again on the new host. A manual run of a deploy workflow now deploys only from `main`.
 
 - Security: `@dash/site` depends on `next` 16.4.5. The previous pin was 16.4.3. This release fixes AIKIDO-2026-922418. It also fixes GHSA-mfr8-8qww-v76h, GHSA-vc7v-qv4w-wrv8, GHSA-rhh4-g77r-r9qj, GHSA-vvgp-ww4w-46vf, GHSA-pc58-hwjq-p385, GHSA-f3mh-rxg3-f5g2, and GHSA-7qx7-33qx-rqx2. npm published 16.4.5 on 2026-11-03. The 7-day cooldown applies. This change adds no exclude.

@@ -22,7 +22,7 @@
     "@dash/adapter-postgres": "workspace:*",
     "@dash/core": "workspace:*",
     "@faker-js/faker": "10.6.0",
-    "mongodb": "7.7.0",
+    "mongodb": "7.8.0",
     "pg": "8.23.1"
   },
   "devDependencies": {
