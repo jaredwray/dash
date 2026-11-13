@@ -60,6 +60,8 @@ All notable changes to Dash are documented here.
 
 ### Changed
 
+- Security: the lockfile resolves `seroval-plugins` 1.7.7 in place of 1.6.11. The lockfile resolves `seroval` 1.7.7 in place of 1.6.11. `seroval-plugins` 1.7.7 fixes AIKIDO-2026-363572 and GHSA-fc89-m4rj-8472. No parent release requires 1.7.5, so overrides replace the older copies. npm published 1.7.7 on 2026-11-02. The 7-day cooldown applies, and this change adds no exclude.
+
 - **Breaking:** the app deploy moved from `dev.dash.io` to [demo.dash.io](https://demo.dash.io). The `dash-development` Worker keeps its name, its container, and its secrets. The app workflow is now `deploy-demo`, and the app script is now `pnpm deploy:demo`. `dev.dash.io` shows the website. Each app user signs in again on the new host. A manual run of a deploy workflow now deploys only from `main`.
 
 - Security: `@dash/site` depends on `next` 16.4.5. The previous pin was 16.4.3. This release fixes AIKIDO-2026-922418. It also fixes GHSA-mfr8-8qww-v76h, GHSA-vc7v-qv4w-wrv8, GHSA-rhh4-g77r-r9qj, GHSA-vvgp-ww4w-46vf, GHSA-pc58-hwjq-p385, GHSA-f3mh-rxg3-f5g2, and GHSA-7qx7-33qx-rqx2. npm published 16.4.5 on 2026-11-03. The 7-day cooldown applies. This change adds no exclude.
